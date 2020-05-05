@@ -1,7 +1,7 @@
       program moma
 c
 c==================================================================
-c  Program MOMA,     Version 1.7
+c  Program MOMA,     Version 1.8
 c
 c  Free surface ocean model for use with array processors.
 c
@@ -10,7 +10,7 @@ c                   Institute of Oceanographic Sciences,
 c                   Godalming, Surrey GU8 5UB, U.K..
 c  
 c @(#) SCCS information - module:  moma.F     
-c @(#)                    version: 1.7    date: 02/24/93
+c @(#)                    version: 1.8    date: 02/24/93
 c
 c
 c  This code is a free surface version of the Bryan-Cox-Semtner
@@ -72,12 +72,14 @@ c  the ocean.  GFDL Ocean Technical Report No.1, Geophysical
 c  Fluid Dynamics Laboratory/NOAA, Princeton University, 
 c  Princeton N.J., U.S.A..
 c
-c
-c
 c  Killworth, P.D., Stainforth, D., Webb, D.J. and Paterson, P.M.,
 c  1989:  A free surface Bryan-Cox-Semtner model.  Institute of
 c  Oceanographic Sciences, Report No. 270.
 c
+c  Pacanowski, R.C., Dixon, K., Rosati, A., 1990:  The GFDL Modular
+c  Ocean Model 1.0.  Geophysical Fluid Dynamics Laboratory/NOAA, 
+c  Princeton University, Princeton N.J., U.S.A.
+c  (Unpublished manuscript).
 c  
 c
 c==================================================================
@@ -100,20 +102,9 @@ c
 #include "frees.h"
 #include "iounit.h"
 #include "versno.h"
-c***************************************************************
+c==================================================================
+c
       dimension utime(3)
-c
-c  DEBUG !! ****************************************************
-c
-      logical logbt, loguv, logts, lptbt, lptuv, lptts, lptin,
-     &         loldah, loldav
-      common /cdebug/ logbt, loguv, logts, lptbt, lptuv, lptts,
-     &         lptin, loldah, loldav
-      namelist /ndebug/ logbt, loguv, logts, lptbt, lptuv, lptts,
-     &         lptin, loldah, loldav
-c
-c     external myhandler
-c***************************************************************
 c
       namelist /eddy/   am, ah, fkpm, fkph, cdbot
       namelist /tsteps/ dtts, dtuv, dtbt
@@ -124,8 +115,6 @@ c  start timing
 c 
       call dtime(utime)
       utime(3)=0.0
-c
-c      ieer = ieee_handler('set','common',myhandler)
 c
 c     constants usually initialised in block data
 c
@@ -201,21 +190,6 @@ c
       write (stdout,eddy)
       read  (stdin, tsteps)
       write (stdout,tsteps)
-c
-c  DEBUG !! ****************************************************
-c
-      logbt = .true.
-      loguv = .true.
-      logts = .true.
-      lptbt = .true.
-      lptuv = .true.
-      lptts = .true.
-      lptin = .true.
-      loldah = .true.
-      loldav = .true.
-      read(stdin, ndebug)
-      write(stdout, ndebug)
-c end DEBUG ****************************************************
       close (unit=stdin,status='keep')
 c
 c------------------------------------------------------------------
@@ -271,15 +245,15 @@ c     and set cyclic boundary conditions
 c------------------------------------------------------------------
 c
       do 900 i=1,imt
-      kmu(i,jmt) = 0
+        kmu(i,jmt) = 0
 900   continue
       do 1000 j=1,jmtm1
       do 990 i=1,imtm1
-      kmu(i,j) =min (kmt(i,j),kmt(i+1,j),kmt(i,j+1),kmt(i+1,j+1))
+        kmu(i,j) =min (kmt(i,j),kmt(i+1,j),kmt(i,j+1),kmt(i+1,j+1))
 990   continue
 1000  continue
       do 1100 j=1,jmt
-      kmu(imt,j) = kmu(2,j)
+        kmu(imt,j) = kmu(2,j)
 1100  continue
 c
 c------------------------------------------------------------------
@@ -307,9 +281,6 @@ c       print map of "kmt" levels.
 c------------------------------------------------------------------
 c
 c
-c  DEBUG !!  *******************************************
-c
-      if (init.and.lptin) then
       write (stdout,9402)
       do 1300 ibk=1,imt,40
       isp  = ibk
@@ -321,7 +292,6 @@ c
       write (stdout,'(1x,i3, 40i3)')j,(kmt(i,j),i=isp,iept)
 1290  continue
 1300  continue
-      endif
 c
 c------------------------------------------------------------------
 c     compute depths and reciprocal depths
@@ -367,7 +337,6 @@ c
       ggu(j) = am*(c1-tng(j)*tng(j))/(radius*radius)
       hhu(j) = am*c2*sine(j)/(radius*csu(j)*csu(j))
 2670  continue
-      call idebug('main',0,0,0,0)
 c
 c------------------------------------------------------------------
 c     start the time step loop
@@ -455,17 +424,6 @@ c
 c
 #include "cdiag.h"
 c
-c
-c  DEBUG !! ****************************************************
-c
-#include "grdvar.h"
-#include "ctmngr.h"
-      logical logbt, loguv, logts, lptbt, lptuv, lptts, lptin,
-     &         loldah, loldav
-      common /cdebug/ logbt, loguv, logts, lptbt, lptuv, lptts,
-     &         lptin, loldah, loldav
-c end DEBUG ****************************************************
-c
 c------------------------------------------------------------------
 c    update pointers for new value of itt.  
 c    nnp, nnc and nnm are not changed during a timestep
@@ -473,17 +431,6 @@ c    np, nc, nm may be modified during a forward or euler backward
 c    timestep.
 c------------------------------------------------------------------
 c
-c****************************************************************
-c  DEBUG
-c****************************************************************
-      if(.false.)then
-      print *
-      print 921,'step0  itt,lt,nm,nc,np,nm0,nc0,np0   =',
-     &                  itt,lt,nm,nc,np,nm0,nc0,np0
-      print *,'mixts,eb,totsec=',mixts,eb,totsec
-c      call idebug('step2',0,0,0,0)
-      endif
-c** end DEBUG ***************************************************
       nnc = np
       nnm = nc
       nnp = nm
@@ -502,11 +449,9 @@ c
         nm = nnc
         c2dtts = dtts
         c2dtuv = dtuv
-c        c2dtsf = dtsf
       else
         c2dtts = c2*dtts
         c2dtuv = c2*dtuv
-c        c2dtsf = c2*dtsf
       endif
 c
 c------------------------------------------------------------------
@@ -514,14 +459,6 @@ c       return here for second pass of euler backward timestep
 c------------------------------------------------------------------
 c
  100  continue
-c****************************************************************
-c  DEBUG
-c****************************************************************
-      if(.false.)then
-      print 921,'step1  itt,lt,nm,nc,np,nm0,nc0,np0   =',
-     &                  itt,lt,nm,nc,np,nm0,nc0,np0
-      endif
-c** end DEBUG ***************************************************
 c
 c-----------------------------------------------------------------
 c      main baroclinic timestep loop over grid cells, from south 
@@ -537,7 +474,6 @@ c
         call clinic (ic,jc)
         call tracer (ic,jc)
  200  continue
-      call idebug('step1',0,0,0,0)
 c
 c-----------------------------------------------------------------
 c      run free surface model (except during the second part
@@ -554,16 +490,6 @@ c
           nc0  = nnc0
           nm0  = nnc0
           frpas1=.true.
-c****************************************************************
-c  DEBUG
-c****************************************************************
-      if(.false.)then
-      print 921,'step.  itt,lt,nm,nc,np,nm0,nc0,np0   =',
-     &                  itt,lt,nm,nc,np,nm0,nc0,np0 
- 921  format(1x,a,9i5)
-      call idebug('step2',0,0,0,0)
-      endif
-c** end DEBUG ***************************************************
 c
 c-----------------------------------------------------------------
 c      use an euler backward scheme. this requires two passes.
@@ -576,14 +502,6 @@ c      main free surface model loop to carry out a
 c      partial timestep for each model point
 c-----------------------------------------------------------------
 c
-c****************************************************************
-c  DEBUG
-c****************************************************************
-      if(.false.)then
-      print 921, 'frees. itt,lt,nm,nc,np,nm0,nc0,np0,lb=',
-     &                   itt,lt,nm,nc,np,nm0,nc0,np0,lb
-      endif
-c** end DEBUG ***************************************************
           do 300 jc=2,jmtm1
           do 300 ic=2,imtm1
             call frees(ic,jc)
@@ -611,18 +529,8 @@ c
             nc0 = nnp0
             np0 = nnm0
           endif
-c****************************************************************
-c  DEBUG
-c****************************************************************
-      if(.false.)then
-      print *,'step. lt,h0,u0,v0(47,4,np0)=',
-     &             lt,h0(47,4,np0),u0(47,4,np0),v0(47,4,np0)  
-      endif
-c** end DEBUG ***************************************************
  500      continue
  600    continue
-c        nc0 = nnc0
-c        nm0 = nnp0
       endif
 c
 c-----------------------------------------------------------------
@@ -650,144 +558,9 @@ c
           t(k,imt,jc,n,np) = t(k,    2,jc,n,np)
  800  continue
 c
-c  DEBUG !! ****************************************************
-c  test d/dt(curl v) = curl(force)
-c
-      if(.true. .and. logbt.and.lptbt.and..not.loguv)then
-c  print velocities
-      do 810 jc=4,6
-      do 810 ic=47,49
-      print 811,ic,jc,u(1,ic,jc,np),u(1,ic-1,jc,np),
-     &                u(1,ic,jc-1,np),u(1,ic-1,jc-1,np)
-      print 811,ic,jc,v(1,ic,jc,np),v(1,ic-1,jc,np),
-     &                v(1,ic,jc-1,np),v(1,ic-1,jc-1,np)
-      print 811,ic,jc,u(1,ic,jc,nm),u(1,ic-1,jc,nm),
-     &                u(1,ic,jc-1,nm),u(1,ic-1,jc-1,nm)
-      print 811,ic,jc,v(1,ic,jc,nm),v(1,ic-1,jc,nm),
-     &                v(1,ic,jc-1,nm),v(1,ic-1,jc-1,nm)
- 810  continue
- 811  format(1x,2i3,1p6e16.6)
- 812  format(3a)
-c
-      if(.false.)then
-      print *,'test force'
-      print 812,'  ic jc     d/dt            force+      ',
-     &                '    corio           force       ',
-     &                '    grad p          v(1,ic,jc,np) '
-      do 815 jc=4,6
-      do 815 ic=47,49
-        fxa = grav*dx2r*csur(jc)
-        fxb = grav*dy2r
-        temp1 = h0(ic+1,jc+1,nc0) - h0(ic,jc,nc0)
-        temp2 = h0(ic,jc+1,nc0) - h0(ic+1,jc,nc0)
-        dpdxx  = (temp1-temp2)*fxa
-        dpdyy  = (temp1+temp2)*fxb
-      ucor = fcor(jc)*0.5*(v(1,ic,jc,np)+v(1,ic,jc,nc))
-      vcor =-fcor(jc)*0.5*(u(1,ic,jc,np)+u(1,ic,jc,nc))
-      dudt = (u(1,ic,jc,np)-u(1,ic,jc,nc))/dtuv
-      dvdt = (v(1,ic,jc,np)-v(1,ic,jc,nc))/dtuv
-      zuu  = zu(ic,jc)+ucor-dpdxx
-      zvv  = zv(ic,jc)+vcor-dpdyy
-      print 811, ic,jc,dudt,zuu,ucor,zu(ic,jc),-dpdxx,u(1,ic,jc,np) 
-      print 811, ic,jc,dvdt,zvv,vcor,zv(ic,jc),-dpdyy,v(1,ic,jc,np)
- 815  continue 
-c
-      print *,' test curl'
-c
-c  point ++
-c
-      do 821 jc=4,6
-      do 821 ic=47,49
-        fxa = grav*dx2r*csur(jc)
-        fxb = grav*dy2r
-        temp1 = h0(ic+1,jc+1,nc0) - h0(ic,jc,nc0)
-        temp2 = h0(ic,jc+1,nc0) - h0(ic+1,jc,nc0)
-      dpdx1  = (temp1-temp2)*fxa
-      dpdy1  = (temp1+temp2)*fxb
-      ucor1 = fcor(jc)*0.5*(v(1,ic,jc,np)+v(1,ic,jc,nc))
-      vcor1 =-fcor(jc)*0.5*(u(1,ic,jc,np)+u(1,ic,jc,nc))
-      dudt1 = (u(1,ic,jc,np)-u(1,ic,jc,nc))/dtuv
-      dvdt1 = (v(1,ic,jc,np)-v(1,ic,jc,nc))/dtuv
-      zu1   = zu(ic,jc)
-      zv1   = zv(ic,jc)
-      zuu1  = zu1+ucor1-dpdx1
-      zvv1  = zv1+vcor1-dpdy1
-c  point +-
-        fxa = grav*dx2r*csur(jc)
-        fxb = grav*dy2r
-        temp1 = h0(ic,jc+1,nc0) - h0(ic-1,jc,nc0)
-        temp2 = h0(ic-1,jc+1,nc0) - h0(ic,jc,nc0)
-      dpdx2  = (temp1-temp2)*fxa
-      dpdy2  = (temp1+temp2)*fxb
-      ucor2 = fcor(jc)*0.5*(v(1,ic-1,jc,np)+v(1,ic-1,jc,nc))
-      vcor2 =-fcor(jc)*0.5*(u(1,ic-1,jc,np)+u(1,ic-1,jc,nc))
-      dudt2 = (u(1,ic-1,jc,np)-u(1,ic-1,jc,nc))/dtuv
-      dvdt2 = (v(1,ic-1,jc,np)-v(1,ic-1,jc,nc))/dtuv
-      zu2   = zu(ic-1,jc)
-      zv2   = zv(ic-1,jc)
-      zuu2  = zu2+ucor2-dpdx2
-      zvv2  = zv2+vcor2-dpdy2
-c  point --
-        fxa = grav*dx2r*csur(jc-1)
-        fxb = grav*dy2r
-        temp1 = h0(ic,jc,nc0) - h0(ic-1,jc-1,nc0)
-        temp2 = h0(ic-1,jc,nc0) - h0(ic,jc-1,nc0)
-      dpdx3  = (temp1-temp2)*fxa
-      dpdy3  = (temp1+temp2)*fxb
-      ucor3 = fcor(jc-1)*0.5*(v(1,ic-1,jc-1,np)+v(1,ic-1,jc-1,nc))
-      vcor3 =-fcor(jc-1)*0.5*(u(1,ic-1,jc-1,np)+u(1,ic-1,jc-1,nc))
-      dudt3 = (u(1,ic-1,jc-1,np)-u(1,ic-1,jc-1,nc))/dtuv
-      dvdt3 = (v(1,ic-1,jc-1,np)-v(1,ic-1,jc-1,nc))/dtuv
-      zu3   = zu(ic-1,jc-1)
-      zv3   = zv(ic-1,jc-1)
-      zuu3  = zu3+ucor3-dpdx3
-      zvv3  = zv3+vcor3-dpdy3
-c  point -+
-        fxa = grav*dx2r*csur(jc-1)
-        fxb = grav*dy2r
-        temp1 = h0(ic+1,jc,nc0) - h0(ic,jc-1,nc0)
-        temp2 = h0(ic,jc,nc0) - h0(ic+1,jc-1,nc0)
-      dpdx4  = (temp1-temp2)*fxa
-      dpdy4  = (temp1+temp2)*fxb
-      ucor4 = fcor(jc-1)*0.5*(v(1,ic,jc-1,np)+v(1,ic,jc-1,nc))
-      vcor4 =-fcor(jc-1)*0.5*(u(1,ic,jc-1,np)+u(1,ic,jc-1,nc))
-      dudt4 = (u(1,ic,jc-1,np)-u(1,ic,jc-1,nc))/dtuv
-      dvdt4 = (v(1,ic,jc-1,np)-v(1,ic,jc-1,nc))/dtuv
-      zu4   = zu(ic,jc-1)
-      zv4   = zv(ic,jc-1)
-      zuu4  = zu4+ucor4-dpdx4
-      zvv4  = zv4+vcor4-dpdy4
-c calculate curls
-      curldt = ((dvdt1 + dvdt4 - dvdt2 - dvdt3)*dy
-     &        -((dudt1 + dudt2)*dx*csu(jc  )
-     &         -(dudt4 + dudt3)*dx*csu(jc-1))
-     &              )*dx2r*dyr*cstr(jc)
-      curlzuu = ((zvv1 + zvv4 - zvv2 - zvv3)*dy
-     &        -((zuu1 + zuu2)*dx*csu(jc  )
-     &         -(zuu4 + zuu3)*dx*csu(jc-1))
-     &              )*dx2r*dyr*cstr(jc)
-      curlzu = ((zv1 + zv4 - zv2 - zv3)*dy
-     &        -((zu1 + zu2)*dx*csu(jc  )
-     &         -(zu4 + zu3)*dx*csu(jc-1))
-     &              )*dx2r*dyr*cstr(jc)
-      curlcor = ((vcor1 + vcor4 - vcor2 - vcor3)*dy
-     &        -((ucor1 + ucor2)*dx*csu(jc  )
-     &         -(ucor4 + ucor3)*dx*csu(jc-1))
-     &              )*dx2r*dyr*cstr(jc)
-      curlmp  =-((dpdy1 + dpdy4 - dpdy2 - dpdy3)*dy
-     &        -((dpdx1 + dpdx2)*dx*csu(jc  )
-     &         -(dpdx4 + dpdx3)*dx*csu(jc-1))
-     &              )*dx2r*dyr*cstr(jc)
-      print 811,ic,jc,curldt,curlzuu,curlzu,curlcor,curlmp
- 821  continue
-      endif
-      endif
-c  end debug
-c
 c-----------------------------------------------------------------
 c     if this is the end of the first pass of an euler backward
 c     timestep then set the pointers for the second pass.
-c
 c-----------------------------------------------------------------
 c
       if (mixts.and.eb)then
@@ -804,27 +577,22 @@ c  collect timestep statistics
 c-----------------------------------------------------------------
 c
       if(prntsi.and.eots) then
-c       print *,'dtabs=',dtabs
         ektot = c0
         do 900 n=1,nt
         tddt(n)  = c0
         dtabs(n) = c0
         tvar(n)  = c0
  900    continue
-c       print *,'dtabs=',dtabs
         do 910 jc=2,jmtm1
         do 910 ic=2,imtm1
         call diag(ic,jc)
  910    continue
-c       print *,'dtabs=',dtabs
         ektot = ektot/volume
         do 920 n=1,nt
         tddt(n)  = tddt(n)/volume
         dtabs(n) = dtabs(n)/volume
         tvar(n)  = tvar(n)/volume
-        call idebug('step2',0,0,0,n)
  920    continue
-c       print *,'dtabs=',dtabs
       endif
 c
 c------------------------------------------------------------------
@@ -840,15 +608,6 @@ c
         nm = nnm
       endif
 c
-c****************************************************************
-c  DEBUG
-c****************************************************************
-      if(.false.)then
-      print 921,'step9  itt,lt,nm,nc,np,nm0,nc0,np0   =',
-     &                  itt,lt,nm,nc,np,nm0,nc0,np0
-      call idebug('step2',0,0,0,0)
-      endif
-c** end DEBUG ***************************************************
       return
       end
  
@@ -879,19 +638,6 @@ c
 #include "cvbc.h"
 #include "cvmix.h"
 c
-c
-c  DEBUG !! ****************************************************
-c
-      logical logbt, loguv, logts, lptbt, lptuv, lptts, lptin,
-     &         loldah, loldav
-      common /cdebug/ logbt, loguv, logts, lptbt, lptuv, lptts,
-     &         lptin, loldah, loldav
-c end DEBUG ****************************************************
-c  DEBUG !! *************************************************
-#include "ctmngr.h"
-      data ierr/0/
-      save ierr
-c ***********************************************************
       kmc=kmu(ic,jc)
       if(kmc.eq.0)return
       jp = jc+1
@@ -899,7 +645,7 @@ c ***********************************************************
       ip = ic+1
       im = ic-1
 c
-c  NOTE !! for new advection scheme this should be the max
+c  NOTE for the new advection scheme this should be the max
 c  of all the neighbouring points.
 c
       kmd  = max(kmu(ip,jc),kmu(im,jc),kmu(ic,jp),kmu(ic,jm),kmc)
@@ -913,18 +659,10 @@ c
       dxp5 = p5*dx
       dyp5 = p5*dy
       do 100 k=1,kmd
+#ifdef newhorizuadv
 c
-c  DEBUG !! ****************************************************
+c  new horizontal advection scheme
 c
-      if(loldah)then
-
-      fvn(k) = (v(k,ic,jc,nc)+v(k,ic,jp,nc))*p5*dx*cst(jp)*dz(k)
-      fvs(k) = (v(k,ic,jc,nc)+v(k,ic,jm,nc))*p5*dx*cst(jc)*dz(k)
-      fue(k) = (u(k,ic,jc,nc)+u(k,ip,jc,nc))*p5*dy*dz(k)
-      fuw(k) = (u(k,ic,jc,nc)+u(k,im,jc,nc))*p5*dy*dz(k)
-
-      else
-
       fvjc   = csu(jc)*
      &         (v(k,im,jc,nc)+2.0*v(k,ic,jc,nc)+v(k,ip,jc,nc))
       fuic   = (u(k,ic,jp,nc)+2.0*u(k,ic,jc,nc)+u(k,ic,jm,nc))
@@ -938,27 +676,28 @@ c
      &         (u(k,ip,jp,nc)+2.0*u(k,ip,jc,nc)+u(k,ip,jm,nc)))
       fuw(k) = dz(k)*dy*p125*( fuic +
      &         (u(k,im,jp,nc)+2.0*u(k,im,jc,nc)+u(k,im,jm,nc)))
-
-      endif
-
-      if(loldav)then
-      fw(k)  = (fue(k)-fuw(k)+fvn(k)-fvs(k))
-      else
-      fw(k-1)  = (fuw(k)-fue(k)+fvs(k)-fvn(k))
-      endif
-c end DEBUG ****************************************************
- 100  continue
-      
+#else
 c
-c  DEBUG !! ****************************************************
-c  old vertical advection
-      if(loldav)then
-      fw(0) = c0
-      do 179 k=1,kmc-1
-      fw(k)=fw(k)+fw(k-1)
- 179  continue
-      fw(kmc)=c0
-      else
+c  origional horizontall advection scheme
+c
+      fvn(k) = (v(k,ic,jc,nc)+v(k,ic,jp,nc))*p5*dx*cst(jp)*dz(k)
+      fvs(k) = (v(k,ic,jc,nc)+v(k,ic,jm,nc))*p5*dx*cst(jc)*dz(k)
+      fue(k) = (u(k,ic,jc,nc)+u(k,ip,jc,nc))*p5*dy*dz(k)
+      fuw(k) = (u(k,ic,jc,nc)+u(k,im,jc,nc))*p5*dy*dz(k)
+#endif
+#ifdef newvertwbc
+c
+c  new vertical boundary conditions on w at u points
+c
+      fw(k-1)  = (fuw(k)-fue(k)+fvs(k)-fvn(k))
+#else
+c
+c  original vertical boundary condition on w at u points.
+c
+      fw(k)  = (fue(k)-fuw(k)+fvn(k)-fvs(k))
+#endif
+ 100  continue
+#ifdef newvertwbc
 c
 c=============================================================
 c    integrate up from the bottom level
@@ -968,53 +707,18 @@ c
       do 210 k=kmd,1,-1
       fw(k-1)=fw(k-1)+fw(k)
  210  continue
-      endif
-c end DEBUG ****************************************************
+#else
 c
-c DEBUG  !! **********************************************
+c=============================================================
+c    integrate down from the top level
+c=============================================================
 c
-      if(lptuv.and.ic.eq.47.and.jc.eq.4)then
-        print *
-        print *,' clinic at entry'
-        print *,' u(*,ic,jc,nc)='
-        print *,(u(k,ic,jc,nc),k=1,km)
-        print *,' u(*,ic,jc,nm)='
-        print *,(u(k,ic,jc,nm),k=1,km)
-        print *,' v(*,ic,jc,nc)='
-        print *,(v(k,ic,jc,nc),k=1,km)
-        print *,' v(*,ic,jc,nm)='
-        print *,(v(k,ic,jc,nm),k=1,km)
-        print *,'c0,v(1,ic,jc,nc),v(1,ic,jp,nc)',
-     &           c0,v(1,ic,jc,nc),v(1,ic,jp,nc)
-        print *,' p5,dx,cst(jp),dz(1)',
-     &            p5,dx,cst(jp),dz(1)
-        print *,' fvn='
-        print *,fvn
-        print *,' fvs='
-        print *,fvs
-        print *,' fue='
-        print *,fue
-        print *,' fuw='
-        print *,fuw
-        print *,' fw='
-        print *,fw
-      endif
-c  end DEBUG *********************************************
-c
-c  DEBUG !! *************************************************
-c  calculate vertical velocity and print if CLF criteria is
-c  breached
-      do 220 k=kmc,0,-1
-      wvel=fw(k)*boxar   
-      cfl =abs((wvel*dtuv)/dzw(k))
-      if(cfl.gt.0.5)then
-        print 221,itt,ic,jc,k,wvel,cfl,fw(k),dtuv
- 221  format(' clinic.  cfl error.  itt,ic,jc,k,wvel,cfl,fw(k),',
-     &       'dtuv=',4i5,1p4e16.6)
-        ierr=ierr+1
-        if(ierr.gt.100)stop
-      endif
- 220  continue
+      fw(0) = c0
+      do 210 k=1,kmc-1
+      fw(k)=fw(k)+fw(k-1)
+ 210  continue
+      fw(kmc)=c0
+#endif
 c
 c-----------------------------------------------------------------
 c     compute density on surrounding 't' points
@@ -1122,7 +826,7 @@ c=============================================================
 c
       do 600 k=1,kmc
 c
-c u-momentum equation.  coriolis term and the rest
+c u-momentum equation.  separate coriolis term and the rest.
 c
       ucor  = fcor(jc)*v(k,ic,jc,lcor)
       urest = -dpdx(k)
@@ -1144,7 +848,7 @@ c  y diffusion
 c  z diffusion  
      &  + vmf(k  ,1) - vmf(k-1,1) )*boxar*dzr(k)
 c
-c v-momentum equation.  coriolis term and the rest
+c v-momentum equation.  separate coriolis term and the rest
 c
       vcor  = -fcor(jc)*u(k,ic,jc,lcor)
       vrest = -dpdy(k)
@@ -1166,17 +870,6 @@ c  y diffusion
 c  z diffusion
      & + vmf(k  ,2) - vmf(k-1,2) )*boxar*dzr(k)
 c
-c DEBUG  !! **********************************************
-c
-      if(lptuv.and.ic.eq.47.and.jc.eq.4.and.k.le.2)then
-      print *
-      print *,' clinic.  ic,jc,k,np,nc,nm=',ic,jc,k,np,nc,nm
-      print *,' forcing=',vcor+vrest
-      print *,' fwb2(k),fwb2(k-1),vmf(k,2),vmf(k-1,2)=',
-     &          fwb2(k),fwb2(k-1),vmf(k,2),vmf(k-1,2)
-      endif
-c  end DEBUG **********************************************
-c
 c***************************************************************
 c  the corrections to the advection and diffusion terms that
 c  allow for the curvature of the grid near the poles have been
@@ -1193,14 +886,6 @@ c
       zv(ic,jc) = zv(ic,jc) + vrest*fx
       u(k,ic,jc,np) = ucor + urest
       v(k,ic,jc,np) = vcor + vrest
-c
-c  DEBUG !! ****************************************************
-c  do not change baroclinic fields
-      if(loguv.eq..false.)then
-      u(k,ic,jc,np) = 0.
-      v(k,ic,jc,np) = 0.
-      endif
-c end DEBUG ****************************************************
  600  continue
 c
 c-----------------------------------------------------------------
@@ -1209,14 +894,6 @@ c-----------------------------------------------------------------
 c
       zu(ic,jc) = zu(ic,jc)*hr(ic,jc)
       zv(ic,jc) = zv(ic,jc)*hr(ic,jc)
-c
-c  DEBUG !!  *******************************************
-c
-      if(.false. .and. lptbt.and.ic.eq.47.and.jc.eq.4)then
-        print *,' zu(ic,jc),zv(ic,jc)='
-     &           ,zu(ic,jc),zv(ic,jc)
-      endif
-c  end DEBUG *******************************************
 c
 c-----------------------------------------------------------------
 c     timestep baroclinic terms
@@ -1238,17 +915,6 @@ c
  750    continue
       endif
 c
-c  DEBUG !!  *******************************************
-c
-      if(lptuv.and.ic.eq.47.and.jc.eq.4)then
-        print *,' clinic after calculating new value'
-        print *,' u(*,ic,jc,np)='
-        print *,(u(k,ic,jc,np),k=1,km)
-        print *,' clinic v(*,ic,jc,np)='
-        print *,(v(k,ic,jc,np),k=1,km)
-      endif
-c  end DEBUG *******************************************
-c
 c-----------------------------------------------------------------
 c     remove vertical mean velocity
 c-----------------------------------------------------------------
@@ -1266,20 +932,10 @@ c
       u(k,ic,jc,np) = u(k,ic,jc,np) - sumu
       v(k,ic,jc,np) = v(k,ic,jc,np) - sumv
  900  continue
-c
-c  DEBUG !!  *******************************************
-c
-      if(lptuv.and.ic.eq.47.and.jc.eq.4)then
-        print *,' clinic after removing mean'
-        print *,' u(*,ic,jc,np)='
-        print *,(u(k,ic,jc,np),k=1,km)
-        print *,' clinic v(*,ic,jc,np)='
-        print *,(v(k,ic,jc,np),k=1,km)
-      endif
-c  end DEBUG *******************************************
       return
       end
  
+
       subroutine tracer(ic,jc)
 c
 c=============================================================
@@ -1300,22 +956,9 @@ c
 #include "cvbc.h"
 #include "cvmix.h"
 c
-c
-c  DEBUG !! ****************************************************
-c
-      logical logbt, loguv, logts, lptbt, lptuv, lptts, lptin,
-     &         loldah, loldav
-      common /cdebug/ logbt, loguv, logts, lptbt, lptuv, lptts,
-     &         lptin, loldah, loldav
-c end DEBUG ****************************************************
-c  DEBUG !! *************************************************
-#include "ctmngr.h"
-#include "switch.h"
-      data ierr/0/
-      save ierr
-c ***********************************************************
-c
+c=============================================================
 c    outer loops over i and j indices
+c=============================================================
 c
       kmc= kmt(ic,jc)
       if(kmc.eq.0)return
@@ -1326,7 +969,9 @@ c
       boxa = dx*cst(jc)*dy
       boxar = c1/boxa
 c
+c=============================================================
 c    set up masks, equal to 0 on sub-seabottom points.
+c=============================================================
 c
       do 110 k=1,kmc
       maskop(k)=0
@@ -1352,38 +997,6 @@ c
       fuw(k) = (u(k,im,jc,nc)+u(k,im,jm,nc))*dyp5*dz(k)
       fw(k-1)  = (fuw(k)-fue(k)+fvs(k)-fvn(k))
  160  continue
-c
-c  DEBUG !!  *******************************************
-c
-      if(.false..and.ic.eq.47.and.jc.eq.4)then
-        print *
-        print *,' tracer v(k,ic,jc,nc)'
-        print *, (v(k,ic,jc,nc),k=1,kmc)
-        print *,' tracer v(k,im,jc,nc)'
-        print *, (v(k,im,jc,nc),k=1,kmc)
-        print *,' tracer v(k,ic,jm,nc)'
-        print *, (v(k,ic,jm,nc),k=1,kmc)
-        print *,' tracer v(k,im,jm,nc)'
-        print *, (v(k,im,jm,nc),k=1,kmc)
-        print *
-        print *,' tracer u(k,ic,jc,nc)'
-        print *, (u(k,ic,jc,nc),k=1,kmc)
-        print *,' tracer u(k,im,jc,nc)'
-        print *, (u(k,im,jc,nc),k=1,kmc)
-        print *,' tracer u(k,ic,jm,nc)'
-        print *, (u(k,ic,jm,nc),k=1,kmc)
-        print *,' tracer u(k,im,jm,nc)'
-        print *, (u(k,im,jm,nc),k=1,kmc)
-        print *,' tracer fvn,fvs,fue,fuw,fw,w='
-        print 181,fvn
-        print 181,fvs
-        print 181,fue
-        print 181,fuw
-        print 181,fw
-        print 181,(fw(k)*boxar,k=0,km)
- 181  format(1x,1p5e16.6)
-      endif
-c  end DEBUG !! *****************************************
 
 c
 c=============================================================
@@ -1395,37 +1008,6 @@ c
       do 180 k=kmc-1,0,-1
       fw(k)=fw(k)+fw(k+1)
  180  continue
-c
-c  DEBUG !!  *******************************************
-c
-      if(.false..and.ic.eq.47.and.jc.eq.4)then
-        print *
-        print *,' tracer fw='
-        print 181,fw
-      endif
-c  end DEBUG !! *****************************************
-
-c
-c  DEBUG !! *************************************************
-c  calculate vertical velocity and print if CLF criteria is
-c  breached
-      do 220 k=kmc,0,-1
-      wvel=fw(k)*boxar
-      cfl =abs((wvel*dtts)/dzw(k))
-      if(cfl.gt.0.5)then
-        print 221,itt,ic,jc,k,wvel,cfl
- 221  format(' tracer.  cfl error.  itt,ic,jc,k,wvel,cfl=',
-     &         4i5,1p2e16.6)
-        ierr=ierr+1
-        if(ierr.gt.100)stop
-      endif
- 220  continue
-c      if(ic.ge.85.and.ic.le.90.and.jc.eq.35)then
-c        print 222, ic,jc,(fw(k)*boxar,k=1,km)
-c      endif
-c 222  format(' tracer w(',i2,',',i2,',*)=',15f6.2)
-c  end DEBUG **************************************************
-
 c
 c=============================================================
 c    main calculation loop to timestep tracers
@@ -1479,28 +1061,6 @@ c  y diffusion
 c  z diffusion  
      & + vtf(k  ) - vtf(k-1)
      &   )
-c
-c  DEBUG !! ****************************************************
-c  do not change t-s fields
-      if(logts.eq..false.) t(k,ic,jc,m,np) = t(k,ic,jc,m,nm)
-
-c end DEBUG ****************************************************
-c
-c  DEBUG !!  *******************************************
-c
-      if(.false..and.
-     &  ic.eq.47.and.jc.eq.4.and.k.le.3.and.m.eq.1)then
-        print *,' tracer. ic,jc,k,m,kmc=',ic,jc,k,m,kmc
-        print *,' im,ip,jm,jp,nm,nc,np=',im,ip,jm,jp,nm,nc,np
-        print *,' t(k,ic,jc,m,np),t(k,ic,jc,m,nm),c2dtts=',
-     &            t(k,ic,jc,m,np),t(k,ic,jc,m,nm),c2dtts
-        print *,' fwb1(k  ),-fwb1(k-1),vtf(k  ),-vtf(k-1)=',
-     &           fwb1(k  ),-fwb1(k-1),vtf(k  ),-vtf(k-1)
-        print *,' -stf(m),boxa=',-stf(m),boxa
-        print *,'fw(k),t(k,ic,jc,m,nc)=',fw(0),t(k,ic,jc,m,nc)
-      endif
-c end DEBUG !! *****************************************
-c
  960  continue
  900  continue
 c
@@ -1523,13 +1083,10 @@ c
  1070   continue
       endif
 c
-c=============================================================
-c  finished !
-c=============================================================
-c
       return
       end
  
+
       subroutine state (t, s, rho, kk, ind)
 c
 c=============================================================
@@ -1598,13 +1155,10 @@ c
         co2(k+1,l)= c(k+1,l)
  200    continue
       endif
-c************************************************************
-c  DEBUG  set to NaN
-c************************************************************
+c
       do 210 k=1,km
-      rho(k)=1e30
+        rho(k)=1e30
  210  continue
-c **  end DEBUG *********************************************
 c
 c  test for errors
 c
@@ -1640,6 +1194,7 @@ c       sq=(s(k)-35.0)/1000.0-so1(k)
  500    continue
 c
 c  compare 2 with 3, 4 with 5 etc
+c
       elseif(ind.eq.2.and.kk.gt.2)then
         do 600 k1=1,kk-2,2
         do 600 k2=1,2
@@ -1652,6 +1207,7 @@ c       sq=(s(k)-35.0)/1000.0-so2(k)
      &         + (co2(k,2) + (co2(k,5)    + co2(k,9)*sq)*sq)*sq
  600    continue
       endif
+c
       return
    99 format(/,' Routine state. Variables "ind" or "kk" out',
      &       ' of range',/,' ind =',i10,' kk =',i10)
@@ -1684,14 +1240,6 @@ c
 #include "scalar.h"
 #include "switch.h"
 #include "timelv.h"
-c
-c  DEBUG !! ****************************************************
-c
-      logical logbt, loguv, logts, lptbt, lptuv, lptts, lptin,
-     &         loldah, loldav
-      common /cdebug/ logbt, loguv, logts, lptbt, lptuv, lptts,
-     &         lptin, loldah, loldav
-c end DEBUG ****************************************************
 c
 c
 c---------------------------------------------------------------------
@@ -1740,30 +1288,12 @@ c
         dpdy  = (temp1+temp2)*fxb
 c
 c---------------------------------------------------------------------
-c   compute horizontal viscosity terms
-c---------------------------------------------------------------------
-c
-        fricu =
-     &            0.0
-c    &    (bbu(jc)*(u0(ip,jc,nm0) - u0(ic,jc,nm0)
-c    &             +u0(im,jc,nm0) - u0(ic,jc,nm0))
-c    &   + ccu(jc)*(u0(ic,jp,nm0) - u0(ic,jc,nm0))
-c    &   + ddu(jc)*(u0(ic,jm,nm0) - u0(ic,jc,nm0)) )*boxar
-c
-        fricv =
-     &            0.0
-c    &    (bbu(jc)*(v0(ip,jc,nm0) - v0(ic,jc,nm0)
-c    &             +v0(im,jc,nm0) - v0(ic,jc,nm0))
-c    &   + ccu(jc)*(v0(ic,jp,nm0) - v0(ic,jc,nm0))
-c    &   + ddu(jc)*(v0(ic,jm,nm0) - v0(ic,jc,nm0)) )*boxar
-c
-c---------------------------------------------------------------------
 c  calculate partial solutions
 c---------------------------------------------------------------------
 c
-        ustar = u0(ic,jc,nm0) + dtbt*(zu(ic,jc) - dpdx + fricu)
+        ustar = u0(ic,jc,nm0) + dtbt*(zu(ic,jc) - dpdx)
      &                        + fac1*v0(ic,jc,nm0)
-        vstar = v0(ic,jc,nm0) + dtbt*(zv(ic,jc) - dpdy + fricv)
+        vstar = v0(ic,jc,nm0) + dtbt*(zv(ic,jc) - dpdy)
      &                        - fac1*u0(ic,jc,nm0)
 c
 c---------------------------------------------------------------------
@@ -1772,46 +1302,10 @@ c---------------------------------------------------------------------
 c
         u0(ic,jc,np0)= (ustar + fac1*vstar)*fac2
         v0(ic,jc,np0)= (vstar - fac1*ustar)*fac2
-c**********************************************************
-c  DEBUG
-c**********************************************************
-      if(ic.eq.3.and.jc.eq.3.and. .false.)then
-       print *,'frees - ic,jc,im,ip,jm,jp,np0,nc0,nm0',
-     &                  ic,jc,im,ip,jm,jp,np0,nc0,nm0
-       print *,'        h0,u0,v0[nm0]    =',
-     &          h0(ic,jc,nm0),u0(ic,jc,nm0),v0(ic,jc,nm0)
-       print *,'        h0,u0,v0[nc0]    =',
-     &          h0(ic,jc,nc0),u0(ic,jc,nc0),v0(ic,jc,nc0)
-       print *,'        h0,u0,v0[np0]    =',
-     &          h0(ic,jc,np0),u0(ic,jc,np0),v0(ic,jc,np0)
-       print *,
-     & 'u0(im,jm,nc0),u0(ic,jm,nc0),u0(im,jc,nc0),u0(ic,jc,nc0)',
-     &  u0(im,jm,nc0),u0(ic,jm,nc0),u0(im,jc,nc0),u0(ic,jc,nc0)
-       print *,
-     & 'v0(im,jm,nc0),v0(ic,jm,nc0),v0(im,jc,nc0),v0(ic,jc,nc0)',
-     &  v0(im,jm,nc0),v0(ic,jm,nc0),v0(im,jc,nc0),v0(ic,jc,nc0)
-       print *,'h0(ic,jc,np0),h0(ic,jc,nm0),dtbt,dhdt',
-     &          h0(ic,jc,np0),h0(ic,jc,nm0),dtbt,dhdt 
-       print *,
-     & 'h0(ic,jc,nc0),h0(ip,jc,nc0),h0(ic,jp,nc0),h0(ip,jp,nc0)',
-     &  h0(ic,jc,nc0),h0(ip,jc,nc0),h0(ic,jp,nc0),h0(ip,jp,nc0)
-       print *,
-     & 'u0(ic,jc,np0),u0(ic,jc,nm0),dtbt,zu(ic,jc),dpdx',
-     &  u0(ic,jc,np0),u0(ic,jc,nm0),dtbt,zu(ic,jc),dpdx
-       print *,
-     & 'v0(ic,jc,np0),v0(ic,jc,nm0),dtbt,zv(ic,jc),dpdy',
-     &  v0(ic,jc,np0),v0(ic,jc,nm0),dtbt,zv(ic,jc),dpdy
-
-       lastc=ic
-       continue
-      endif
-c**********************************************************
       endif
 c
       return
       end
-
-
 
 
       subroutine setvbc (ic, jc)
@@ -1867,6 +1361,7 @@ c
 c
       return
       end
+
 
       subroutine bcest (stf, smf, i, j)
 c
@@ -2019,6 +1514,7 @@ c
       return
       end
 
+
       subroutine addv( ic, jc)
 c
 c==================================================================
@@ -2034,34 +1530,12 @@ c
 #include "timelv.h"
 #include "slabs.h"
 c
-c  DEBUG !! ****************************************************
-c
-      logical logbt, loguv, logts, lptbt, lptuv, lptts, lptin,
-     &        loldah, loldav
-      common /cdebug/ logbt, loguv, logts, lptbt, lptuv, lptts,
-     &                lptin, loldah, loldav
-c end DEBUG ****************************************************
-c
-c
-c  DEBUG !! ****************************************************
-c do not add barotropic velocities if barotropic model turned off
-      if(logbt.eq..false.) return
-c end DEBUG ****************************************************
-
       ubar=u0(ic,jc,np0)
       vbar=v0(ic,jc,np0)
       do 100 k=1,kmu(ic,jc)
         u(k,ic,jc,np) = u(k,ic,jc,np) + ubar
         v(k,ic,jc,np) = v(k,ic,jc,np) + vbar
  100  continue
-c
-c DEBUG  !! **********************************************
-c
-      if(lptbt.and.ic.eq.47.and.jc.eq.4)then
-        print *,'addv.  At end of step u0,v0=',
-     &           u0(ic,jc,np0),v0(ic,jc,np0)
-      endif
-c  end DEBUG *********************************************
 c
       return
       end
@@ -2118,16 +1592,6 @@ c
      &            + abs(t(k,ic,jc,m,np)-t(k,ic,jc,m,nm))*boxv
         tvar(m) = tvar(m)+(t(k,ic,jc,m,np)**2
      &                       -t(k,ic,jc,m,nm)**2)*boxv
-       call idebug('diag',ic,jc,k,m)
-c  DEBUG
-      if(dtabs(m).gt.1d20)then
-        print *,' subroutine diag. error'
-        print *,' ic,jc,k,m,np,nm=',ic,jc,k,m,np,nm
-        print *,' t(k,ic,jc,m,np)=',t(k,ic,jc,m,np)
-        print *,' t(k,ic,jc,m,nm)=',t(k,ic,jc,m,nm)
-        print *,' boxv=',boxv
-        stop
-      endif
 500     continue
       endif
       return
@@ -2144,15 +1608,6 @@ c
 #include "scalar.h"
 #include "coord.h"
 #include "grdvar.h"
-c
-c  DEBUG !! ****************************************************
-c
-      logical logbt, loguv, logts, lptbt, lptuv, lptts, lptin,
-     &         loldah, loldav
-      common /cdebug/ logbt, loguv, logts, lptbt, lptuv, lptts,
-     &         lptin, loldah, loldav
-c end DEBUG ****************************************************
-c
 c
 c------------------------------------------------------------------
 c     set latitudes & longitudes of "t" & "u,v" grid points (in degrees)
@@ -2235,28 +1690,6 @@ c     print grid related arrays
 c------------------------------------------------------------------
 c
 c
-c  DEBUG !!  *******************************************
-c
-      if(lptin)then
-      write (stdout,9101)
-      write (stdout,9001) dz
-      write (stdout,9102)
-      write (stdout,9001) dzw
-      write (stdout,9103)
-      write (stdout,9001) zw
-      write (stdout,9104)
-      write (stdout,9001) zt
-      write (stdout,9105)
-      write (stdout,9001) yt
-      write (stdout,9106)
-      write (stdout,9001) yu
-      write (stdout,9107)
-      write (stdout,9001) xt
-      write (stdout,9108)
-      write (stdout,9001) xu
-      endif
-c end DEBUG ****************************************************
-c
       return
 c
 9001  format (1x,10g13.5)
@@ -2271,6 +1704,7 @@ c
 9107  format (/,' longitude of t,s points (deg): "xt(i) i=1,imt"')
 9108  format (/,' longitude of u,v points (deg): "xu(i) i=1,imt"')
       end
+
 
       subroutine ocn1st
 c
@@ -2315,9 +1749,6 @@ c
         if(k.gt.kmt(i,j))then
           t(k,i,j,1,n)=-2.0
           t(k,i,j,2,n)=0.01
-c  DEBUG *****************************************************
-c         t(k,i,j,1,n)= 1e30
-c         t(k,i,j,2,n)= 1e30
         else
           t(k,i,j,1,n)= theta0 (yt(j), zt(k))
           t(k,i,j,2,n)= sconst-0.035
@@ -2347,6 +1778,7 @@ c
 c
       return
       end
+
 
       subroutine topog
 c
@@ -2482,6 +1914,8 @@ c
 400   continue
       return
       end
+
+
       function indp(c, ca, ia)
 c
 c
@@ -2542,6 +1976,8 @@ c
       endif
       return
       end
+
+
       subroutine setkmt (alat1, slon1, elon1,
      &                   alat2, slon2, elon2, num)
 c
@@ -2593,6 +2029,7 @@ c
 100   continue
       return
       end
+
 
       function theta0 (ydeg, depth)
 c
@@ -2674,6 +2111,7 @@ c
       return
       end
 
+
       subroutine tmngr (dt)
 c
 c
@@ -2740,6 +2178,8 @@ c
 c
       return
       end
+
+
       function tmnset (days, totday, dt)
 c
 c==================================================================
@@ -2763,6 +2203,7 @@ c
       endif
       return
       end
+
 
       subroutine arch
 c
@@ -2876,20 +2317,6 @@ c
       write (stdout,8000) ' v velocity (cm/s)'
      &, itt, xt(is), xt(ie), yt(js), yt(je), scl
       call matrix (v0(1,1,np0), imt, is, ie, -js, -je, scl)
-c****************************************************************
-c  DEBUG
-c****************************************************************
-      if(.false.)then
-       scl=0.0001
-       write (stdout,8000) ' zu '
-     &, itt, xt(is), xt(ie), yt(js), yt(je), scl
-       call matrix (zu(1,1), imt, is, ie, -js, -je, scl)
-c
-       write (stdout,8000) ' zv '
-     &, itt, xt(is), xt(ie), yt(js), yt(je), scl
-       call matrix (zv(1,1), imt, is, ie, -js, -je, scl)
-      endif
-c** end DEBUG ***************************************************
 c
       return
 c
@@ -2976,9 +2403,6 @@ c
         v(k,i,j,n)=c0
         t(k,i,j,1,n)= -2.0
         t(k,i,j,2,n)= 0.01
-c  DEBUG!! ****************************************************
-c       t(k,i,j,1,n)= -1e20
-c       t(k,i,j,2,n)= 1e20
 200   continue
 c
 c------------------------------------------------------------------
@@ -2991,7 +2415,6 @@ c
         h0(i,j,n) = c0
         u0(i,j,n) = c0
         v0(i,j,n) = c0
-
 300   continue
 c
 c------------------------------------------------------------------
@@ -3057,8 +2480,8 @@ c
      &       '  filename = ',a,'  unit = ',i2) 
       end
 
+
       subroutine matrix (array, irdim, istrt, im, jstrt, jm, scale)
- 
 c
 c==================================================================
 c
@@ -3130,31 +2553,4 @@ c
 9003  format(3x,20i6)
 9004  format(1x,i3,1x,20f6.2)
 c
-      end
-
-
-
-      subroutine idebug(text,ic,jc,k,m)
-      character text*(*)
-      character*20 out(4),in(3)
-      data in/'invalid','division','overflow'/
-c
-      do 10 i=1,3
-      out(i)=' '
-c      ieeer = ieee_flags('get','exception',in(i),out(i))
- 10   continue
-c      ieeer = ieee_flags('clear','exception','all',out(4))
-      do 20 i=1,3
-      if(out(i).eq.in(i))then
-        write(stdout,'(1x,6a,4i5)')
-     & 'Routine ',text,'.  exception:',in(i),out(i),
-     &  '  ic,jc,k,m=',ic,jc,k,m
-      endif
- 20   continue
-      return
-      end
-
-      integer function myhandler(sig, code, context)
-      integer sig, code, context(5)
-      call abort()
       end

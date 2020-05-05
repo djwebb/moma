@@ -1,7 +1,7 @@
 c====================== include file "switch.h" =========================
 #ifdef hcomments
 c
-c     @(#) SCCS module: switch.h, version 1.7
+c     @(#) SCCS module: switch.h, version 1.8
 c
 c     all time dependent decisions are made in time manager
 c     "tmngr.F" and communicated elsewhere in the model via 
