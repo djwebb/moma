@@ -1,0 +1,28 @@
+****
+****  @(#) SCCS module: ocean.in2  version: 1.1 Creation date: 03/17/95
+****
+****   3 day test run.
+****
+INIT      FNREST
+.true.    'd0002.hdf'
+**
+DAYS      RESTRT   
+3.00      .true.  
+**
+NMIX      EB         NCON       ACOR
+24        .true.     1          0.6
+**
+TSI        SNAPD     ARCHD      IDEBUG
+0.0833333  1.0       2.0        0
+**
+FTREST     FTSNAP    FTARCH
+'hdf'      'hdf'     'hdf'
+**
+DGNSTC     DCHKBD
+10.0       0.1
+**
+AM      AH      FKPM    FKPH     CDBOT   
+1.0E9   2.0E7   1.0     20.0     0.001
+**
+DTTS    DTUV    DTBT 
+7200.0  7200.0  100.0

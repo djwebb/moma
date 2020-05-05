@@ -1,35 +1,96 @@
 #
-# @(#) SCCS module: makefile.sun  version: 1.17
-#      Creation date: 09 Aug 1996
+# @(#) SCCS module: makefile.sun  version: 1.1
+#     Creation date: 03/16/95
 #
-#     Moma make file for Sun4
-#
-#  If HDF is used, environment variable HDF_ROOT needs to  
-#  point to the HDF root directory
+#     Moma.pvm make file for Sun4
 #
 
-DOPTNS=	-Dcyclic -Dsimple_world -Dde_checkbd -Dncsa_hdf -Dfree_av
- 
+MOFILES=master.o   archrd.o   archreq.o  archwr.o   \
+        init_kmt.o init_kpn.o m_grids.o  m_msg.o    \
+        setkmt.o   snapwr.o   topog.o    checks.o   docmnt.o 
+
+SOFILES=slave.o    addv.o     bound.o    clinic.o   \
+        diag.o     frees.o    ocn1st.o   pdiag.o    \
+        s_arch.o   s_grids.o  s_msg.o    setp.o     \
+        setvbc.o   snap.o     state.o    step.o     \
+        tracer.o   bcest.o    matrix.o   theta0.o
+
+BOFILES=sysmsg.o   tmngr.o    tmnset.o   indp.o
+
+FFILES=masterslave.F      master.F   \
+       archrd.F archwr.F  archreq.F  \
+       m_grids.F init_kmt.F init_kpn.F indp.F   \
+       setkmt.F  topog.F             \
+       m_msg.F   sysmsg.F  \
+       snapwr.F tmngr.F   tmnset.F            \
+       slave.F  step.F    clinic.F  tracer.F  \
+       state.F  frees.F   addv.F    s_arch.F    \
+       bound.F  bcest.F   diag.F    pdiag.F   \
+       s_grids.F  matrix.F  ocn1st.F            \
+       s_msg.F   snap.F    \
+       setp.F   setvbc.F  theta0.F            \
+       checks.F docmnt.F  
+
+OFILES=masterslave.o      master.o   \
+       archrd.o archwr.o  archreq.o  \
+       m_grids.o init_kmt.o init_kpn.o indp.o   \
+       setkmt.o  topog.o             \
+       m_msg.o   sysmsg.o  \
+       snapwr.o tmngr.o   tmnset.o            \
+       slave.o  step.o    clinic.o  tracer.o  \
+       state.o  frees.o   addv.o    s_arch.o    \
+       bound.o  bcest.o   diag.o    pdiag.o   \
+       s_grids.o  matrix.o  ocn1st.o            \
+       s_msg.o   snap.o    \
+       setp.o   setvbc.o  theta0.o            \
+       checks.o docmnt.o
+HFILES=archive.h cdiag.h chmix.h coord.h crelax.h            \
+       ctmngr.h cvbc.h cvmix.h dncoef.h emode.h frees.h      \
+       grdvar.h index.h iounit.h levind.h mesdta.h moddata.h \
+       param.h pconst.h scalar.h slabs.h snaps.h switch.h    \
+       thick.h timelv.h varinfo.h versno.h hdf.h
+DOPTNS=	-DPVM \
+        -Dpvm_buffer \
+        -Dcyclic_master \
+	-Dde_checkbd \
+        -Dpresetp 
+
+# FC =	env TARGET=cray-t3d /mpp/bin/cf77  -Wf"-o aggress" 
 FC =	f77   
-INCLUDE= -I$(HDF_ROOT)/include/SUN4
+INCLUDE= -I../../occam_pvm/hdfexport -I$(PVM_ROOT)/include
+PVMLIBS = $(PVM_ROOT)/lib/$(PVM_ARCH)/libfpvm3.a $(PVM_ROOT)/lib/$(PVM_ARCH)/libpvm3.a
+#LDR = /mpp/bin/mppldr -L. -lsma -X8 
 LDR = f77
-HDFLIBS = $(HDF_ROOT)/lib/SUN4/libnetcdf.a $(HDF_ROOT)/lib/SUN4/libdf.a
 
-#suppress SCCS retrieval
 
-.SCCS_GET:
+.F.o :  $(HFILES)
+	$(FC) $(DOPTNS) -c $(INCLUDE) $<
 
-.F.o :  
-	$(FC) $(DOPTNS) -r8 -c $(INCLUDE) $<
+masterslave: $(MOFILES) $(SOFILES) $(BOFILES)	
+	$(LDR) $(MOFILES) $(SOFILES) $(BOFILES) -o masterslave $(PVMLIBS)
+	cp masterslave ../expt01
+	cp masterslave $(PVM_ROOT)/bin/$(PVM_ARCH)
 
-moma : moma.o hdf.o	
-	$(LDR) moma.o hdf.o -o moma $(HDFLIBS)
+master:	$(MOFILES) $(BOFILES)	
+	$(LDR) $(MOFILES) $(BOFILES) -o master $(PVMLIBS)
+	cp master ../expt01
+
+slave : $(SOFILES) $(BOFILES)	
+	$(LDR) $(SOFILES) $(BOFILES) -o slave $(PVMLIBS)
+	cp slave $(PVM_ROOT)/bin/$(PVM_ARCH)
+
+make_kmt :
+	$(FC) -o make_kmt make_kmt.F
+
+make_kpn :
+	$(FC) -o make_kpn make_kpn.F
+
 
 clean :	
 	rm *%
 
 cleaner : 
-	rm moma *.o *%
+	rm *.o *%
 
 #	
 

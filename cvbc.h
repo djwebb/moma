@@ -1,9 +1,11 @@
 c====================== include file "cvbc.h" ==========================
 #ifdef hcomments
 c
-c     @(#) SCCS module: cvbc.h, version 1.17
+c @(#) SCCS module: cvbc.h  version: 1.1
+c     Creation date: 03/16/95
 c
-c     vertical boundary condition variables:
+c-----------------------------------------------------------------------
+c     Vertical boundary condition variables:
 c
 c     smf = surface momentum flux   (dynes/cm**2)
 c          1 => zonal wind stress  2 => meridional wind stress
@@ -15,6 +17,7 @@ c               = ly/sec) (assuming rho*cp = 1 cal/degC/cm**3)
 c          2 => surface water flux (ppt/cm**2/sec)
 c     btf = bottom tracer flux (for consistency but normally zero!)
 c          1 => bottom heat flux   2 => bottom water flux
+c-----------------------------------------------------------------------
 c
 #endif
        common /cvbc/ smf(2),  bmf(2), stf(nt), btf(nt)

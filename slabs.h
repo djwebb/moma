@@ -1,8 +1,10 @@
 c====================== include file "slabs.h" =========================
 #ifdef hcomments
 c
-c     @(#) SCCS module: slabs.h, version 1.17
+c @(#) SCCS module: slabs.h  version: 1.1
+c     Creation date: 03/16/95
 c
+c-----------------------------------------------------------------------
 c     This defines the basic array storage scheme.  In the MOM
 c     model the data is stored on disk in slabs (hence the name).
 c     For array processors it is stored in large arrays distributed
@@ -25,10 +27,11 @@ c
 c     (note: only the baroclinic component of the velocity is
 c      stored on the slab disks. in memory, the barotropic
 c      component is added on to give the full velocity)
+c-----------------------------------------------------------------------
 c
 #endif
-       common /slabs/ t(km,imt,jmt,nt,3),
-     &                u(km,imt,jmt,3), v(km,imt,jmt,3)
+       common /slabs/ t(KM,IMT_S,JMT_S,NT,3),
+     &                u(KM,IMT_S,JMT_S,3), v(KM,IMT_S,JMT_S,3)
 #ifdef hcomments
 c
 c  the working arrays are
@@ -62,12 +65,12 @@ c     rests  = time scale for restoring surface tracers (days)
 c
 #endif
        common /work/
-     &     dpdx(km),  dpdy(km),
-     &     fue(km), fuw(km),   fvn(km),  fvs(km),
-     &     vmf(0:km,2),   vtf(0:km),
-     &     fw(0:km),  fwb1(0:km), fwb2(0:km), temp (km),
-     &     maskpo(km), maskmo(km), maskop(km), maskom(km),
-     &     rhoo(km),   rhpo(km),   rhpp(km),   rhop(km)
+     &     dpdx(KM),  dpdy(KM),
+     &     fue(KM), fuw(KM),   fvn(KM),  fvs(KM),
+     &     vmf(0:KM,2),   vtf(0:KM),
+     &     fw(0:KM),  fwb1(0:KM), fwb2(0:KM), temp(KM),
+     &     maskpo(KM), maskmo(KM), maskop(KM), maskom(KM),
+     &     rhoo(KM),   rhpo(KM),   rhpp(KM),   rhop(KM)
 #ifdef presetp
 #ifdef hcomments
 c
@@ -75,7 +78,7 @@ c  common press stores the pressure field precalculated for
 c  subroutine clinic by subroutine setp
 c
 #endif
-      common /press/  p(km,imt,jmt)
+      common /press/  p(KM,IMT_S,JMT_S)
 #endif
      
 

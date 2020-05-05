@@ -1,7 +1,8 @@
+c===================== include file "hdf.h" =========================
 #ifdef hcomments 
 c
-c @(#) SCCS module: hdf.h  version: 1.17
-c     Creation date: 09 Aug 1996
+c @(#) SCCS module: hdf.h  version: 1.1
+c     Creation date: 03/16/95
 c
 c-----------------------------------------------------------------------
 c    Include file for hdf routines
@@ -18,8 +19,8 @@ c define the label lengths for these values
 #define MAXFORMATLEN    20
 #define MAXUNITLEN	12
 
-#define MAXDIMS	         5		
-#define MAXFIDS	       	15 	
+#define MAXDIMS	        10
+#define MAXFIDS	       	15
 
 #define MODEL_1		1
 #define MODEL_2		2
@@ -51,12 +52,11 @@ c define the label lengths for these values
 #define DATE_ATTR       'DATE'
 #define VERSION_ATTR    'VERSION'
 #define ROTATION_ATTR   'ROTATION'
-
 c
 c  define hdf word lengths
 c
-# define INTEGER_HDF    DFNT_INT32
-# ifdef REAL_8
+#  define INTEGER_HDF   DFNT_INT32
+# ifdef DOUBLE
 #  define REAL_HDF      DFNT_FLOAT64
 # else
 #  define REAL_HDF      DFNT_FLOAT32
@@ -73,8 +73,6 @@ c
      &           sfendacc, sfsfill, sfsdscale, sfend, 
      &           sfsattr, sfn2index, sfselect
 c
-      parameter (NARCHV = 7, NUM2D = 3)
-c
 c  define common blocks used by moma hdf routines
 c
       integer*4 dims2,dims3
@@ -82,20 +80,16 @@ c
       character*MAXUNITLEN    units2, units3
       character*MAXFORMATLEN  fmats2, fmats3
       character*12   lonlabel,latlabel
-      common/hdf2/rank2,dims2(MAXDIMS),labels2(MAXDIMS),
-     &   units2(MAXDIMS),fmats2(MAXDIMS),lonlabel(2),latlabel(2)
-      common/hdf3/rank3,dims3(MAXDIMS),labels3(MAXDIMS),
+      common /hdf2/ rank2,dims2(MAXDIMS),labels2(MAXDIMS),
+     &   units2(MAXDIMS),fmats2(MAXDIMS),
+     &   lonlabel(2),latlabel(2)
+      common /hdf3/ rank3,dims3(MAXDIMS),labels3(MAXDIMS),
      &   units3(MAXDIMS),fmats3(MAXDIMS) 
-c
-      logical*4 vartgrd
-c
       integer*4 itdims,itsize
-      character hdffile*40,cfext*10,varname*25,varunit*12,
-     &          varid*25,varcordsys*12
+      character hdffile*40,cfext*10,varid*25,varcordsys*12
       character*MAXLABLEN tlabel
-      common /hdfl/ around,vartgrd(NARCHV)
+      common /hdfl/ around
       common /hdfi/ itdims(MAXDIMS),itsize
       common /hdfa/ hdffile,cfext(2),tlabel(MAXDIMS)
-     &                ,varname(NARCHV),varunit(NARCHV)
      &                ,varid(NARCHV),varcordsys(NARCHV)
       

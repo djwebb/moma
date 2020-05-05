@@ -1,16 +1,18 @@
 c====================== include file "chmix.h" =========================
 #ifdef hcomments
 c
-c     @(#) SCCS module: chmix.h, version 1.17
+c @(#) SCCS module: chmix.h  version: 1.1
+c     Creation date: 03/16/95
 c
-c     horizontal mixing coefficients
-c
+c-----------------------------------------------------------------------
 c     am  = lateral eddy viscosity (cm**2/sec)
 c     ah  = lateral eddy diffusivity (cm**2/sec)
 c     aq  = lateral turbulent kinetic energy diffusivity 
 c           (cm**2/sec)
+c-----------------------------------------------------------------------
+c
 #endif
       common /chmix/ am, ah, 
-     &        bbu(jmt), ccu(jmt), ddu(jmt), ggu(jmt), hhu(jmt),
-     &        bbt(jmt), cct(jmt), ddt(jmt)
+     &        bbu(JMT_S), ccu(JMT_S), ddu(JMT_S), ggu(JMT_S), 
+     &        hhu(JMT_S), bbt(JMT_S), cct(JMT_S), ddt(JMT_S)
 

@@ -1,9 +1,11 @@
-c====================== include file "pconst.h" =========================
+c====================== include file "pconst.h" ========================
 #ifdef hcomments
 c
-c     @(#) SCCS module: pconst.h, version 1.17
+c @(#) SCCS module: pconst.h  version: 1.1
+c     Creation date: 03/16/95
 c
-c     rules for parameter constants
+c-----------------------------------------------------------------------
+c     Rules for parameter constants
 c
 c     use prefix of "c" for whole real numbers (ie: c57 for 57.0)
 c     use "m" after prefix for negative values (ie: cm7 for -7.0)
@@ -11,6 +13,7 @@ c     use prefix "p" for non repeating fractions (ie: p5 for 0.5)
 c     use prefix "r" for reciprocals (ie: r3 for 1/3.0)
 c     combine with "e" for scientific notation, 
 c       (ie: c5e4 for 5.0e4, c1em10 for 1.0e-10)
+c-----------------------------------------------------------------------
 c
 #endif
       parameter (c0=0.0, c1=1.0, c2=2.0, c4=4.0, c5=5.0, c8=8.0)
@@ -39,4 +42,3 @@ c
 #else
 # define LOGICAL_N logical*4
 #endif
-

@@ -1,0 +1,83 @@
+#
+# @(#) SCCS module: makefile.t3d  version: 1.1
+#      Creation date: 06/30/95
+#
+#     Moma.pvm make file for Cray-T3D
+#
+#   Needs the following environment variables to be set and
+#   the PVM and HDF include files and libraries to be installed
+#   in the corresponding locations:
+#
+#     PVM_ROOT - Root directory for PVM
+#     PVM_ARCH - PVM architecture type (set using pvmgetarch program)
+#     HDF_ROOT - Root directory for HDF 
+#
+#   When using new precompiler options first change DOPTNS below,
+#   then using this makefile, type commands 'make cleaner' to remove
+#   old '.o' files followed by 'make master' and 'make slave', or
+#   'make masterslave'.
+#
+#   This version of the makefile does not support HDF.  If it available
+#   add the path to the HDF library in the loader parameters
+#
+
+MOFILES=master.o   checks.o   docmnt.o              \
+        init_kmt.o init_kpn.o m_arch.o   m_grids.o  \
+        m_msg.o    m_snap.o   setkmt.o   topog.o     
+
+SOFILES=slave.o    addv.o     bcest.o    bound.o    \
+        clinic.o   diag.o     frees.o    matrix.o   \
+        ocn1st.o   pdiag.o    s_arch.o   s_grids.o  \
+        s_msg.o    s_snap.o   setvbc.o   setp.o     \
+        state.o    step.o     theta0.o   tracer.o   
+
+BOFILES=sysmsg.o   tmngr.o    tmnset.o   indp.o
+
+HFILES=archive.h cdiag.h chmix.h coord.h                     \
+       ctmngr.h cvbc.h cvmix.h dncoef.h  frees.h             \
+       grdvar.h iounit.h levind.h mesdta.h moddata.h \
+       param.h pconst.h scalar.h slabs.h snaps.h switch.h    \
+       thick.h timelv.h varinfo.h versno.h hdf.h
+
+DOPTNS=	-Dpvm_buffer \
+        -Dcyclic_master \
+	-Dde_checkbd \
+	-DMasterslave \
+        -Dpresetp  -Dinline -Dno_namelist -Dcray-t3d
+
+# DEBUG add -g option fo cf77 line
+# Number of processors -> -X?? in LDR line
+# For variable number remove -X4 from LDR line
+# and add -npes ?? in masterslave line when running model
+
+# FC =	 env TARGET=cray-t3d /mpp/bin/cf77 -g
+FC =	 env TARGET=cray-t3d /mpp/bin/cf77 -Wf" -o aggress "
+GPP =    gpp -P -F $(DOPTNS)
+INCLUDE= -I/usr/include/mpp
+# LDR =    /mpp/bin/mppldr -L. -lsma -X4
+LDR =    /mpp/bin/mppldr -L. -lsma 
+
+#suppress SCCS retrieval
+.SCCS_GET:
+
+.F.o:   $(HFILES) 
+	$(GPP) $(INCLUDE)    $*.F >$*.f
+	$(FC)  -c $(INCLUDE) $*.f
+
+masterslave: masterslave.o $(MOFILES) $(SOFILES) $(BOFILES)	
+	$(LDR) masterslave.o  $(MOFILES) $(SOFILES) $(BOFILES) -o masterslave 
+
+make_kmt :
+	$(FC) -o make_kmt make_kmt.F
+
+make_kpn :
+	$(FC) -o make_kpn make_kpn.F
+
+clean :	
+	rm *% 
+
+cleaner : 
+	rm -f *.o *.f *% masterslave   
+
+
+	

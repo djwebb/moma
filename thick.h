@@ -1,9 +1,12 @@
 c====================== include file "thick.h" ========================
 #ifdef hcomments
 c
-c     @(#) SCCS module: thick.h, version 1.17
+c @(#) SCCS module: thick.h  version: 1.1
+c     Creation date: 03/16/95
 c
+c-----------------------------------------------------------------------
 c     specifications for box thickness (cm) in the vertical
+c-----------------------------------------------------------------------
 c
 #endif
       data dzt /   30.00e2,   46.15e2,   68.93e2,   99.93e2,  140.63e2

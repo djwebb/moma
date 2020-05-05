@@ -1,9 +1,11 @@
 c====================== include file "cvmix.h" =========================
 #ifdef hcomments
 c
-c     @(#) SCCS module: cvmix.h, version 1.17
+c @(#) SCCS module: cvmix.h  version: 1.1
+c     Creation date: 03/16/95
 c
-c     variables used for vertical diffusion
+c-----------------------------------------------------------------------
+c     Variables used for vertical diffusion
 c
 c     inputs: (set through namelist)
 c
@@ -14,7 +16,8 @@ c     derived quantities:
 c
 c     vvc  = vertical viscosity coeff
 c     vdc  = vertical diffusion coeff
+c-----------------------------------------------------------------------
 c
 #endif
-      common /cvmix/  fkph, fkpm, vvc(km), vdc(km)
+      common /cvmix/  fkph, fkpm, vvc(KM), vdc(KM)
 

@@ -1,11 +1,11 @@
 c====================== include file "coord.h" =========================
 #ifdef hcomments
 c
-c     @(#) SCCS module: coord.h, version 1.17
+c @(#) SCCS module: coord.h  version: 1.1
+c     Creation date: 03/16/95
 c
-c                    model grid point coordinates
-c
-c     grid definition:
+c-----------------------------------------------------------------------
+c     Grid definition:
 c
 c     the model uses a staggard arakawa "b" grid. horizontally, 
 c     tracer quantities are defined at the centers of "t" grid 
@@ -35,7 +35,31 @@ c     zt(k) = distance (cm) from surface down to center of level k
 c             (depth of "t" and "u,v" grid points)
 c     zw(k) = distance (cm) from surface down to bottom of level k 
 c
+c-----------------------------------------------------------------------
+c  
 #endif
-      common /coord/ stlon, stlat, dxdeg, dydeg, xt(imt), yt(jmt), 
-     &               xu(imt), yu(jmt), zw(km), zt(kmp1)
+#ifdef Masterslave
+      parameter (MS_DIF2 = 2*IMT_M + 2*JMT_M - 2*IMT_S - 2*JMT_S)
+      parameter (ADIF2 = 0.5*MS_DIF2/((MS_DIF2+0.01)*(MS_DIF2+0.01)) )
+      parameter (LOG_M2 = 1-ADIF2, LOG_S2 = 1+ADIF2)
+      parameter (LBUF_S2 = 1 + MS_DIF2*LOG_S2)
+      parameter (LBUF_M2 = 1 - MS_DIF2*LOG_M2)
+#endif
+#ifdef Master
+      common /coord/ stlon, stlat, dxdeg, dydeg, 
+     &               xt(IMT_M), yt(JMT_M), xu(IMT_M), yu(JMT_M), 
+     &               zw(KM), zt(KMP1)
+#ifdef Masterslave
+     &              ,buffcc(LBUF_M2)
+#endif
+#else
+      common /coord/ stlon, stlat, dxdeg, dydeg, 
+     &               xt(IMT_S), yt(JMT_S), xu(IMT_S), yu(JMT_S), 
+     &               zw(KM), zt(KMP1)
+#ifdef Masterslave
+     &              ,buffcc(LBUF_S2)
+#endif
+#endif
+
+
 

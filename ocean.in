@@ -1,13 +1,14 @@
- File 'ocean.in'.  Input file for MOMA model. 
- ****    version for free surface moma code 
- ****    2 day test run.
+
+   @(#) SCCS module: ocean.in  version: 1.1 Creation date: 03/17/95
+
+   3 day test run.
 
  &contrl
-     init=.true.,        fnrest='d0002.hdf', 
-     days = 5.0,         restrt=.false.,     
+     init=.true.,       fnrest='d0002.hdf', 
+     days = 3.0,         restrt=.false.,     
      nmix=  24,          eb=.true.,      ncon=1,         acor = 0.6,
-     tsi=0.0833333,      snapd=1.0,      archd= 2.0, 
-     ftrest = 'hdf',     ftsnap = 'hdf', ftarch = 'hdf', 
+     tsi=0.0833333,      snapd=1.0,      archd= 2.0,     idebug = 0,
+     ftrest = 'hdf',     ftsnap = 'hdf', ftarch = 'hdf',
      dgnstc=10.0,        dchkbd = 0.1
  &end
  &eddy
