@@ -4,8 +4,8 @@
       subroutine slave
 #endif
 c
-c @(#) SCCS module: slave.F  version: 1.9
-c     Creation date: 01/22/96
+c @(#) SCCS module: slave.F  version: 1.10
+c     Creation date: 08/09/96
 c
 c======================================================================
 c
@@ -103,6 +103,10 @@ c                  advection velocity at velocity points.
 c     'presetp'  - precalculate the baroclinic pressure field
 c                  before calling clinic
 c     'hcomments'- include comments from '*.h' files
+c     'free_eb'  - use the euler backward timestepping scheme without
+c                  averaging for the free surface equations.
+c                  NOTE: From v1.10 of moma.pvm, the default is to use 
+c                  a leapfrog scheme with time averaging.
 c
 c  References:
 c

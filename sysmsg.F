@@ -1,7 +1,7 @@
       subroutine sysmsg
 c
-c @(#) SCCS module: sysmsg.F  version: 1.9
-c     Creation date: 12/18/95
+c @(#) SCCS module: sysmsg.F  version: 1.10
+c     Creation date: 08/09/96
 c
 c==================================================================
 c  standard pvm system routine calls for moma.pvm

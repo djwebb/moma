@@ -1,7 +1,7 @@
       subroutine step 
 c
-c @(#) SCCS module: step.F  version: 1.9
-c      Creation date: 12/18/95
+c @(#) SCCS module: step.F  version: 1.10
+c      Creation date: 08/09/96
 c
 c=======================================================================
 c
@@ -367,11 +367,12 @@ c-----------------------------------------------------------------
 c
       call sendposn(32)
       if(prntsi.and.eots) then
-        ektot = c0
-        do 900 n=1,nt
-        tddt(n)  = c0
-        dtabs(n) = c0
-        tvar(n)  = c0
+        itttsi = itt
+        ektot  = c0
+        do 900 n = 1,nt
+          tddt(n)  = c0
+          dtabs(n) = c0
+          tvar(n)  = c0
  900    continue
 c       do 910 jc=2,jtm1
 c       do 910 ic=2,itm1

@@ -4,8 +4,8 @@
 #if defined inline1 || !defined inline
 #ifndef inline1
 c
-c @(#) SCCS module: frees.F  version: 1.9
-c      Creation date: 12/18/95
+c @(#) SCCS module: frees.F  version: 1.10
+c      Creation date: 08/09/96
 c
 c====================================================================
 c
@@ -107,6 +107,21 @@ c
 # endif
 c
         h0(ic,jc,np0) = h0(ic,jc,nm0) + c2dtbt*dhdt
+#ifndef free_eb
+c
+c---------------------------------------------------------------------
+c  Calculate time averages (except for first pass of first timestep
+c                           when itbtp equals zero)
+c---------------------------------------------------------------------
+c
+        if(itbtp.ne.0)then
+          freeav(1,ic,jc) = freeav(1,ic,jc) + h0(ic,jc,np0)
+          if(itbt.eq.ntbt2)then
+            fx = 0.5/ntbt
+            h0(ic,jc,np0) = freeav(1,ic,jc)*fx
+          endif
+        endif
+#endif
       endif
 c
 c---------------------------------------------------------------------
@@ -156,12 +171,10 @@ c  Calculate time averages (except for first pass of euler-backward)
 c---------------------------------------------------------------------
 c
         if(itbtp.ne.0)then
-          freeav(1,ic,jc) = freeav(1,ic,jc) + h0(ic,jc,np0)
           freeav(2,ic,jc) = freeav(2,ic,jc) + u0(ic,jc,np0)
           freeav(3,ic,jc) = freeav(3,ic,jc) + v0(ic,jc,np0)
           if(itbt.eq.ntbt2)then
             fx = 0.5/ntbt
-            h0(ic,jc,np0) = freeav(1,ic,jc)*fx
             u0(ic,jc,np0) = freeav(2,ic,jc)*fx
             v0(ic,jc,np0) = freeav(3,ic,jc)*fx
           endif

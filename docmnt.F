@@ -1,7 +1,7 @@
             subroutine docmnt (nunit, wrdoc, wrc0, wrc1, wrc2)
 c
-c @(#) SCCS module: docmnt.F  version: 1.9
-c      Creation date: 12/18/95
+c @(#) SCCS module: docmnt.F  version: 1.10
+c      Creation date: 08/09/96
 c
 c=======================================================================
 c
@@ -112,9 +112,9 @@ c
         nifdef = nifdef + 1
         cifdef(nifdef) = 'ncsa_hdf        '
 #endif
-#ifdef DOUBLE
+#ifdef REAL_8
         nifdef = nifdef + 1
-        cifdef(nifdef) = 'DOUBLE          '
+        cifdef(nifdef) = 'REAL_8          '
 #endif
 #ifdef cray-t3d
         nifdef = nifdef + 1

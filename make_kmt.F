@@ -1,7 +1,7 @@
       program make_kmt
 c
-c @(#) SCCS module: make_kmt.F  version: 1.9
-c     Creation date: 12/18/95
+c @(#) SCCS module: make_kmt.F  version: 1.10
+c     Creation date: 08/09/96
 c
 c==================================================================
 c
@@ -109,7 +109,8 @@ c200   continue
       endif
 c
   60  print *,' Input name of kmt output file:'
-      read (*,*,err=60)name
+      read (*,16,err=60)name
+  16  format(a)
       open(10,file=name,status='unknown',err=80)
       string = 'kmt     '
       write(10,62)string,imt,jmt,km

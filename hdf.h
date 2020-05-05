@@ -1,8 +1,8 @@
 c===================== include file "hdf.h" =========================
 #ifdef hcomments 
 c
-c @(#) SCCS module: hdf.h  version: 1.9
-c     Creation date: 12/18/95
+c @(#) SCCS module: hdf.h  version: 1.10
+c     Creation date: 08/09/96
 c
 c-----------------------------------------------------------------------
 c    Include file for hdf routines
@@ -56,7 +56,7 @@ c
 c  define hdf word lengths
 c
 #  define INTEGER_HDF   DFNT_INT32
-# ifdef DOUBLE
+# ifdef REAL_8
 #  define REAL_HDF      DFNT_FLOAT64
 # else
 #  define REAL_HDF      DFNT_FLOAT32

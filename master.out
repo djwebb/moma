@@ -1,24 +1,25 @@
+Test of moma.pvm v1.10 carried out on SGI:
 
                           Stripped down MOM code for array processor.                                    
-                          Module: master.F.  Version: 1  Date: 12/18/95                                     
+                          Module: master.F.  Version: 1  Date: 08/09/96                                     
 
 
  $contrl
  init	=   T
  fnrest	=  
        	   'd0002.hdf                                                                       '
- days	=  5.000000
+ days	=  5.000000000000000
  restrt	=   T
  nmix	=            24
  eb	=   T
  ncon	=             1
- tsi	=  8.3333299E-02
- dgnstc	=  0.0000000E+00
- snapd	=  1.000000
- archd	=  2.000000
- acor	=  0.6000000
+ tsi	=  8.3333299999999999E-02
+ dgnstc	=  0.0000000000000000E+00
+ snapd	=  1.000000000000000
+ archd	=  2.000000000000000
+ acor	=  0.6000000000000000
  idebug	=             0
- dchkbd	=  0.1000000
+ dchkbd	=  0.1000000000000000
  ftrest	=  'hdf '
  ftsnap	=  'hdf '
  ftarch	=  'hdf '
@@ -28,25 +29,25 @@
  isplev	=             1,            1,            1,            1,            1, 
        	              1,            1,            8,            8,            8, 
        	              8
- statms	=  120.0000
- statis	=  30.00000
+ statms	=  120.0000000000000
+ statis	=  30.00000000000000
  $end
  $eddy
- am	=  1.0000000E+09
- ah	=  2.0000000E+07
- fkpm	=  1.000000
- fkph	=  20.00000
- cdbot	=  1.0000000E-03
+ am	=  1000000000.000000
+ ah	=  20000000.00000000
+ fkpm	=  1.000000000000000
+ fkph	=  20.00000000000000
+ cdbot	=  1.0000000000000000E-03
  $end
  $tsteps
- dtts	=  7200.000
- dtuv	=  7200.000
- dtbt	=  100.0000
+ dtts	=  7200.000000000000
+ dtuv	=  7200.000000000000
+ dtbt	=  100.0000000000000
  $end
 
  The following "ifdef" options are in effect:
    cyclic_master      presetp            inline             de_checkbd         ncsa_hdf        
-   pvm_buffer      
+   REAL_8             pvm_buffer      
  end of options list.
 
 
@@ -102,8 +103,8 @@
 
 
  Regional & Global ocean statistics (Master):
- the total ocean surface area (t grid)= 3.28416564E+18cm**2
- the total ocean volume (t grid)      = 1.75626579E+24cm**3
+ the total ocean surface area (t grid)= 3.28410846E+18cm**2
+ the total ocean volume (t grid)      = 1.75627689E+24cm**3
 
                                                  number of levels on "t,s" grid
 
@@ -233,113 +234,113 @@
  Slave:    1,   PVM task identifier =   262148
  Slave:    2,   PVM task identifier =   262147
  
- ts=      1 totday =    0.08,years =   0.000 ke= 2.683430E-01 dtemp= 4.458605E-08 dsalt= 6.674949E-13 time=    15
- ts=      2 totday =    0.17,years =   0.000 ke= 2.683504E-01 dtemp= 4.458891E-08 dsalt= 6.674990E-13 time=    23
- ts=      3 totday =    0.25,years =   0.001 ke= 5.015620E-01 dtemp= 5.144891E-08 dsalt= 6.664666E-13 time=    31
- ts=      4 totday =    0.33,years =   0.001 ke= 5.357542E-01 dtemp= 4.534840E-08 dsalt= 6.655629E-13 time=    38
- ts=      5 totday =    0.42,years =   0.001 ke= 5.179389E-01 dtemp= 3.708291E-08 dsalt= 6.634965E-13 time=    47
- ts=      6 totday =    0.50,years =   0.001 ke= 5.330986E-01 dtemp= 3.713387E-08 dsalt= 6.606450E-13 time=    55
- ts=      7 totday =    0.58,years =   0.002 ke= 5.223027E-01 dtemp= 3.712995E-08 dsalt= 6.579896E-13 time=    64
- ts=      8 totday =    0.67,years =   0.002 ke= 4.859821E-01 dtemp= 3.706825E-08 dsalt= 6.564043E-13 time=    74
- ts=      9 totday =    0.75,years =   0.002 ke= 4.398197E-01 dtemp= 3.649769E-08 dsalt= 6.561416E-13 time=    85
- ts=     10 totday =    0.83,years =   0.002 ke= 4.019089E-01 dtemp= 3.512561E-08 dsalt= 6.566099E-13 time=    93
- ts=     11 totday =    0.92,years =   0.003 ke= 3.957012E-01 dtemp= 3.379733E-08 dsalt= 6.571662E-13 time=   103
+ ts=      1 totday =    0.08,years =   0.000 ke= 2.683426E-01 dtemp= 4.458627E-08 dsalt= 6.674937E-13 time=    15
+ ts=      2 totday =    0.17,years =   0.000 ke= 2.683501E-01 dtemp= 4.458887E-08 dsalt= 6.674996E-13 time=    23
+ ts=      3 totday =    0.25,years =   0.001 ke= 5.188757E-01 dtemp= 5.221322E-08 dsalt= 6.665447E-13 time=    32
+ ts=      4 totday =    0.33,years =   0.001 ke= 5.646513E-01 dtemp= 4.653959E-08 dsalt= 6.656755E-13 time=    40
+ ts=      5 totday =    0.42,years =   0.001 ke= 5.406090E-01 dtemp= 3.782358E-08 dsalt= 6.638481E-13 time=    48
+ ts=      6 totday =    0.50,years =   0.001 ke= 5.484993E-01 dtemp= 3.692159E-08 dsalt= 6.613687E-13 time=    56
+ ts=      7 totday =    0.58,years =   0.002 ke= 5.363256E-01 dtemp= 3.626248E-08 dsalt= 6.589553E-13 time=    65
+ ts=      8 totday =    0.67,years =   0.002 ke= 5.105389E-01 dtemp= 3.609044E-08 dsalt= 6.570461E-13 time=    74
+ ts=      9 totday =    0.75,years =   0.002 ke= 4.831568E-01 dtemp= 3.701068E-08 dsalt= 6.558696E-13 time=    83
+ ts=     10 totday =    0.83,years =   0.002 ke= 4.487058E-01 dtemp= 3.637073E-08 dsalt= 6.553120E-13 time=    92
+ ts=     11 totday =    0.92,years =   0.003 ke= 4.120796E-01 dtemp= 3.461560E-08 dsalt= 6.552124E-13 time=   100
   Writing hdf snapshot file for itt =      12
-  hdf filename = s0012.hdfa                              
- ts=     12 totday =    1.00,years =   0.003 ke= 4.201999E-01 dtemp= 3.362045E-08 dsalt= 6.572868E-13 time=   116
+  hdf filename = s0001.hdf                               
+ ts=     12 totday =    1.00,years =   0.003 ke= 3.998521E-01 dtemp= 3.300446E-08 dsalt= 6.553732E-13 time=   112
+ ts=     13 totday =    1.08,years =   0.003 ke= 4.183739E-01 dtemp= 3.284112E-08 dsalt= 6.556695E-13 time=   120
  
  Status arrays at time =   121 s.  Master in main loop
  slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      20        13           0       entering free-surface loop    
-    2      20        13           0       entering free-surface loop    
+    1      20        14           0       entering free-surface loop    
+    2      32        14           0       preparing timestep info       
  
 
- ts=     13 totday =    1.08,years =   0.003 ke= 4.420633E-01 dtemp= 3.320090E-08 dsalt= 6.567845E-13 time=   127
- ts=     14 totday =    1.17,years =   0.003 ke= 4.532921E-01 dtemp= 3.194089E-08 dsalt= 6.554947E-13 time=   139
- ts=     15 totday =    1.25,years =   0.003 ke= 4.594131E-01 dtemp= 3.172718E-08 dsalt= 6.535834E-13 time=   149
- ts=     16 totday =    1.33,years =   0.004 ke= 4.718241E-01 dtemp= 3.258801E-08 dsalt= 6.512923E-13 time=   160
- ts=     17 totday =    1.42,years =   0.004 ke= 4.733440E-01 dtemp= 3.288060E-08 dsalt= 6.491697E-13 time=   171
- ts=     18 totday =    1.50,years =   0.004 ke= 4.570519E-01 dtemp= 3.256815E-08 dsalt= 6.475611E-13 time=   184
- ts=     19 totday =    1.58,years =   0.004 ke= 4.350693E-01 dtemp= 3.218511E-08 dsalt= 6.467429E-13 time=   196
- ts=     20 totday =    1.67,years =   0.005 ke= 4.258890E-01 dtemp= 3.241625E-08 dsalt= 6.465537E-13 time=   207
- ts=     21 totday =    1.75,years =   0.005 ke= 4.313396E-01 dtemp= 3.296369E-08 dsalt= 6.467841E-13 time=   219
- ts=     22 totday =    1.83,years =   0.005 ke= 4.389911E-01 dtemp= 3.356925E-08 dsalt= 6.469879E-13 time=   226
+ ts=     14 totday =    1.17,years =   0.003 ke= 4.533150E-01 dtemp= 3.315684E-08 dsalt= 6.557523E-13 time=   122
+ ts=     15 totday =    1.25,years =   0.003 ke= 4.752142E-01 dtemp= 3.281381E-08 dsalt= 6.552512E-13 time=   127
+ ts=     16 totday =    1.33,years =   0.004 ke= 4.861751E-01 dtemp= 3.259790E-08 dsalt= 6.538326E-13 time=   136
+ ts=     17 totday =    1.42,years =   0.004 ke= 4.868729E-01 dtemp= 3.269809E-08 dsalt= 6.516536E-13 time=   140
+ ts=     18 totday =    1.50,years =   0.004 ke= 4.816575E-01 dtemp= 3.277782E-08 dsalt= 6.491256E-13 time=   145
+ ts=     19 totday =    1.58,years =   0.004 ke= 4.706272E-01 dtemp= 3.252245E-08 dsalt= 6.468923E-13 time=   156
+ ts=     20 totday =    1.67,years =   0.005 ke= 4.577427E-01 dtemp= 3.239341E-08 dsalt= 6.453297E-13 time=   158
+ ts=     21 totday =    1.75,years =   0.005 ke= 4.485518E-01 dtemp= 3.246947E-08 dsalt= 6.446180E-13 time=   167
+ ts=     22 totday =    1.83,years =   0.005 ke= 4.474408E-01 dtemp= 3.293386E-08 dsalt= 6.445564E-13 time=   173
+ ts=     23 totday =    1.92,years =   0.005 ke= 4.483888E-01 dtemp= 3.331319E-08 dsalt= 6.448782E-13 time=   182
   snap_hdf:  hdf snapshot written
   Snapshot complete
- ts=     23 totday =    1.92,years =   0.005 ke= 4.371012E-01 dtemp= 3.342757E-08 dsalt= 6.469040E-13 time=   231
   Writing hdf snapshot file for itt =      24
   hdf filename = s0002.hdf                               
   Writing hdf archive file for itt =      24
   hdf filename = d0002.hdf                               
+ ts=     24 totday =    2.00,years =   0.005 ke= 4.476339E-01 dtemp= 3.341615E-08 dsalt= 6.451653E-13 time=   210
+ ts=     25 totday =    2.08,years =   0.006 ke= 4.346994E-01 dtemp= 3.261249E-08 dsalt= 6.445445E-13 time=   227
+ ts=     26 totday =    2.17,years =   0.006 ke= 4.345597E-01 dtemp= 3.254948E-08 dsalt= 6.445444E-13 time=   228
+ ts=     27 totday =    2.25,years =   0.006 ke= 4.319102E-01 dtemp= 3.211433E-08 dsalt= 6.433225E-13 time=   233
  
  Status arrays at time =   241 s.  Master in main loop
  slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      35        24           0       processing master requests    
-    2      35        24           0       processing master requests    
+    1      35        28           0       processing master requests    
+    2      32        28           0       preparing timestep info       
  
 
- ts=     24 totday =    2.00,years =   0.005 ke= 4.322384E-01 dtemp= 3.286227E-08 dsalt= 6.461989E-13 time=   245
- ts=     25 totday =    2.08,years =   0.006 ke= 4.315676E-01 dtemp= 3.228639E-08 dsalt= 6.428910E-13 time=   255
- ts=     26 totday =    2.17,years =   0.006 ke= 4.314460E-01 dtemp= 3.222151E-08 dsalt= 6.428918E-13 time=   263
- ts=     27 totday =    2.25,years =   0.006 ke= 4.314654E-01 dtemp= 3.186845E-08 dsalt= 6.407128E-13 time=   275
- ts=     28 totday =    2.33,years =   0.006 ke= 4.296339E-01 dtemp= 3.135627E-08 dsalt= 6.387110E-13 time=   278
- ts=     29 totday =    2.42,years =   0.007 ke= 4.271396E-01 dtemp= 3.098790E-08 dsalt= 6.373757E-13 time=   292
- ts=     30 totday =    2.50,years =   0.007 ke= 4.253173E-01 dtemp= 3.090334E-08 dsalt= 6.369216E-13 time=   294
- ts=     31 totday =    2.58,years =   0.007 ke= 4.225072E-01 dtemp= 3.067943E-08 dsalt= 6.372565E-13 time=   307
- ts=     32 totday =    2.67,years =   0.007 ke= 4.202110E-01 dtemp= 3.063599E-08 dsalt= 6.379453E-13 time=   313
- ts=     33 totday =    2.75,years =   0.008 ke= 4.184400E-01 dtemp= 3.082499E-08 dsalt= 6.384425E-13 time=   326
- ts=     34 totday =    2.83,years =   0.008 ke= 4.179279E-01 dtemp= 3.099407E-08 dsalt= 6.382671E-13 time=   327
- ts=     35 totday =    2.92,years =   0.008 ke= 4.163955E-01 dtemp= 3.070194E-08 dsalt= 6.372527E-13 time=   343
+ ts=     28 totday =    2.33,years =   0.006 ke= 4.335320E-01 dtemp= 3.173741E-08 dsalt= 6.415162E-13 time=   247
+ ts=     29 totday =    2.42,years =   0.007 ke= 4.350902E-01 dtemp= 3.134408E-08 dsalt= 6.394104E-13 time=   248
+ ts=     30 totday =    2.50,years =   0.007 ke= 4.349907E-01 dtemp= 3.085447E-08 dsalt= 6.373751E-13 time=   270
+ ts=     31 totday =    2.58,years =   0.007 ke= 4.328643E-01 dtemp= 3.031446E-08 dsalt= 6.358117E-13 time=   271
+ ts=     32 totday =    2.67,years =   0.007 ke= 4.308681E-01 dtemp= 3.037347E-08 dsalt= 6.349626E-13 time=   292
+ ts=     33 totday =    2.75,years =   0.008 ke= 4.277428E-01 dtemp= 3.070248E-08 dsalt= 6.348581E-13 time=   293
+ ts=     34 totday =    2.83,years =   0.008 ke= 4.239905E-01 dtemp= 3.098443E-08 dsalt= 6.352633E-13 time=   308
+ ts=     35 totday =    2.92,years =   0.008 ke= 4.193543E-01 dtemp= 3.081197E-08 dsalt= 6.358192E-13 time=   309
   snap_hdf:  hdf snapshot written
   Snapshot complete
   Writing hdf snapshot file for itt =      36
   hdf filename = s0003.hdf                               
+ ts=     36 totday =    3.00,years =   0.008 ke= 4.159426E-01 dtemp= 3.035010E-08 dsalt= 6.361167E-13 time=   349
+ ts=     37 totday =    3.08,years =   0.008 ke= 4.137536E-01 dtemp= 2.968475E-08 dsalt= 6.358944E-13 time=   351
  
  Status arrays at time =   361 s.  Master in main loop
  slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      35        36           0       processing master requests    
-    2      32        36           0       preparing timestep info       
+    1      35        38           0       processing master requests    
+    2      32        38           0       preparing timestep info       
  
 
- ts=     36 totday =    3.00,years =   0.008 ke= 4.140170E-01 dtemp= 3.008606E-08 dsalt= 6.355195E-13 time=   367
- ts=     37 totday =    3.08,years =   0.008 ke= 4.107177E-01 dtemp= 2.924700E-08 dsalt= 6.334900E-13 time=   369
- ts=     38 totday =    3.17,years =   0.009 ke= 4.072678E-01 dtemp= 2.873747E-08 dsalt= 6.316129E-13 time=   383
- ts=     39 totday =    3.25,years =   0.009 ke= 4.025173E-01 dtemp= 2.838675E-08 dsalt= 6.302810E-13 time=   390
- ts=     40 totday =    3.33,years =   0.009 ke= 3.970282E-01 dtemp= 2.796027E-08 dsalt= 6.296159E-13 time=   395
- ts=     41 totday =    3.42,years =   0.009 ke= 3.915742E-01 dtemp= 2.743910E-08 dsalt= 6.295446E-13 time=   408
- ts=     42 totday =    3.50,years =   0.010 ke= 3.883150E-01 dtemp= 2.706004E-08 dsalt= 6.297638E-13 time=   410
- ts=     43 totday =    3.58,years =   0.010 ke= 3.870037E-01 dtemp= 2.698551E-08 dsalt= 6.299661E-13 time=   424
- ts=     44 totday =    3.67,years =   0.010 ke= 3.866774E-01 dtemp= 2.707425E-08 dsalt= 6.298687E-13 time=   431
- ts=     45 totday =    3.75,years =   0.010 ke= 3.854808E-01 dtemp= 2.720765E-08 dsalt= 6.293680E-13 time=   437
+ ts=     38 totday =    3.17,years =   0.009 ke= 4.125578E-01 dtemp= 2.923559E-08 dsalt= 6.350286E-13 time=   369
+ ts=     39 totday =    3.25,years =   0.009 ke= 4.105358E-01 dtemp= 2.875243E-08 dsalt= 6.336225E-13 time=   371
+ ts=     40 totday =    3.33,years =   0.009 ke= 4.076242E-01 dtemp= 2.814124E-08 dsalt= 6.318782E-13 time=   385
+ ts=     41 totday =    3.42,years =   0.009 ke= 4.034726E-01 dtemp= 2.735321E-08 dsalt= 6.300989E-13 time=   386
+ ts=     42 totday =    3.50,years =   0.010 ke= 3.991795E-01 dtemp= 2.683961E-08 dsalt= 6.285429E-13 time=   397
+ ts=     43 totday =    3.58,years =   0.010 ke= 3.948474E-01 dtemp= 2.684637E-08 dsalt= 6.274205E-13 time=   400
+ ts=     44 totday =    3.67,years =   0.010 ke= 3.912855E-01 dtemp= 2.703492E-08 dsalt= 6.267985E-13 time=   418
+ ts=     45 totday =    3.75,years =   0.010 ke= 3.884672E-01 dtemp= 2.731186E-08 dsalt= 6.266467E-13 time=   427
+ ts=     46 totday =    3.83,years =   0.010 ke= 3.864559E-01 dtemp= 2.789547E-08 dsalt= 6.268034E-13 time=   434
+ ts=     47 totday =    3.92,years =   0.011 ke= 3.846257E-01 dtemp= 2.860911E-08 dsalt= 6.270777E-13 time=   441
   archwr_hdf:  hdf archive file written
   Archive complete
- ts=     46 totday =    3.83,years =   0.010 ke= 3.830937E-01 dtemp= 2.771863E-08 dsalt= 6.284795E-13 time=   446
- ts=     47 totday =    3.92,years =   0.011 ke= 3.799880E-01 dtemp= 2.833923E-08 dsalt= 6.273791E-13 time=   454
   snap_hdf:  hdf snapshot written
   Snapshot complete
   Writing hdf snapshot file for itt =      48
   hdf filename = s0004.hdf                               
   Writing hdf archive file for itt =      48
   hdf filename = d0004.hdf                               
- ts=     48 totday =    4.00,years =   0.011 ke= 3.773191E-01 dtemp= 2.901431E-08 dsalt= 6.262444E-13 time=   471
+ ts=     48 totday =    4.00,years =   0.011 ke= 3.825945E-01 dtemp= 2.936746E-08 dsalt= 6.272407E-13 time=   481
  
  Status arrays at time =   481 s.  Master in main loop
  slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      35        49           0       processing master requests    
-    2      14        49           0       entering clinic-tracer loop   
+    1      35        48           0       processing master requests    
+    2      20        49           0       entering free-surface loop    
  
 
- ts=     49 totday =    4.08,years =   0.011 ke= 3.748179E-01 dtemp= 3.009046E-08 dsalt= 6.245238E-13 time=   482
- ts=     50 totday =    4.17,years =   0.011 ke= 3.746911E-01 dtemp= 3.003008E-08 dsalt= 6.245214E-13 time=   491
- ts=     51 totday =    4.25,years =   0.012 ke= 3.739418E-01 dtemp= 3.013871E-08 dsalt= 6.240253E-13 time=   502
- ts=     52 totday =    4.33,years =   0.012 ke= 3.728856E-01 dtemp= 2.989469E-08 dsalt= 6.236830E-13 time=   504
- ts=     53 totday =    4.42,years =   0.012 ke= 3.714599E-01 dtemp= 2.931805E-08 dsalt= 6.233789E-13 time=   518
- ts=     54 totday =    4.50,years =   0.012 ke= 3.701705E-01 dtemp= 2.856121E-08 dsalt= 6.229848E-13 time=   520
- ts=     55 totday =    4.58,years =   0.013 ke= 3.693469E-01 dtemp= 2.779932E-08 dsalt= 6.224247E-13 time=   532
- ts=     56 totday =    4.67,years =   0.013 ke= 3.690885E-01 dtemp= 2.713745E-08 dsalt= 6.216709E-13 time=   537
- ts=     57 totday =    4.75,years =   0.013 ke= 3.689937E-01 dtemp= 2.664263E-08 dsalt= 6.207793E-13 time=   552
- ts=     58 totday =    4.83,years =   0.013 ke= 3.687904E-01 dtemp= 2.621545E-08 dsalt= 6.198292E-13 time=   553
- ts=     59 totday =    4.92,years =   0.013 ke= 3.682405E-01 dtemp= 2.572485E-08 dsalt= 6.189369E-13 time=   568
+ ts=     49 totday =    4.08,years =   0.011 ke= 3.778122E-01 dtemp= 3.033756E-08 dsalt= 6.266698E-13 time=   488
+ ts=     50 totday =    4.17,years =   0.011 ke= 3.776799E-01 dtemp= 3.027489E-08 dsalt= 6.266699E-13 time=   501
+ ts=     51 totday =    4.25,years =   0.012 ke= 3.756072E-01 dtemp= 3.022109E-08 dsalt= 6.258513E-13 time=   502
+ ts=     52 totday =    4.33,years =   0.012 ke= 3.743084E-01 dtemp= 2.982412E-08 dsalt= 6.247583E-13 time=   516
+ ts=     53 totday =    4.42,years =   0.012 ke= 3.736371E-01 dtemp= 2.917300E-08 dsalt= 6.235455E-13 time=   516
+ ts=     54 totday =    4.50,years =   0.012 ke= 3.732606E-01 dtemp= 2.842633E-08 dsalt= 6.223656E-13 time=   521
+ ts=     55 totday =    4.58,years =   0.013 ke= 3.726465E-01 dtemp= 2.773838E-08 dsalt= 6.213620E-13 time=   542
+ ts=     56 totday =    4.67,years =   0.013 ke= 3.716793E-01 dtemp= 2.715748E-08 dsalt= 6.206033E-13 time=   543
+ ts=     57 totday =    4.75,years =   0.013 ke= 3.704767E-01 dtemp= 2.669668E-08 dsalt= 6.200994E-13 time=   558
+ ts=     58 totday =    4.83,years =   0.013 ke= 3.695628E-01 dtemp= 2.627798E-08 dsalt= 6.197715E-13 time=   560
+ ts=     59 totday =    4.92,years =   0.013 ke= 3.691823E-01 dtemp= 2.579069E-08 dsalt= 6.195138E-13 time=   570
   snap_hdf:  hdf snapshot written
   Snapshot complete
  
@@ -355,11 +356,18 @@
   hdf filename = s0005.hdf                               
   Writing hdf archive file for itt =      60
   hdf filename = d0005.hdf                               
- ts=     60 totday =    5.00,years =   0.014 ke= 3.674890E-01 dtemp= 2.521525E-08 dsalt= 6.181798E-13 time=   654
+ 
+ Status arrays at time =   721 s.  Master in main loop
+ slave,  posn,  slave itt,  slave itbt,  Last reported: 
+    1      35        60           0       processing master requests    
+    2      35        60           0       processing master requests    
+ 
+
+ ts=     60 totday =    5.00,years =   0.014 ke= 3.693998E-01 dtemp= 2.528326E-08 dsalt= 6.191907E-13 time=   722
   snap_hdf:  hdf snapshot written
   Snapshot complete
  
- Status arrays at time =   721 s.  Master in main loop
+ Status arrays at time =   841 s.  Master in main loop
  slave,  posn,  slave itt,  slave itbt,  Last reported: 
     1      35        60           0       processing master requests    
     2      35        60           0       processing master requests    

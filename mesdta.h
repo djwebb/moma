@@ -1,8 +1,8 @@
 c======================include file: mesdta.h==========================
 #ifdef hcomments
 c
-c @(#) SCCS module: mesdta.h  version: 1.9
-c      Creation date: 12/18/95
+c @(#) SCCS module: mesdta.h  version: 1.10
+c      Creation date: 08/09/96
 c
 c-----------------------------------------------------------------------
 c Common storage for miscellaneous message handling data
@@ -24,7 +24,7 @@ c  ltsia    - array set true by master when tsi information received
 c             from slave
 c  nstsi    - number of slaves still to return tsi information
 c  ltsiw    - set true when slave has tsi data waiting for master
-c  itttsi   - timestep for which tsi information is being collected
+c  itttsi   - timestep for which tsi data is required or saved
 c  timetsi  - timestamp for tsi information
 c
 c  snapshot & archive:
@@ -187,7 +187,7 @@ c
 #ifdef REAL_PVM
 # undef REAL_PVM
 #endif
-#ifdef DOUBLE || defined cray-t3d
+#ifdef REAL_8 || defined cray-t3d
 # define REAL_PVM REAL8
 # define NBYTER 8
 #else 

@@ -1,8 +1,8 @@
       subroutine m_initmess
 c
 c=======================================================================
-c @(#) SCCS module: m_msg.F  version: 1.9
-c     Creation date: 12/18/95
+c @(#) SCCS module: m_msg.F  version: 1.10
+c     Creation date: 08/09/96
 c=======================================================================
 c
 c
@@ -166,8 +166,8 @@ c
       subroutine nextmet
 #ifdef hcomments
 c
-c @(#) SCCS module: m_msg.F  version: 1.9
-c    Creation date: 12/18/95
+c @(#) SCCS module: m_msg.F  version: 1.10
+c    Creation date: 08/09/96
 c
 c=======================================================================
 c  subroutine to read in the next set of meteorological data and
@@ -823,7 +823,7 @@ c
 c
 c=======================================================================
 c  entry point to ask for tsi information (message MSG_RQ_TSI)
-c  from all slaves for timestep itttsi 
+c  from all slaves for timestep itttsi
 c=======================================================================
 c
       elseif(msgtype.eq.MSG_RQ_TSI) then
@@ -1014,7 +1014,7 @@ c  process timestep 'tsi' information (MSG_RY_TSI)
 c=======================================================================
 c
       elseif(msgtag.eq.MSG_RY_TSI)then
-        call pvmfunpack( INTEGER_PVM,itts,    1, 1, info )
+        call pvmfunpack( INTEGER_PVM,itttsi2,    1, 1, info )
         call pvmfunpack( REAL_PVM,   vols,    1, 1, info )
         call pvmfunpack( REAL_PVM, ektots,    1, 1, info )
         call pvmfunpack( REAL_PVM, dtemps,    1, 1, info )
@@ -1025,10 +1025,10 @@ c
         if(.not.ltsip)
      &    write(stderr,*) ' Error: Message MSG_RY_TSI from slave ',mes,
      &                  ' sent when tsi processing inactive.' 
-        if(itts.ne.itttsi)then
+        if(itttsi2.ne.itttsi)then
           write(stderr,*) ' Error: Message MSG_RY_TSI from slave ',mes,
      &                    ' has wrong time flag'
-          write(stderr,*) '     : itt from slave is ',itts,
+          write(stderr,*) '     : itt from slave is ',itttsi2,
      &                    ' should be ', itttsi
         endif          
         if(ltsia(mes))
@@ -1060,13 +1060,13 @@ c
 c
 #ifdef cray-t3d
           total_time=rtc()*6.6e-9-time_start
-          write(stderr,9602) itts,timetsi,ektot,dtabs(1),dtabs(2),
+          write(stderr,9602) itttsi,timetsi,ektot,dtabs(1),dtabs(2),
      &                       total_time
 9602      format(1x,'ts=',i7,1x,a32,' ke=', 1pe13.6,
      &    ' dtemp=',1pe13.6,' dsalt=',1pe13.6,' time=',0pf10.4)
 #else
           itime = time()-intime
-          write(stderr,9602) itts,timetsi,ektot,dtabs(1),dtabs(2),
+          write(stderr,9602) itttsi,timetsi,ektot,dtabs(1),dtabs(2),
      &                       itime
 9602      format(1x,'ts=',i7,1x,a32,' ke=', 1pe13.6,
      &    ' dtemp=',1pe13.6,' dsalt=',1pe13.6,' time=',i6)

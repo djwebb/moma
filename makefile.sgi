@@ -1,6 +1,6 @@
 #
-# @(#) SCCS module: makefile.sgi  version: 1.9
-#      Creation date: 12/18/95
+# @(#) SCCS module: makefile.sgi  version: 1.10
+#      Creation date: 08/09/96
 #
 #     Moma.pvm make file for SGI
 #
@@ -16,6 +16,9 @@
 #   then using this makefile, type commands 'make cleaner' to remove
 #   old '.o' files followed by 'make master' and 'make slave', or
 #   'make masterslave'.
+#
+#   For 64-bit real numbers add -r8 to the compiler line
+#   and add -DREAL_8 to the DOPTNS line.
 #
 
 MOFILES=master.o   checks.o   docmnt.o   hdf.o      \
@@ -36,11 +39,13 @@ HFILES=archive.h cdiag.h  chmix.h   coord.h   ctmngr.h   \
        iounit.h  levind.h mesdta.h  moddata.h param.h    \
        pconst.h  scalar.h slabs.h   snaps.h   switch.h   \
        thick.h   timelv.h varinfo.h versno.h  hdf.h
-
-DOPTNS=	-Dpvm_buffer \
+#
+# cpp options for moma.pvm
+#
+DOPTNS=	-Dpvm_buffer    \
         -Dcyclic_master \
-	-Dde_checkbd \
-        -Dpresetp -Dncsa_hdf -Dinline
+	-Dde_checkbd    \
+        -Dncsa_hdf -DREAL_8 -Dinline -Dpresetp
 
 FC =	f77   
 INCLUDE= -I$(PVM_ROOT)/include  -I$(HDF_ROOT)/include/$(PVM_ARCH)
@@ -53,8 +58,12 @@ LDR = f77
 .SUFFIXES:
 .SUFFIXES: .o .F .h
 
+# Compiler options:
+#    -c   produce "$*.o" output file
+#    -r8  use real*8 variables  (need -DREAL_8 above)
+
 .F.o:   $(HFILES)
-	$(FC) $(DOPTNS) -c $(INCLUDE)  $*.F
+	$(FC) $(DOPTNS) -c -r8 $(INCLUDE)  $*.F
 	
 masterslave: masterslave.o $(MOFILES) $(SOFILES) $(BOFILES)	
 	$(LDR) masterslave.o  $(MOFILES) $(SOFILES) $(BOFILES) -o masterslave $(PVMLIBS) $(HDFLIBS)
@@ -77,6 +86,9 @@ clean :
 	rm *% 
 
 cleaner : 
+	rm -f *.o *% 
+
+cleanest : 
 	rm -f *.o *% master slave masterslave   \
 	$(PVM_ROOT)/bin/$(PVM_ARCH)/slave       \
 	$(PVM_ROOT)/bin/$(PVM_ARCH)/masterslave

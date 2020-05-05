@@ -1,7 +1,7 @@
       subroutine tmngr (dt)
 c
-c @(#) SCCS module: tmngr.F  version: 1.9
-c     Creation date: 12/18/95
+c @(#) SCCS module: tmngr.F  version: 1.10
+c     Creation date: 08/09/96
 c
 c==================================================================
 c
@@ -48,11 +48,12 @@ c
       years  = totday/365.25
       nyears = totday/365.25
       tday   = totday - 365.25*nyears
+      totdaym= (totsec-dt)*secday
+      tdaym  = totdaym- 365.25*nyears
       totdayp= (totsec+dt)*secday
       tdayp  = totdayp- 365.25*nyears
       write(stamp,11)totday,years
   11  format('totday =',f8.2,',years =',f8.3)
-c
 c------------------------------------------------------------------
 c
 c     set time dependent logical switches.
@@ -71,7 +72,7 @@ c
       diagts = tmnset (dgnstc, totday, dt)
       snapts = tmnset (snapd, totday, dt)
       archts = tmnset (archd, totday, dt) .or. (restrt .and. last)
-      metts  = (tday .ge. eday(mnext))
+      metts  = (tdaym.lt.eday(mnext)) .and. (tday.ge.eday(mnext))
 c
 c------------------------------------------------------------------
 c
@@ -79,11 +80,11 @@ c  set flags for next timestep (itt + 1)
 c
 c------------------------------------------------------------------
 c
-      lastn  = (totdayp .ge. days) 
+      lastn  = totdayp .ge. days 
       prntsn = tmnset (tsi, totdayp, dt)
       snaptn = tmnset (snapd, totdayp, dt) 
       archtn = tmnset (archd, totdayp, dt) .or. (restrt .and. lastn)
-      mettn = (tday .lt. eday(mnext) .and. tdayp .ge. eday(mnext))
+      mettn  = (tday.lt.eday(mnext)) .and. (tdayp.ge.eday(mnext))
 c
 c------------------------------------------------------------------
 c

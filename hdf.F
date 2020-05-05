@@ -1,8 +1,8 @@
 #ifdef ncsa_hdf
       subroutine archrd_hdf(ncntl)
 c
-c @(#) SCCS module: hdf.F  version: 1.9
-c     Creation date: 12/18/95
+c @(#) SCCS module: hdf.F  version: 1.10
+c     Creation date: 08/09/96
 c
 c=======================================================================
 c  subroutine to read hdf version of the restart file
@@ -48,7 +48,7 @@ c
           write(stdout,*)' Program stopping ...'
           stop
         endif
-        file_id = sfstart(fnrest, DFACC_RDONLY)
+        file_id = sfstart(fnrest, DFACC_READ)
           call hdf_error( file_id,'cannot open restart dataset', 0)
 c
 c  read dataset information
@@ -368,10 +368,18 @@ c
         call hdf_error( ret, ' setting dimension string', 0)
         ret = sfsdmstr(dimid2,labels2(2),units2(2),fmats2(2))
         call hdf_error( ret, ' setting dimension string', 0)
+#ifndef REAL_8
+c
+c---------------------------------------------------------------------
+c  skip writing scales when REAL_8 defined.  This is a fix to overcome 
+c  an error in pvm when lengths of scale and main variable (kmt) differ
+c---------------------------------------------------------------------
+c
         ret = sfsdscale(dimid1, dims2(1),REAL_HDF, xt)
         call hdf_error( ret, 'cannot set scales', dimid1)
         ret = sfsdscale(dimid2, dims2(2),REAL_HDF, yt)
         call hdf_error( ret, 'cannot set scales', dimid2)
+#endif
         ret = sfwdata( sdsid,srcdims(1),stride(1),dims2(1),kmt)
         call hdf_error( ret,'cannot write kmt dataset',0)
         ret = sfendacc(sdsid)
@@ -401,10 +409,18 @@ c
         call hdf_error( ret, 'setting dimension string', 0)
         ret = sfsdmstr(dimid2,labels2(2),units2(2),fmats2(2))
         call hdf_error( ret, 'setting dimension string', 0)
+#ifndef REAL_8
+c
+c---------------------------------------------------------------------
+c  skip writing scales when REAL_8 defined.  This is a fix to overcome 
+c  an error in pvm when lengths of scale and main variable (kmu) differ
+c---------------------------------------------------------------------
+c
         ret = sfsdscale(dimid1, dims2(1),REAL_HDF,xu)
         call hdf_error( ret,'cannot set scales', dimid1)
         ret = sfsdscale(dimid2, dims2(2),REAL_HDF,yu)
         call hdf_error( ret,'cannot set scales', dimid2)
+#endif
         ret = sfwdata( sdsid,srcdims(1),stride(1),dims2(1),kmu)
         call hdf_error( ret,'cannot write kmu dataset',0)
         ret = sfendacc(sdsid)
@@ -734,10 +750,18 @@ c
       call hdf_error( ret, ' setting dimension string', 0)
       ret = sfsdmstr(dimid2,labels2(2),units2(2),fmats2(2))
       call hdf_error( ret, ' setting dimension string', 0)
+#ifndef REAL_8
+c
+c---------------------------------------------------------------------
+c  skip writing scales when REAL_8 defined.  This is a fix to overcome 
+c  an error in pvm when lengths of scale and main variable (kmt) differ
+c---------------------------------------------------------------------
+c
       ret = sfsdscale(dimid1, dims2(1),REAL_HDF, xt)
       call hdf_error( ret, 'cannot set scales', dimid1)
       ret = sfsdscale(dimid2, dims2(2),REAL_HDF, yt)
       call hdf_error( ret, 'cannot set scales', dimid2)
+#endif
       ret = sfwdata( sdsid,srcdims(1),stride(1),dims2(1),kmt)
       call hdf_error( ret,'cannot write kmt dataset',0)
       ret = sfendacc(sdsid)
@@ -767,10 +791,18 @@ c
       call hdf_error( ret, 'setting dimension string', 0)
       ret = sfsdmstr(dimid2,labels2(2),units2(2),fmats2(2))
       call hdf_error( ret, 'setting dimension string', 0)
+#ifndef REAL_8
+c
+c---------------------------------------------------------------------
+c  skip writing scales when REAL_8 defined.  This is a fix to overcome 
+c  an error in pvm when lengths of scale and main variable (kmu) differ
+c---------------------------------------------------------------------
+c
       ret = sfsdscale(dimid1, dims2(1),REAL_HDF,xu)
       call hdf_error( ret,'cannot set scales', dimid1)
       ret = sfsdscale(dimid2, dims2(2),REAL_HDF,yu)
       call hdf_error( ret,'cannot set scales', dimid2)
+#endif
       ret = sfwdata( sdsid,srcdims(1),stride(1),dims2(1),kmu)
       call hdf_error( ret,'cannot write kmu dataset',0)
       ret = sfendacc(sdsid)

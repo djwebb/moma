@@ -5,8 +5,8 @@
 #endif
 c
 c=======================================================================
-c @(#) SCCS module: master.F  version: 1.9
-c      Creation date: 01/22/96
+c @(#) SCCS module: master.F  version: 1.10
+c      Creation date: 08/09/96
 c=======================================================================
 c
 c  This program and the corresponding master program make up  
@@ -100,7 +100,7 @@ c
 c
       model(1) =' Stripped down MOM code for array processor.'
       model(2) =' Module: master.F.  Version: 1 '//
-     &          ' Date: 01/22/96'
+     &          ' Date: 08/09/96'
 #ifdef no_namelist
       open (stdin,file='ocean.in2')
 #else
@@ -252,10 +252,12 @@ c     calculate free surface model (barotropic) timestep
 c-----------------------------------------------------------------------
 c
       ntbt = max(1,nint(dtuv/dtbt))
-      if(dtbt.ge.dtuv)then
-        dtbt = dtuv/ntbt
+      if(dtuv.ne.dtbt*ntbt)then
         write(stdout,'(a)') ' dtuv not integer multiple of dtbt.'
-        write(stdout,'(a,i5)') ' dtbt now set to set to:', dtbt
+        write(stdout,*) ' dtuv is  ',dtuv
+        write(stdout,*) ' dtbt was ',dtbt
+        dtbt = dtuv/ntbt
+        write(stdout,*) ' dtbt now set to set to:',dtbt
       endif
 c
 c------------------------------------------------------------------
@@ -359,7 +361,7 @@ c
       call m_send(MSG_CONTROL)
 c
 c-----------------------------------------------------------------------
-c broadcast array lengths and topographic information
+c  broadcast array lengths and topographic information
 c-----------------------------------------------------------------------
 c
       call m_send(MSG_TOPOG)
@@ -373,13 +375,13 @@ c
 c
 c-----------------------------------------------------------------------
 c  read in and broadcast the restart data.  the slaves checkpoint, 
-c  receiving the data, until they receive MSG_CONTINUE
+c  receiving the data, until they receive MSG_CONT
 c-----------------------------------------------------------------------
 c
       if(.not.init) then
         call m_send(MSG_TIMEVAR)
         call archrd(1)
-        call m_send(MSG_CONTINUE)
+        call m_send(MSG_CONT)
       endif
 c
 c-----------------------------------------------------------------------

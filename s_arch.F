@@ -1,7 +1,7 @@
       subroutine s_arch
 c
-c @(#) SCCS module: s_arch.F  version: 1.9
-c     Creation date: 12/18/95
+c @(#) SCCS module: s_arch.F  version: 1.10
+c     Creation date: 08/09/96
 c
 c==================================================================
 c     Entry wrrest copies current model state into backup 

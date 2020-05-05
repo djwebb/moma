@@ -1,7 +1,7 @@
             subroutine initmess
 c
-c @(#) SCCS module: s_msg.F  version: 1.9
-c     Creation date: 12/18/95
+c @(#) SCCS module: s_msg.F  version: 1.10
+c     Creation date: 08/09/96
 c
 c=======================================================================
 c  slave subroutine to initialise message passing logic
@@ -293,12 +293,12 @@ c=======================================================================
 c 
       elseif(msgtype.eq.MSG_RY_TSI) then
        call pvmfinitsend( PVMDEFAULT, info )
-       call pvmfpack( INTEGER_PVM,     me, 1, 1, info )
-       call pvmfpack( INTEGER_PVM,    itt, 1, 1, info )
-       call pvmfpack( REAL_PVM,    volume, 1, 1, info )
-       call pvmfpack( REAL_PVM,     ektot, 1, 1, info )
-       call pvmfpack( REAL_PVM,  dtabs(1), 2, 1, info )
-       call pvmfpack( REAL_PVM,  dtabs(1), 2, 1, info )
+       call pvmfpack( INTEGER_PVM,    me, 1, 1, info )
+       call pvmfpack( INTEGER_PVM,itttsi, 1, 1, info )
+       call pvmfpack( REAL_PVM,   volume, 1, 1, info )
+       call pvmfpack( REAL_PVM,    ektot, 1, 1, info )
+       call pvmfpack( REAL_PVM, dtabs(1), 2, 1, info )
+       call pvmfpack( REAL_PVM, dtabs(1), 2, 1, info )
        call pvmfsend( mtid, msgtype, info )
        if(idebug.gt.3)then
          write(ioslave,*)' Slave - message MSG_RY_TSI sent'
@@ -980,7 +980,7 @@ c      timestep 'tsi' information request from master
 c=======================================================================
 c
         elseif(msgtag.eq.MSG_RQ_TSI)then
-          call pvmfunpack( INTEGER_PVM,itttsi,    1, 1, info )
+          call pvmfunpack( INTEGER_PVM,itttsi2,    1, 1, info )
           ltsip = .true.
           if(idebug.gt.3)then
             write(ioslave,*)' Slave - message MSG_RQ_TSI received'

@@ -1,7 +1,7 @@
       subroutine topog
 c
-c @(#) SCCS module: topog.F  version: 1.9
-c     Creation date: 12/18/95
+c @(#) SCCS module: topog.F  version: 1.10
+c     Creation date: 08/09/96
 c
 c------------------------------------------------------------------
 c     construct an "idealized" world ... piece by piece

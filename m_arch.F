@@ -1,7 +1,7 @@
       subroutine archrd(ncntl)
 c
-c @(#) SCCS module: m_arch.F  version: 1.9
-c     Creation date: 12/18/95
+c @(#) SCCS module: m_arch.F  version: 1.10
+c     Creation date: 08/09/96
 c
 c=======================================================================
 c subroutine to read restart data and send to slaves
