@@ -1,16 +1,24 @@
       program moma
 c
 c==================================================================
-c  MOM Array processor code.     Version 1.3
+c  MOM Array processor code.     Version 1.4
 c
 c            - Stripped down version of the MOM (Bryan-Cox-
 c              -Semtner) ocean model rewritten for use on an
 c              Array Processor.
 c            - D J Webb, IOS.
-c            - Stream function version - 5 Nov 1992
+c            - Stream function version - 15 February 1993
 c
 c @(#) SCCS information - module:  moma.F     
-c @(#)                    version: 1.3    date: 11/05/92
+c @(#)                    version: 1.4    date: 02/15/93
+c
+c  The differences from version 1.3  are:
+c  (a) save statements are added or extended in routines bcest, theta0
+c      and state to ensure that calculated values are not lost.
+c  (b) stderr is no longer closed.
+c  These changes were made to overcome errors that arose when the
+c  program was run on a Silicon Graphics computer.  
+c
 c==================================================================
 c
 #include "param.h"
@@ -46,8 +54,8 @@ c
 c     constants usually initialised in block data
 c
       model(1) =' Stripped down MOM code for array processor.'
-      model(2) ='  Module: moma.F.  Version: 1.3.'//
-     &          '  Date: 11/05/92.'
+      model(2) ='  Module: moma.F.  Version: 1.4.'//
+     &          '  Date: 02/15/93.'
       stlon = -4.0
       stlat = -72.0
       dxdeg = 4.0
@@ -421,12 +429,12 @@ c
       if (restrt) call wrrest
 c
 c------------------------------------------------------------------
-c     close all units
+c     close all units.  (stderr is not closed as it is set equal to
+c     stdout in pconst.h).
 c------------------------------------------------------------------
 c
       write (stdout,9603) 
       close (unit=stdin,status='keep')
-      close (unit=stderr,status='keep')
       close (unit=stdout,status='keep')
       stop
 c
@@ -1021,6 +1029,7 @@ c
      &          to2(km),so2(km),co2(km,9)
 #include "dncoef.h"
       data in/1/
+      save to,so,c,to1,so1,co1,to2,so2,co2
 c
 c  on first entry set up coefficients for stability calculations
 c
@@ -1528,6 +1537,7 @@ c==================================================================
       dimension wsxobs(nolatp), wsyobs(nolatp)
       dimension olatt(nolat), olatv(nolatp)
       dimension stf(nt), smf(2)
+      save sstobs,salobs,wsxobs,wsyobs,olatt,olatv,in,dolat,rdolat
 c
 c     units of boundary condition values are:
 c       degrees C, parts per thousand, dynes per square centimeter
@@ -2661,7 +2671,7 @@ c     1982.
 c
       parameter (ndeg=7)
       dimension coeft(ndeg+1)
-      save coeft, tmin, tmax, reflat
+      save coeft, tmin, tmax, reflat, in, c0, c1, c2, pi, refcos
       data coeft / 0.184231944E+02,-0.430306621E-01, 0.607121504E-04
      &           ,-0.523806281E-07, 0.272989082E-10,-0.833224666E-14
      &           , 0.136974583E-17,-0.935923382E-22/

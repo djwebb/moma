@@ -1,7 +1,7 @@
 c====================== include file "crelax.h" ========================
 #ifdef hcomments
 c
-c     @(#) SCCS module: crelax.h, version 1.3
+c     @(#) SCCS module: crelax.h, version 1.4
 c
 c     variables used in relaxation. see "stream.F" 
 c
