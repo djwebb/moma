@@ -1,7 +1,7 @@
 c====================== include file "pconst.h" =========================
 #ifdef hcomments
 c
-c     @(#) SCCS module: pconst.h, version 1.15
+c     @(#) SCCS module: pconst.h, version 1.16
 c
 c     rules for parameter constants
 c

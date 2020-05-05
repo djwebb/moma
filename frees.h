@@ -1,7 +1,7 @@
 c====================== include file "frees.h" =========================
 #ifdef hcomments
 c
-c     @(#) SCCS module: frees.h, version 1.15
+c     @(#) SCCS module: frees.h, version 1.16
 c
 c     variables for free surface model calculation of external mode
 c

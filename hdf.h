@@ -1,7 +1,7 @@
 #ifdef hcomments 
 c
-c @(#) SCCS module: hdf.h  version: 1.15
-c     Creation date: 03/14/95
+c @(#) SCCS module: hdf.h  version: 1.16
+c     Creation date: 03/21/95
 c
 c-----------------------------------------------------------------------
 c    Include file for hdf routines
@@ -18,7 +18,7 @@ c define the label lengths for these values
 #define MAXFORMATLEN    20
 #define MAXUNITLEN	12
 
-#define MAXDIMS	        10		
+#define MAXDIMS	         5		
 #define MAXFIDS	       	15 	
 
 #define MODEL_1		1

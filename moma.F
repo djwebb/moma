@@ -1,16 +1,16 @@
       program moma
 c
 c==================================================================
-c  Program MOMA,     Version 1.15
+c  Program MOMA,     Version 1.16
 c
 c  Free surface ocean model for use with array processors.
 c
-c  Copyright 1993.  D.J. Webb.  
+c  Copyright 1993.  D.J. Webb,  
 c                   Institute of Oceanographic Sciences,
 c                   Godalming, Surrey GU8 5UB, U.K..
 c  
 c @(#) SCCS information - module:  moma.F     
-c @(#)                    version: 1.15    date: 03/14/95
+c @(#)                    version: 1.16    date: 03/21/95
 c
 c
 c  This code is a free surface version of the Bryan-Cox-Semtner
@@ -164,8 +164,8 @@ c
 c     constants usually initialised in block data
 c
       model(1) =' Stripped down MOM code for array processor.'
-      model(2) =' Module: moma.F.  Version: 1.15. '//
-     &          ' Date: 03/14/95'
+      model(2) =' Module: moma.F.  Version: 1.16. '//
+     &          ' Date: 03/21/95'
       stlon = -4.0
       stlat = -72.0
       dxdeg = 4.0
@@ -3020,6 +3020,44 @@ c
         read(iorest,err=920) h03,  u03,  v03
         read(iorest,err=920) t3,   u3,   v3
       elseif(ftrest.eq.'ufm')then
+#ifdef cyclic
+        read(iorest,err=920) itt, totsec, totday, years
+        read(iorest,err=920) ((kmt(i,j),i=2,imtm1),j=1,jmt)
+        read(iorest,err=920) ((h03(i,j),i=2,imtm1),j=1,jmt)
+        read(iorest,err=920) ((u03(i,j),i=2,imtm1),j=1,jmt)
+        read(iorest,err=920) ((v03(i,j),i=2,imtm1),j=1,jmt)
+        do 210 j=1,JMT
+ 210    read(iorest,err=920)((t(k,i,j,1,3),k=1,km),i=2,imtm1)
+        do 220 j=1,JMT
+ 220    read(iorest,err=920)((t(k,i,j,2,3),k=1,km),i=2,imtm1)
+        do 230 j=1,JMT
+ 230    read(iorest,err=920)((u(k,i,j,3),k=1,km),i=2,imtm1)
+        do 240 j=1,JMT
+ 240    read(iorest,err=920)((v(k,i,j,3),k=1,km),i=2,imtm1)
+c
+c  set cyclic boundary conditions
+c
+        do 260 j=1,jmt
+          kmt(1,j)   = kmt(imtm1,j)
+          kmt(imt,j) = kmt(2,j)
+          h03(1,j)   = h03(imtm1,j)
+          h03(imt,j) = h03(2,j)
+          u03(1,j)   = u03(imtm1,j)
+          u03(imt,j) = u03(2,j)
+          v03(1,j)   = v03(imtm1,j)
+          v03(imt,j) = v03(2,j)
+          do 250 k=1,km
+            t(k,1,j,1,3)   = t(k,imtm1,j,1,3)
+            t(k,imt,j,1,3) = t(k,2,j,1,3)
+            t(k,1,j,2,3)   = t(k,imtm1,j,2,3)
+            t(k,imt,j,2,3) = t(k,2,j,2,3)
+            u(k,1,j,3)   = u(k,imtm1,j,3)
+            u(k,imt,j,3) = u(k,2,j,3)
+            v(k,1,j,3)   = v(k,imtm1,j,3)
+            v(k,imt,j,3) = v(k,2,j,3)
+ 250      continue
+ 260    continue
+#else
         read(iorest,err=920) itt, totsec, totday, years
         read(iorest,err=920) kmt
         read(iorest,err=920) h03
@@ -3033,6 +3071,7 @@ c
  230    read(iorest,err=920)((u(k,i,j,3),k=1,km),i=1,imt)
         do 240 j=1,JMT
  240    read(iorest,err=920)((v(k,i,j,3),k=1,km),i=1,imt)
+#endif
       endif
       close(iorest)
       write (stdout,21) iorest, itt
@@ -3086,6 +3125,31 @@ c
         if(np.eq.2)  write(iorest,err=950)  t2, u2, v2
         if(np.eq.3)  write(iorest,err=950)  t3, u3, v3
       elseif(ftarch.eq.'ufm')then
+#ifdef cyclic
+        write(iorest) itt, totsec, totday, years
+        write(iorest)((kmt(i,j),i=2,imtm1),j=1,jmt)
+        if(np0.eq.1) then
+          write(iorest,err=950)  ((h01(i,j),i=2,imtm1),j=1,jmt)
+          write(iorest,err=950)  ((u01(i,j),i=2,imtm1),j=1,jmt)
+          write(iorest,err=950)  ((v01(i,j),i=2,imtm1),j=1,jmt)
+        elseif(np0.eq.2)then
+          write(iorest,err=950)  ((h02(i,j),i=2,imtm1),j=1,jmt)
+          write(iorest,err=950)  ((u02(i,j),i=2,imtm1),j=1,jmt)
+          write(iorest,err=950)  ((v02(i,j),i=2,imtm1),j=1,jmt)
+        else
+          write(iorest,err=950)  ((h03(i,j),i=2,imtm1),j=1,jmt)
+          write(iorest,err=950)  ((u03(i,j),i=2,imtm1),j=1,jmt)
+          write(iorest,err=950)  ((v03(i,j),i=2,imtm1),j=1,jmt)
+        endif
+        do 310 j=1,JMT
+ 310    write(iorest,err=950)((t(k,i,j,1,np),k=1,km),i=2,imtm1)
+        do 320 j=1,JMT
+ 320    write(iorest,err=950)((t(k,i,j,2,np),k=1,km),i=2,imtm1)
+        do 330 j=1,JMT
+ 330    write(iorest,err=950)((u(k,i,j,np),k=1,km),i=2,imtm1)
+        do 340 j=1,JMT
+ 340    write(iorest,err=950)((v(k,i,j,np),k=1,km),i=2,imtm1)
+#else
         write(iorest) itt, totsec, totday, years
         write(iorest) kmt
         if(np0.eq.1) then
@@ -3109,6 +3173,7 @@ c
  330    write(iorest,err=950)((u(k,i,j,np),k=1,km),i=1,imt)
         do 340 j=1,JMT
  340    write(iorest,err=950)((v(k,i,j,np),k=1,km),i=1,imt)
+#endif
       endif
       close(iorest, status = 'KEEP')
       return

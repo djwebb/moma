@@ -1,8 +1,8 @@
 c====================== include file "iounit.h" ========================
 #ifdef hcomments
 c
-c     @(#) SCCS module: iounit.h, version 1.15
-c     Creation date: 03/14/95
+c     @(#) SCCS module: iounit.h, version 1.16
+c     Creation date: 03/21/95
 c
 c-----------------------------------------------------------------------
 c     i/o units & related variables

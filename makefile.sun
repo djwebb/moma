@@ -1,26 +1,26 @@
 #
-# @(#) SCCS module: makefile.sun  version: 1.15
-#     Creation date: 03/21/95
+# @(#) SCCS module: makefile.sun  version: 1.16
+#      Creation date: 03/21/95
 #
 #     Moma make file for Sun4
 #
-#  environment variable HDFROOT needs to point to the 
-#  HDF root directory
+#  If HDF is used, environment variable HDF_ROOT needs to  
+#  point to the HDF root directory
 #
 
 DOPTNS=	-Dcyclic -Dsimple_world -Dde_checkbd -Dncsa_hdf
  
 FC =	f77   
-INCLUDE= -I$(HDFROOT)/include
+INCLUDE= -I$(HDF_ROOT)/include/SUN4
 LDR = f77
-HDFLIBS = $(HDFROOT)/lib/libnetcdf.a $(HDFROOT)/lib/libdf.a
+HDFLIBS = $(HDF_ROOT)/lib/SUN4/libnetcdf.a $(HDF_ROOT)/lib/SUN4/libdf.a
 
 #suppress SCCS retrieval
 
 .SCCS_GET:
 
 .F.o :  
-	$(FC) $(DOPTNS) $(MSOPT) -c $(INCLUDE) $<
+	$(FC) $(DOPTNS) -c $(INCLUDE) $<
 
 moma : moma.o hdf.o	
 	$(LDR) moma.o hdf.o -o moma $(HDFLIBS)
