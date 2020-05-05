@@ -1,7 +1,7 @@
 c====================== include file "slabs.h" =========================
 #ifdef hcomments
 c
-c     @(#) SCCS module: slabs.h, version 1.4
+c     @(#) SCCS module: slabs.h, version 1.5
 c
 c     This defines the basic array storage scheme.  In the MOM
 c     model the data is stored on disk in slabs (hence the name).

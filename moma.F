@@ -1,23 +1,48 @@
       program moma
 c
 c==================================================================
-c  MOM Array processor code.     Version 1.4
+c  MOM's Apple pie.     Version 1.5
 c
-c            - Stripped down version of the MOM (Bryan-Cox-
+c            - Stripped down(!) version of the MOM (Bryan-Cox-
 c              -Semtner) ocean model rewritten for use on an
 c              Array Processor.
 c            - D J Webb, IOS.
-c            - Stream function version - 15 February 1993
+c            - Free Surface Version - 15 February 1992
+c
+c  This version solves the depth integrated equation
+c  using a free surface barotropic model.  This replaces
+c  the stream function method used in the standard model.
 c
 c @(#) SCCS information - module:  moma.F     
-c @(#)                    version: 1.4    date: 02/15/93
+c @(#)                    version: 1.5    date: 02/15/93
 c
-c  The differences from version 1.3  are:
-c  (a) save statements are added or extended in routines bcest, theta0
-c      and state to ensure that calculated values are not lost.
-c  (b) stderr is no longer closed.
-c  These changes were made to overcome errors that arose when the
-c  program was run on a Silicon Graphics computer.  
+c  The main differences from version 1.4 are:
+c  1.  Free surface code added.  Stream function code removed.
+c      The free surface code is similar to Killworth, Stainforth
+c      Webb and Patterson (1989), except that for efficiency mean
+c      velocity is used as a variable instead of transport.
+c  2.  In the baroclinic momentum equation, a revised horizontal
+c      advection scheme is used.
+c  3.  Near topography, in the baroclinic momentum equation, a revised
+c      vertical advection scheme is used.
+c
+c  The main differences from the base moma code are:
+c  1.  Revised common block structures.
+c  2.  Collection of all 'array processor' loops (i.e. loops over the
+c      horizontal indices ic and jc) in subroutine step.  When an array
+c      processor is used, code should be added to this subroutine to 
+c      partition the horizontal index (ic, jc) ranges between the
+c      different processors so that they each have a similar workload.
+c  3.  Removal of all 'slab' optimisation code in the program and
+c      the introduction of code designed to optimise inner loop 
+c      calculations using the vertical index k.
+c  4.  To simplify the development and testing of the array processor
+c      code the following features of the moma code were removed.  It
+c      should now be straightforward (but possibly time consuming) to
+c      add the features back into the present code if they are 
+c      required:
+c        (a) Diagnostic calculations in routines clinic and tracer.
+c        (b) Moma code options.
 c
 c==================================================================
 c
@@ -34,27 +59,30 @@ c
 
 #include "cdiag.h"
 #include "chmix.h"
-#include "crelax.h"
 #include "cvbc.h"
 #include "cvmix.h"
-#include "emode.h"
-#include "index.h"
+#include "frees.h"
 #include "iounit.h"
 #include "versno.h"
-c
-      dimension kmz(imt,jmt)
+c***************************************************************
+      dimension utime(3)
+c     external myhandler
+c***************************************************************
 c
       namelist /eddy/   am, ah, fkpm, fkph, cdbot
-      namelist /tsteps/ dtts, dtuv, dtsf
-      namelist /parms/  acor, mxscan, sor, crit
+      namelist /tsteps/ dtts, dtuv, dtbt
       namelist /contrl/ init, fnrest, days, restrt, nmix, eb, ncon, 
-     &                  tsi,  dgnstc, snaps 
-      namelist /iland/ alonis, alatis
+     &                  tsi,  dgnstc, snaps
+c
+c  start timing
+c 
+      call dtime(utime)
+      utime(3)=0.0
 c
 c     constants usually initialised in block data
 c
       model(1) =' Stripped down MOM code for array processor.'
-      model(2) ='  Module: moma.F.  Version: 1.4.'//
+      model(2) ='  Module: moma.F.  Version: 1.5.'//
      &          '  Date: 02/15/93.'
       stlon = -4.0
       stlat = -72.0
@@ -88,7 +116,7 @@ c
 c
       dtts = 10800d0
       dtuv = 10800d0
-      dtsf = 10800d0
+      dtbt = 100d0
 c
       am    = 1.0e9 
       ah    = 2.0e7
@@ -105,7 +133,7 @@ c     open input file and write MOM version information
 c==================================================================
 c
       open (stdin,file='ocean.in')
-      write (stdout,'(/25x,a80/)') model
+      write (stdout,'(/2(25x,a80/)/)') model
 c
 c------------------------------------------------------------------
 c     initialize various quantities and
@@ -124,10 +152,18 @@ c
       write (stdout,eddy)
       read  (stdin, tsteps)
       write (stdout,tsteps)
-      read  (stdin, parms)
-      write (stdout,parms)
-      read  (stdin, iland)
-      write (stdout,iland)
+      close (unit=stdin,status='keep')
+c
+c------------------------------------------------------------------
+c     calculate free surface model (barotropic) timestep
+c------------------------------------------------------------------
+c
+      ntbt = max(1.0,dtuv/dtbt)
+      if(dtbt.ne.dtuv/ntbt)then
+        dtbt = dtuv/ntbt
+        write(stdout,'(a)') ' dtuv not integer multiple of dtbt.'
+        write(stdout,'(a,i5)') ' dtbt now set to set to:',dtuv
+      endif
 c
 c------------------------------------------------------------------
 c     set up model grids in x, y, & z
@@ -141,15 +177,17 @@ c==================================================================
 c
 c------------------------------------------------------------------
 c     set up initial pointers to timestep storage.  nc is current 
-c     timestep, np is next and nm is previous timestep.
+c     timestep, np is next and nm is previous timestep.  nm0, nc0
+c     and np0 are the corresponding pointers for the free surface
+c     model.
 c------------------------------------------------------------------
 c
-      nnm = 1
-      nnc = 2
-      nnp = 3
-      nm = nnm
-      nc = nnc
-      np = nnp
+      nm = 1
+      nc = 2
+      np = 3
+      nm0 = 1
+      nc0 = 2
+      np0 = 3
 c
 c------------------------------------------------------------------
 c     is this a start from initial conditions or a restart?
@@ -219,76 +257,19 @@ c
       endif
 c
 c------------------------------------------------------------------
-c     find the island perimeter paths
-c     and compute depths and reciprocal depths
+c     compute depths and reciprocal depths
 c------------------------------------------------------------------
 c
-      call iperim (kmz)
       do 1400 j=1,jmt
       do 1390 i=1,imt
-        hr(i,j) = c0
         h(i,j)  = c0
+        hr(i,j) = c0
         if (kmu(i,j) .ne. 0) then
-          hr(i,j) = c1/zw(kmu(i,j))
           h (i,j) = zw(kmu(i,j))
+          hr(i,j) = c1/zw(kmu(i,j))
         endif
 1390  continue
 1400  continue
-c
-c------------------------------------------------------------------
-c     compute an array to indicate "interior" stream function grid
-c     boxes and set cyclic boundary conditions
-c------------------------------------------------------------------
-c
-      do 1600 i=1,imt
-      kmz(i,1)   = 0
-      kmz(i,jmt) = 0
-1600  continue
-      do 1700 j=2,jmtm1
-      do 1690 i=2,imu
-      kmz(i,j) = min(kmu(i-1,j-1),kmu(i,j-1),kmu(i-1,j),kmu(i,j))
-1690  continue
-1700  continue
-      do 1800 j=1,jmt
-      kmz(1,j) = kmz(imtm1,j)
-      kmz(imt,j)=kmz(2,j)
-1800  continue
-c
-c-------------------------------------------------------------------
-c     compute longitudinal start & end indices for 
-c     stream function calculations
-c-------------------------------------------------------------------
-c
-      do 1900 l=1,lseg
-        do 1890 j=1,jmt
-          isz(j,l) = 0
-          iez(j,l) = 0
-1890    continue
-1900  continue
-      lsegp = lseg + 1
-c
-c     indices for stream function calculation
-c
-      do 2200 j=3,jscan
-        l=1
-        do 2190 i=2,imum1
-          if (kmz(i-1,j) .eq. 0. .and. kmz(i,j) .ne. 0.) isz(j,l)=i
-          if (i .eq. 2 .and. kmz(imt,j) .ne. 0.) isz(j,l)=2
-          if (kmz(i,j) .ne. 0. .and. kmz(i+1,j) .eq. 0.) iez(j,l)=i
-          if (i .eq. imum1 .and. kmz(i+1,j) .ne. 0.) iez(j,l)=i
-          if (kmz(i,j) .ne. 0. .and. kmz(i+1,j) .eq. 0.) l=l+1
-          if (l .gt. lsegp) then
-            write (stderr,9499) ' stream function',j, lsegp
-            stop ' ocean 4'
-          endif
-2190    continue
-2200  continue
-c
-      write (stdout,9451) ' stream function '
-      do 2500 jrev=1,jmt
-        j = jmt - jrev + 1
-        write (stdout,9461) j, (isz(j,l),iez(j,l),l=1,lseg)
-2500  continue
 c
 c------------------------------------------------------------------
 c     initialize various things
@@ -296,7 +277,6 @@ c------------------------------------------------------------------
 c
       do 2600 j=1,jmt
       do 2590 i=1,imt
-      ztd(i,j) = c0
       zu(i,j)  = c0
       zv(i,j)  = c0
 2590  continue
@@ -320,6 +300,7 @@ c
       ggu(j) = am*(c1-tng(j)*tng(j))/(radius*radius)
       hhu(j) = am*c2*sine(j)/(radius*csu(j)*csu(j))
 2670  continue
+      call idebug('main',0,0,0,0)
 c
 c------------------------------------------------------------------
 c     start the time step loop
@@ -336,6 +317,74 @@ c       fields being calculated!
 c------------------------------------------------------------------
 c
       call tmngr (dtts)
+      call step 
+c
+c-----------------------------------------------------------------
+c      print time step information, print diagnostics and archive 
+c      as required
+c-----------------------------------------------------------------
+c
+      call dtime(utime)
+      utime(3)=utime(1)+utime(2)+utime(3)
+      if (prntsi) write (stdout,9602) itt, stamp, ektot,
+     &                      dtabs(1), dtabs(2),utime(1),utime(3)
+      if (diagts) call pdiag
+      if (snapts) call arch
+c
+c------------------------------------------------------------------
+c       end timestepping loop
+c------------------------------------------------------------------
+c
+      if (last) go to 3401
+3400  continue
+3401  continue
+c
+c------------------------------------------------------------------
+c     save restart at end of run if restrt is true
+c------------------------------------------------------------------
+c
+      if (restrt) call wrrest
+c
+c------------------------------------------------------------------
+c     close all units  (stderr is not closed because it is set equal
+c     to stdout in pconst.h).
+c------------------------------------------------------------------
+c
+      write (stdout,9603) 
+      close (unit=stdout,status='keep')
+      stop
+c
+9341  format (//,'  Regional & Global ocean statistics:'
+     &,/,'  the total ocean surface area (t grid) =',1pe15.8,'cm**2'
+     &,/,'  the total ocean volume (t grid)       =',1pe15.8,'cm**3')
+9402  format(/t50,'number of levels on "t,s" grid')
+9451  format (/' ==== start and end indices for',a17,'====')
+9461  format (' j=',i3,5x,5(2i5,10x))
+9499  format (/' error => lseg too small for',a15,' indices'
+     &        /'          j =',i5,'  lseg + 1 =',i8)
+9602  format (1x,'ts=',i7, 1x, a32, ', ke=', 1pe13.6,
+     &        ' dtemp=',1pe13.6,' dsalt=',1pe13.6,' times=',2f10.2)
+9603  format(1x,' ==> END of model run.',//)
+      end
+      subroutine step 
+c
+c==================================================================
+c
+c     step is called once per timestep. it includes all the main 
+c     loops over ic and jc and calls to the main routines.
+c
+c==================================================================
+c
+c
+#include "param.h"
+c
+#include "scalar.h"
+#include "switch.h"
+#include "timelv.h"
+#include "slabs.h"
+#include "frees.h"
+c
+#include "cdiag.h"
 c
 c------------------------------------------------------------------
 c    update pointers for new value of itt.  
@@ -362,196 +411,193 @@ c
         nm = nnc
         c2dtts = dtts
         c2dtuv = dtuv
-        c2dtsf = dtsf
+c        c2dtsf = dtsf
       else
         c2dtts = c2*dtts
         c2dtuv = c2*dtuv
-        c2dtsf = c2*dtsf
+c        c2dtsf = c2*dtsf
       endif
 c
 c------------------------------------------------------------------
-c       step model
+c       return here for second pass of euler backward timestep
 c------------------------------------------------------------------
 c
-2800  continue
-      call step 
+ 100  continue
 c
 c-----------------------------------------------------------------
-c       if this is the end of a mixing timestep then:
-c          if euler backward - set pointers for second pass
-c          if euler forward  - reset pointer
-c------------------------------------------------------------------
-c
-      if (mixts)then
-        if (eb) then
-          eots   = .true.
-          nc = nnp
-          np = nnm
-          mixts  = .false.
-          mxpas2 = .true.
-          go to 2800
-        else
-          nm = nnm
-        endif
-      endif
-c
-c------------------------------------------------------------------
-c  at end of second pass of euler backward - reset pointers
-c------------------------------------------------------------------
-c
-      if(mxpas2)then
-         nc = nnc
-         nm = nnp
-      endif
-c
-c-----------------------------------------------------------------
-c      print time step information, print diagnostics and archive 
-c      as required
-c-----------------------------------------------------------------
-c
-      if (prntsi.and.eots) write (stdout,9602) itt, stamp, ektot,
-     &                      dtabs(1), dtabs(2), mscan
-      if (diagts.and.eots) call pdiag
-      if (snapts.and.eots) call arch
-c
-c------------------------------------------------------------------
-c       end timestepping loop
-c------------------------------------------------------------------
-c
-      if (last) go to 3401
-3400  continue
-3401  continue
-c
-c------------------------------------------------------------------
-c     save restart at end of run if restrt is true
-c------------------------------------------------------------------
-c
-      if (restrt) call wrrest
-c
-c------------------------------------------------------------------
-c     close all units.  (stderr is not closed as it is set equal to
-c     stdout in pconst.h).
-c------------------------------------------------------------------
-c
-      write (stdout,9603) 
-      close (unit=stdin,status='keep')
-      close (unit=stdout,status='keep')
-      stop
-c
-9341  format (//,'  Regional & Global ocean statistics:'
-     &,/,'  the total ocean surface area (t grid) =',1pe15.8,'cm**2'
-     &,/,'  the total ocean volume (t grid)       =',1pe15.8,'cm**3')
-9402  format(/t50,'number of levels on "t,s" grid')
-9451  format (/' ==== start and end indices for',a17,'====')
-9461  format (' j=',i3,5x,5(2i5,10x))
-9499  format (/' error => lseg too small for',a15,' indices'
-     &        /'          j =',i5,'  lseg + 1 =',i8)
-9602  format (1x,'ts=',i7, 1x, a32, ', ke=', 1pe13.6,
-     &        ' dtemp=',1pe13.6,' dsalt=',1pe13.6,' scans=',i3)
-9603  format(1x,' ==> END of model run.',//)
-      end
-      subroutine step 
-c
-c==================================================================
-c
-c     step is called once per timestep. it includes all the main 
-c     loops over ic and jc and calls to the main routines.
-c
-c==================================================================
-c
-c
-#include "param.h"
-c
-#include "scalar.h"
-#include "switch.h"
-#include "timelv.h"
-#include "slabs.h"
-#include "emode.h"
-c
-#include "cdiag.h"
-#include "cvbc.h"
-c
-c-----------------------------------------------------------------
-c     1.  calculate barotropic correction for momentum advection 
-c         equation
-c-----------------------------------------------------------------
-c
-      do 30 jc=2,jmtm1
-      do 30 ic=2,imtm1
-      call corv(ic,jc)
-30    continue
-c
-c-----------------------------------------------------------------
-c      main loop over grid cells from south to north
-c      and from west to east
+c      main baroclinic timestep loop over grid cells, from south 
+c      to north and from west to east
 c      1. set vertical boundary conditions (surface & bottom)
 c      2. calculate internal mode velocities
 c      3. calculate tracers
 c-----------------------------------------------------------------
 c
-      do 100 jc=2,jmtm1
-      do 100 ic=2,imtm1
+      do 200 jc=2,jmtm1
+      do 200 ic=2,imtm1
         call setvbc (ic,jc)
         call clinic (ic,jc)
         call tracer (ic,jc)
-100   continue
+ 200  continue
+      call idebug('step1',0,0,0,0)
 c
 c-----------------------------------------------------------------
-c      calculate stream function 
+c      run free surface model (except during the second part
+c      of a baroclinic euler backwards timestep).
+c      first initialise pointers 
 c-----------------------------------------------------------------
 c
-      call vort
-      call stream
+      if(.not.mxpas2)then
+        do 600 lt=1,ntbt
+          nnc0 = np0
+          nnm0 = nc0
+          nnp0 = nm0
+          np0  = nnp0
+          nc0  = nnc0
+          nm0  = nnc0
+          frpas1=.true.
+c****************************************************************
+c  DEBUG
+c****************************************************************
+      if(.false.)then
+      print *,'step.  itt,lt,nm,nc,np,nm0,nc0,np0=',
+     &                itt,lt,nm,nc,np,nm0,nc0,np0 
+      call idebug('step2',0,0,0,0)
+      endif
+c** end DEBUG ***************************************************
 c
 c-----------------------------------------------------------------
-c     1.  add barotropic velocity to baroclinic 
+c      use an euler backward scheme. this requires two passes.
 c-----------------------------------------------------------------
 c
-      do 300 jc=2,jmtm1
-      do 300 ic=2,imtm1
-      call addv(ic,jc)
-300   continue
+          do 500 lb=1,2
 c
 c-----------------------------------------------------------------
-c  set cyclic boundary condition
+c      main free surface model loop to carry out a
+c      partial timestep for each model point
 c-----------------------------------------------------------------
 c
-      do 420 jc=2,jmt-1
-        p(  1,jc,np) = p(imtm1,jc,np)
-        p(imt,jc,np) = p(    2,jc,np)
-        do 410 k =1,km
-          u(k,  1,jc,np) = u(k,imum1,jc,np)
-          u(k,imu,jc,np) = u(k,    2,jc,np)
-          v(k,  1,jc,np) = v(k,imum1,jc,np)
-          v(k,imu,jc,np) = v(k,    2,jc,np)
-          do 400 n=1,nt
-            t(k,  1,jc,n,np) = t(k,imtm1,jc,n,np)
-            t(k,imt,jc,n,np) = t(k,    2,jc,n,np)
+c     print *, 'frees. itt,lt,lb,nm,nc,np,nm0,nc0,np0=',
+c     &                 itt,lt,lb,nm,nc,np,nm0,nc0,np0
+          do 300 jc=2,jmtm1
+          do 300 ic=2,imtm1
+            call frees(ic,jc)
+ 300      continue
+c
+c-----------------------------------------------------------------
+c  set cyclic boundary conditions for the free surface model
+c-----------------------------------------------------------------
+c
+          do 400 jc=2,jmt-1
+            h0(  1,jc,np0) = h0(imtm1,jc,np0)
+            h0(imt,jc,np0) = h0(    2,jc,np0)
+            u0(  1,jc,np0) = u0(imum1,jc,np0)
+            u0(imu,jc,np0) = u0(    2,jc,np0)
+            v0(  1,jc,np0) = v0(imum1,jc,np0)
+            v0(imu,jc,np0) = v0(    2,jc,np0)
 400       continue
-410     continue
-420     continue
+c
+c-----------------------------------------------------------------
+c     reset pointers at end of first pass of the free surface model
+c------------------------------------------------------------------
+c
+          if(frpas1)then
+            frpas1 = .false.
+            nc0 = nnp0
+            np0 = nnm0
+          endif
+c****************************************************************
+c  DEBUG
+c****************************************************************
+      if(.false.)then
+      print *,'step.  h0,u0,v0(3,3,np0)=',
+     &                h0(3,3,np0),u0(3,3,np0),v0(3,3,np0)  
+      endif
+c** end DEBUG ***************************************************
+ 500      continue
+ 600    continue
+c        nc0 = nnc0
+c        nm0 = nnp0
+      endif
+c
+c-----------------------------------------------------------------
+c  end of free surface model
+c  now add barotropic velocities to baroclinic velocities
+c-----------------------------------------------------------------
+c
+      do 700 jc=2,jmtm1
+      do 700 ic=2,imtm1
+        call addv(ic,jc)
+ 700  continue
+c
+c-----------------------------------------------------------------
+c  set cyclic boundary conditions for the baroclinic model
+c-----------------------------------------------------------------
+c
+      do 800 jc=2,jmt-1
+      do 800 k =1,km
+        u(k,  1,jc,np) = u(k,imum1,jc,np)
+        u(k,imu,jc,np) = u(k,    2,jc,np)
+        v(k,  1,jc,np) = v(k,imum1,jc,np)
+        v(k,imu,jc,np) = v(k,    2,jc,np)
+        do 800 n=1,nt
+          t(k,  1,jc,n,np) = t(k,imtm1,jc,n,np)
+          t(k,imt,jc,n,np) = t(k,    2,jc,n,np)
+ 800  continue
+c
+c-----------------------------------------------------------------
+c     if this is the end of the first pass of an euler backward
+c     timestep then set the pointers for the second pass.
+c
+c-----------------------------------------------------------------
+c
+      if (mixts.and.eb)then
+        eots   = .true.
+        nc = nnp
+        np = nnm
+        mixts  = .false.
+        mxpas2 = .true.
+        go to 100
+      endif
 c
 c-----------------------------------------------------------------
 c  collect timestep statistics
 c-----------------------------------------------------------------
 c
       if(prntsi.and.eots) then
+c       print *,'dtabs=',dtabs
         ektot = c0
-        do 500 n=1,nt
+        do 900 n=1,nt
         tddt(n)  = c0
         dtabs(n) = c0
         tvar(n)  = c0
- 500    continue
-        do 510 jc=2,jmtm1
-        do 510 ic=2,imtm1
+ 900    continue
+c       print *,'dtabs=',dtabs
+        do 910 jc=2,jmtm1
+        do 910 ic=2,imtm1
         call diag(ic,jc)
- 510    continue
+ 910    continue
+c       print *,'dtabs=',dtabs
         ektot = ektot/volume
-        do 520 n=1,nt
+        do 920 n=1,nt
         tddt(n)  = tddt(n)/volume
         dtabs(n) = dtabs(n)/volume
         tvar(n)  = tvar(n)/volume
- 520    continue
+        call idebug('step2',0,0,0,n)
+ 920    continue
+c       print *,'dtabs=',dtabs
+      endif
+c
+c------------------------------------------------------------------
+c       if this is the end of either a forward or euler backward
+c       timestep then reset the pointers
+c------------------------------------------------------------------
+c
+      if(mxpas2)then
+        nc = nnc
+        nm = nnp
+      endif
+      if(mixts)then
+        nm = nnm
       endif
 c
       return
@@ -577,18 +623,24 @@ c
 #include "levind.h"
 #include "timelv.h"
 #include "slabs.h"
-#include "emode.h"
+#include "frees.h"
 c
 #include "chmix.h"
 #include "cvbc.h"
 #include "cvmix.h"
 c
+c  DEBUG !! *************************************************
+#include "ctmngr.h"
+      data ierr/0/
+      save ierr
+c ***********************************************************
       kmc=kmu(ic,jc)
       if(kmc.eq.0)return
       jp = jc+1
       jm = jc-1
       ip = ic+1
       im = ic-1
+      kmd  = max(kmu(ip,jc),kmu(im,jc),kmu(ic,jp),kmu(ic,jm))
       boxa = dx*csu(jc)*dy
       boxar = c1/boxa
 c
@@ -598,29 +650,52 @@ c=============================================================
 c
       dxp5 = p5*dx
       dyp5 = p5*dy
-      do 160 k=1,kmc
-      fvn(k) = (sfv(ic,jp)+(v(k,ic,jc,nc)+v(k,ic,jp,nc))*p5)
-     &                               *dx*cst(jp)*dz(k)
-      fvs(k) = (sfv(ic,jc)+(v(k,ic,jc,nc)+v(k,ic,jm,nc))*p5)
-     &                               *dx*cst(jc)*dz(k)
-      fue(k) = (sfu(ip,jc)+(u(k,ic,jc,nc)+u(k,ip,jc,nc))*p5)
-     &                               *dy*dz(k)
-      fuw(k) = (sfu(ic,jc)+(u(k,ic,jc,nc)+u(k,im,jc,nc))*p5)
-     &                               *dy*dz(k)
-      fw(k)  = (fue(k)-fuw(k)+fvn(k)-fvs(k))
- 160  continue
+      do 100 k=1,kmd
+c      fvn(k) = (v(k,ic,jc,nc)+v(k,ic,jp,nc))*p5*dx*cst(jp)*dz(k)
+c      fvs(k) = (v(k,ic,jc,nc)+v(k,ic,jm,nc))*p5*dx*cst(jc)*dz(k)
+c      fue(k) = (u(k,ic,jc,nc)+u(k,ip,jc,nc))*p5*dy*dz(k)
+c      fuw(k) = (u(k,ic,jc,nc)+u(k,im,jc,nc))*p5*dy*dz(k)
+      fvjc   = csu(jc)*
+     &         (v(k,im,jc,nc)+2.0*v(k,ic,jc,nc)+v(k,ip,jc,nc))
+      fuic   = (u(k,ic,jp,nc)+2.0*u(k,ic,jc,nc)+u(k,ic,jm,nc))
+c
+      fvn(k) = dz(k)*dx*p125*( fvjc + csu(jp)*
+     &         (v(k,im,jp,nc)+2.0*v(k,ic,jp,nc)+v(k,ip,jp,nc)))
+      fvs(k) = dz(k)*dx*p125*( fvjc + csu(jm)*
+     &         (v(k,im,jm,nc)+2.0*v(k,ic,jm,nc)+v(k,ip,jm,nc)))
+c
+      fue(k) = dz(k)*dy*p125*( fuic +
+     &         (u(k,ip,jp,nc)+2.0*u(k,ip,jc,nc)+u(k,ip,jm,nc)))
+      fuw(k) = dz(k)*dy*p125*( fuic +
+     &         (u(k,im,jp,nc)+2.0*u(k,im,jc,nc)+u(k,im,jm,nc)))
+      fw(k)  = (fuw(k)-fue(k)+fvs(k)-fvn(k))
+ 100  continue
 c
 c=============================================================
-c    integrate down from surface and set flux zero
-c    at the top (rigid lid) and bottom.
-c    note: vertical velocity may be non zero at physical bottom
+c    integrate up from the bottom level
 c=============================================================
 c
-      fw(0)=c0
-      do 180 k=1,km-1
-      fw(k)=fw(k)+fw(k-1)
- 180  continue
-      fw(km)=c0
+      do 200 k=kmc,kmd,-1
+      fw(k)=c0
+ 200  continue
+      do 210 k=kmd-1,0,-1
+      fw(k)=fw(k)+fw(k+1)
+ 210  continue
+c
+c  DEBUG !! *************************************************
+c  calculate vertical velocity and print if CLF criteria is
+c  breached
+      do 220 k=kmc,0,-1
+      wvel=fw(k)*boxar
+      cfl =abs(dzw(k)/(wvel*dtuv))
+      if(cfl.lt.2.0)then
+        print 221,itt,ic,jc,k,wvel,cfl,fw(k),dtuv
+ 221  format(' clinic.  cfl error.  itt,ic,jc,k,wvel,cfl,fw(k),',
+     &       'dtuv=',4i5,1p4e16.6)
+        ierr=ierr+1
+        if(ierr.gt.100)stop
+      endif
+ 220  continue
 c
 c-----------------------------------------------------------------
 c     compute density on surrounding 't' points
@@ -643,30 +718,30 @@ c    1. compute it at the first level
 c
       fxa = grav*dzw(0)*csur(jc)
       fxb = grav*dzw(0)*dy2r
-      t1  = rhpp(1) - rhoo(1)
-      t2  = rhop(1) - rhpo(1)
-      dpdx(1) = (t1-t2)*fxa*dx2r
-      dpdy(1) = (t1+t2)*fxb
+      temp1  = rhpp(1) - rhoo(1)
+      temp2  = rhop(1) - rhpo(1)
+      dpdx(1) = (temp1-temp2)*fxa*dx2r
+      dpdy(1) = (temp1+temp2)*fxb
 c
 c    2. compute the change in pressure gradient between levels
 c
       fxa = grav*csur(jc)*p5
       fxb = grav*dy4r
-      do 200 k=2,kmc
-        t1 = rhpp(k)+rhpp(k-1)- rhoo(k)-rhoo(k-1)
-        t2 = rhop(k)+rhop(k-1)- rhpo(k)-rhpo(k-1)
-        dpdx(k) = (t1-t2)*fxa*dzw(k-1)*dx2r
-        dpdy(k) = (t1+t2)*fxb*dzw(k-1)
- 200  continue
+      do 300 k=2,kmc
+        temp1 = rhpp(k)+rhpp(k-1)- rhoo(k)-rhoo(k-1)
+        temp2 = rhop(k)+rhop(k-1)- rhpo(k)-rhpo(k-1)
+        dpdx(k) = (temp1-temp2)*fxa*dzw(k-1)*dx2r
+        dpdy(k) = (temp1+temp2)*fxb*dzw(k-1)
+ 300  continue
 c
 c=============================================================
 c         integrate downward from the first level
 c=============================================================
 c
-      do 220 k=2,kmc
+      do 400 k=2,kmc
         dpdx(k) = dpdx(k-1) + dpdx(k)
         dpdy(k) = dpdy(k-1) + dpdy(k)
- 220  continue
+ 400  continue
 c
 c-----------------------------------------------------------------
 c         calculate quantities for the computation of
@@ -674,21 +749,21 @@ c         vertical diffusion and advection of momentum
 c         - positive for upwards flux of momentum
 c-----------------------------------------------------------------
 c
-      do 1600 k=1,kmc-1
+      do 500 k=1,kmc-1
         vmf(k,1) = fkpm*(u(k+1,ic,jc,nm) - u(k  ,ic,jc,nm))
      &                     *dzwr(k)*dx*csu(jc)*dy
         vmf(k,2) = fkpm*(v(k+1,ic,jc,nm) - v(k  ,ic,jc,nm))
      &                     *dzwr(k)*dx*csu(jc)*dy
         fwb1(k) = fw(k)*(u(k,ic,jc,nc) + u(k+1,ic,jc,nc))*p5
         fwb2(k) = fw(k)*(v(k,ic,jc,nc) + v(k+1,ic,jc,nc))*p5
-1600  continue
+ 500  continue
 c
 c-----------------------------------------------------------------
-c     set k=0 elements to reflect surface wind stress
+c     set k=0 vertical diffusion to reflect surface wind stress
 c     set level "kmc" for bottom drag condition.
-c     set k=0 elements of vertical advection array to the rigid lid
-c     condition (w(0) = 0). also assume w(km)=0. If "kmc" < "km"
-c     and there is a bottom slope, w(kmc) may be non zero.
+c     set k=kmc elements of vertical advection array to zero
+c     vertical momentum transfer.  Set k=0 to represent advection
+c     loss to region above the free surface.
 c     smf is the surface stress acting on the ocean
 c     bmf is the bottom stress acting on the ocean floor
 c-----------------------------------------------------------------
@@ -697,15 +772,13 @@ c
       vmf(0,2)  = -smf(2)*boxa
       vmf(kmc,1)= -bmf(1)*boxa
       vmf(kmc,2)= -bmf(2)*boxa
-      fwb1(0)   = c0
-      fwb2(0)   = c0
-      fwb1(km) = c0
-      fwb2(km) = c0
-c
-c  set coriolis 
+      fwb1(0)   = fw(0)*u(1,ic,jc,nc)
+      fwb2(0)   = fw(0)*v(1,ic,jc,nc)
+      fwb1(kmc) = c0
+      fwb2(kmc) = c0
 c
 c------------------------------------------------------------------
-c       set up for the coriolis term:
+c       set up index lcor for the coriolis term:
 c       use tau timestep for explicit trtmnt ... or
 c       use tau-1 timestep for implicit treatment with remainder of
 c       term to be added later
@@ -717,14 +790,23 @@ c
             lcor = nm
           endif
 c
+c------------------------------------------------------------------
+c       initialise vertical mean forcing array elements:
+c------------------------------------------------------------------
+c
+      zu(ic,jc) = c0
+      zv(ic,jc) = c0
+c
 c=============================================================
 c    main calculation to timestep baroclinic velocity
 c=============================================================
 c
-      do 400 k=1,kmc
-      u(k,ic,jc,np) = 
-c  coriolis term and pressure gradient
-     &   fcor(jc)*v(k,ic,jc,lcor) - dpdx(k)
+      do 600 k=1,kmc
+c
+c u-momentum equation.  coriolis term and the rest
+c
+      ucor  = fcor(jc)*v(k,ic,jc,lcor)
+      urest = -dpdx(k)
 c  u-advection
      & +(fuw(k)*(u(k,im,jc,nc) + u(k,ic,jc,nc))*p5
      & - fue(k)*(u(k,ip,jc,nc) + u(k,ic,jc,nc))*p5
@@ -743,17 +825,10 @@ c  y diffusion
 c  z diffusion  
      &  + vmf(k  ,1) - vmf(k-1,1) )*boxar*dzr(k)
 c
-c***************************************************************
-c  the terms that allow for the curvature of the grid near the
-c  poles have been left out of this version of the model
-c***************************************************************
+c v-momentum equation.  coriolis term and the rest
 c
- 400  continue
-c
-      do 500 k=1,kmc
-      v(k,ic,jc,np) = 
-c  coriolis term and pressure gradient
-     &  -fcor(jc)*u(k,ic,jc,lcor) - dpdy(k)
+      vcor  = -fcor(jc)*u(k,ic,jc,lcor)
+      vrest = -dpdy(k)
 c  u-advection
      & +(fuw(k)*(v(k,im,jc,nc) + v(k,ic,jc,nc))*p5
      & - fue(k)*(v(k,ip,jc,nc) + v(k,ic,jc,nc))*p5
@@ -773,23 +848,27 @@ c  z diffusion
      & + vmf(k  ,2) - vmf(k-1,2) )*boxar*dzr(k)
 c
 c***************************************************************
-c  the terms that allow for the curvature of the grid near the
-c  poles have been left out of this version of the model
+c  the corrections to the advection and diffusion terms that
+c  allow for the curvature of the grid near the poles have been
+c  left out of this version of the model
 c***************************************************************
 c
- 500  continue
-c
 c-----------------------------------------------------------------
-c     calculate vertically averaged forcing
+c     calculate vertically averaged forcing (without coriolis)
+c     and total force at each level (with coriolis)
 c-----------------------------------------------------------------
 c
-      zu(ic,jc) = c0
-      zv(ic,jc) = c0
-      do 600 k=1,kmc
-      fx = c2dtsf*dz(k)
-      zu(ic,jc) = zu(ic,jc) + u(k,ic,jc,np)*fx
-      zv(ic,jc) = zv(ic,jc) + v(k,ic,jc,np)*fx
+      fx = dz(k)
+      zu(ic,jc) = zu(ic,jc) + urest*fx
+      zv(ic,jc) = zv(ic,jc) + vrest*fx
+      u(k,ic,jc,np) = ucor + urest
+      v(k,ic,jc,np) = vcor + vrest
  600  continue
+c
+c-----------------------------------------------------------------
+c     calculate vertical mean force 
+c-----------------------------------------------------------------
+c
       zu(ic,jc) = zu(ic,jc)*hr(ic,jc)
       zv(ic,jc) = zv(ic,jc)*hr(ic,jc)
 c
@@ -805,16 +884,16 @@ c
       else
         fx    = c2dtuv*acor*c2*omega*sine(jc)
         detmr = c1/(c1 + fx*fx)
-        do 710 k=1,kmc
+        do 750 k=1,kmc
           t1 = (u(k,ic,jc,np)+fx*v(k,ic,jc,np))*detmr
           t2 = (v(k,ic,jc,np)-fx*u(k,ic,jc,np))*detmr
           u(k,ic,jc,np) = u(k,ic,jc,nm) + c2dtuv*t1 
           v(k,ic,jc,np) = v(k,ic,jc,nm) + c2dtuv*t2
- 710    continue
+ 750    continue
       endif
 c
 c-----------------------------------------------------------------
-c     remove vertical mean
+c     remove vertical mean velocity
 c-----------------------------------------------------------------
 c
       sumu = c0
@@ -853,6 +932,12 @@ c
 #include "cvbc.h"
 #include "cvmix.h"
 c
+c  DEBUG !! *************************************************
+#include "ctmngr.h"
+#include "switch.h"
+      data ierr/0/
+      save ierr
+c ***********************************************************
 c
 c    outer loops over i and j indices
 c
@@ -867,7 +952,7 @@ c
 c
 c    set up masks, equal to 0 on sub-seabottom points.
 c
-      do 110 k=1,km
+      do 110 k=1,kmc
       maskop(k)=0
       if(k.le.kmt(ic,jp))maskop(k)=1
       maskom(k)=0
@@ -889,19 +974,39 @@ c
       fvs(k) = (v(k,ic,jm,nc)+v(k,im,jm,nc))*dxp5*csu(jm)*dz(k)
       fue(k) = (u(k,ic,jc,nc)+u(k,ic,jm,nc))*dyp5*dz(k)
       fuw(k) = (u(k,im,jc,nc)+u(k,im,jm,nc))*dyp5*dz(k)
-      fw(k)  = (fue(k)-fuw(k)+fvn(k)-fvs(k))
+      fw(k-1)  = (fuw(k)-fue(k)+fvs(k)-fvn(k))
  160  continue
 c
 c=============================================================
-c    integrate down from surface and set flux zero
-c    at the top (rigid lid) and bottom.
+c    integrate up from the lowest layer 
+c    fw is positive upwards
 c=============================================================
 c
-      fw(0)=c0
-      do 180 k=1,kmc-1
-      fw(k)=fw(k)+fw(k-1)
- 180  continue
       fw(kmc)=c0
+      do 180 k=kmc-1,0,-1
+      fw(k)=fw(k)+fw(k+1)
+ 180  continue
+c
+c  DEBUG !! *************************************************
+c  calculate vertical velocity and print if CLF criteria is
+c  breached
+      do 220 k=kmc,0,-1
+      wvel=fw(k)*boxar
+      cfl =abs(dzw(k)/(wvel*dtts))
+      if(cfl.lt.2.0)then
+        print 221,itt,ic,jc,k,wvel,cfl
+ 221  format(' tracer.  cfl error.  itt,ic,jc,k,wvel,cfl=',
+     &         4i5,1p2e16.6)
+        ierr=ierr+1
+        if(ierr.gt.100)stop
+      endif
+ 220  continue
+c      if(ic.ge.85.and.ic.le.90.and.jc.eq.35)then
+c        print 222, ic,jc,(fw(k)*boxar,k=1,km)
+c      endif
+c 222  format(' tracer w(',i2,',',i2,',*)=',15f6.2)
+c  end DEBUG **************************************************
+
 c
 c=============================================================
 c    main calculation loop to timestep tracers
@@ -926,7 +1031,7 @@ c=============================================================
 c
       vtf(0)   = -stf(m)*boxa
       vtf(kmc) = c0
-      fwb1(0)  = c0
+      fwb1(0)  = fw(0)*t(k,ic,jc,m,nc)
       fwb1(kmc)= c0
 c
 c=============================================================
@@ -955,7 +1060,6 @@ c  y diffusion
 c  z diffusion  
      & + vtf(k  ) - vtf(k-1)
      &   )
-c
  960  continue
  900  continue
 c
@@ -968,11 +1072,10 @@ c
         do 1070 ks=1,2
         call state(t(1,ic,jc,1,np),t(1,ic,jc,2,np),temp(1),
      &              kmc, ks)
-
         do 1070 m=1,nt
         do 1070 k=ks,kmc-1,2
         if(temp(k).gt.temp(k+1))then
-          t(k,ic,jc,m,np) = (dz(k)*t(k,ic,jc,m,np)+
+          t(k,ic,jc,m,np) = (dz(k)*t(k,ic,jc,m,np)
      &                    +  dz(k+1)*t(k+1,ic,jc,m,np))*dzw2r(k)
           t(k+1,ic,jc,m,np) = t(k,ic,jc,m,np)
         endif
@@ -1027,9 +1130,9 @@ c
       dimension to(km), so(km), c(km,9),
      &          to1(km),so1(km),co1(km,9),
      &          to2(km),so2(km),co2(km,9)
+      save in,to,so,c,to1,so1,co1,to2,so2,co2
 #include "dncoef.h"
       data in/1/
-      save to,so,c,to1,so1,co1,to2,so2,co2
 c
 c  on first entry set up coefficients for stability calculations
 c
@@ -1054,6 +1157,13 @@ c
         co2(k+1,l)= c(k+1,l)
  200    continue
       endif
+c************************************************************
+c  DEBUG  set to NaN
+c************************************************************
+      do 210 k=1,km
+      rho(k)=1e30
+ 210  continue
+c **  end DEBUG *********************************************
 c
 c  test for errors
 c
@@ -1106,368 +1216,152 @@ c       sq=(s(k)-35.0)/1000.0-so2(k)
      &       ' of range',/,' ind =',i10,' kk =',i10)
       end
 
-      subroutine vort
+
+
+      subroutine frees(ic,jc)
 c
-c==================================================================
+c====================================================================
 c
-c     compute vorticity for relaxation
+c  Based on the routine in "Killworth, P.D., Stainforth, D.,
+c  Webb, D.J. and Paterson, S.M. (1989).  A free surface
+c  Bryan-Cox-Semtner model.  Institute of Oceanographic
+c  Sciences, Report No. 270.  Wormley, Godlaming, U.K.. 184pp."
 c
-c==================================================================
+c=====================================================================
 c
-c
-#include "param.h"
-c
-#include "grdvar.h"
-#include "emode.h"
-c
-c------------------------------------------------------------------
-c       ensure zu and zv are cyclic
-c------------------------------------------------------------------
-c
-      do 50 j=2,jmt-1
-      zu(1  ,j) = zu(imtm1,j)
-      zu(imt,j) = zu(    2,j)
-      zv(1  ,j) = zv(imtm1,j)
-      zv(imt,j) = zv(   m2,j)
-  50  continue
-c
-c------------------------------------------------------------------
-c       form curl of time change in vertically averaged equations
-c------------------------------------------------------------------
-c
-c       all vorticity pts. are computed so that those needed for 
-c       the line integral of hole relaxation (immediately adjacent
-c       to will be defined).
-c
-      do 200 j=2,jmtm1
-      do 100 i=2,imtm1
-      ztd(i,j) = (zu(i,j  ) + zu(i-1,j  ))*dx*csu(j  )
-     &          -(zu(i,j-1) + zu(i-1,j-1))*dx*csu(j-1)
-      ztd(i,j) =((zv(i,j  ) - zv(i-1,j  )
-     &           +zv(i,j-1) - zv(i-1,j-1))*dy
-     &           -ztd(i,j))*dx2r*dyr*cstr(j)
-100   continue
-200   continue
-      return
-      end
-      subroutine stream
-c
-c==================================================================
-c
-c     stream is similar to relax except it solves the equation 
-c     along diagonals to allow for complete vectorization & 
-c     parallelization
-c
-c==================================================================
-c     based on mom routine hyper
+c---------------------------------------------------------------------
+c  define global data
+c---------------------------------------------------------------------
 c
 #include "param.h"
 c
+#include "chmix.h"
 #include "ctmngr.h"
+#include "frees.h"
+#include "grdvar.h"
+#include "levind.h"
 #include "scalar.h"
 #include "switch.h"
-#include "grdvar.h"
 #include "timelv.h"
 c
-#include "crelax.h"
-#include "emode.h"
-#include "index.h"
 c
-c==================================================================
-c     begin introductory section to prepare for the relaxation
-c==================================================================
+c---------------------------------------------------------------------
+c  set indices
+c---------------------------------------------------------------------
 c
-      if (first .or. mixts .or. mod(itt,nmix) .eq. 2) then
+      ip=ic+1
+      im=ic-1
+      jp=jc+1
+      jm=jc-1
 c
-c------------------------------------------------------------------
-c       initialize the work area
-c------------------------------------------------------------------
+c---------------------------------------------------------------------
+c  timestep height field.
+c---------------------------------------------------------------------
 c
-        do 100 j=1,jmt
-          do 90 i=1,imt
-            cfn(i,j)  = c0
-            cfs(i,j)  = c0
-            cfe(i,j)  = c0
-            cfw(i,j)  = c0
-            rmsk(i,j) = c0
-            cof(i,j)  = c1
-90        continue
-100     continue
+      if(kmt(ic,jc).ne.0)then
+        boxar = dxr*dyr*cstr(jc)
+        dhdt  = (dy*(u0(im,jm,nc0)*h(im,jm)+u0(im,jc,nc0)*h(im,jc)
+     &              -u0(ic,jm,nc0)*h(ic,jm)-u0(ic,jc,nc0)*h(ic,jc))
+     & +dx*(csu(jm)*(v0(im,jm,nc0)*h(im,jm)+v0(ic,jm,nc0)*h(ic,jm))
+     &     -csu(jc)*(v0(im,jc,nc0)*h(im,jc)+v0(ic,jc,nc0)*h(ic,jc))
+     &     ))*0.5*boxar
 c
-c------------------------------------------------------------------
-c       generate arrays of coefficients for relaxation
-c------------------------------------------------------------------
-c
-c       1st, compute coefficients of the laplacian star
-c       (hold non-interior points to zero using start and end 
-c       indices)
-c
-        do 600 j=3,jmtm1
-          do 590 l=1,lseg
-            if (isz(j,l) .ne. 0) then
-              ie = iez(j,l)
-              fxa = c2*cstr(j)*cstr(j)
-              fxb = c2*csu(j  )*cstr(j)*dyr*dyr
-              fxc = c2*csu(j-1)*cstr(j)*dyr*dyr
-              do 560 i=isz(j,l),iez(j,l)
-                rmsk(i,j) = c1
-                cfn(i,j)  = fxb/(h(i-1,j)+h(i,j))
-                cfs(i,j)  = fxc/(h(i-1,j-1)+h(i,j-1))
-                cfe(i,j)  = fxa*dxr*dxr/(h(i,j)+h(i,j-1))
-                cfw(i,j)  = fxa*dxr*dxr/(h(i-1,j)+h(i-1,j-1))
-                cpf(i,j) = c1/(cfn(i,j)+cfs(i,j)+cfe(i,j)+cfw(i,j))
-560          continue
-c
-c             augment coeffs for implicit treatment of coriolis term
-c
-              if (acor .ne. c0) then
-                fx = -c2dtsf*acor*cstr(j)*dyr*omega
-                do 570 i=isz(j,l),iez(j,l)
-                  cfn(i,j) = cfn(i,j)+(hr(i,j  )-hr(i-1,j  ))*sine(j  )
-     $                        *fx*dxr
-                  cfs(i,j) = cfs(i,j)-(hr(i,j-1)-hr(i-1,j-1))*sine(j-1)
-     $                        *fx*dxr
-                  cfe(i,j) = cfe(i,j)-(hr(i  ,j)*sine(j)-hr(i  ,j-1)*
-     $                        sine(j-1))*fx*dxr
-                  cfw(i,j) = cfw(i,j)+(hr(i-1,j)*sine(j)-hr(i-1,j-1)*
-     $                        sine(j-1))*fx*dxr
-570            continue
-              endif
-c
-c             normalize coefficients
-c
-              do 580 i=isz(j,l),iez(j,l)
-                cfn(i,j) = cfn(i,j)*cpf(i,j)
-                cfs(i,j) = cfs(i,j)*cpf(i,j)
-                cfe(i,j) = cfe(i,j)*cpf(i,j)
-                cfw(i,j) = cfw(i,j)*cpf(i,j)
-580           continue
-            endif
-590       continue
-600     continue
-c
-c       modify coefficients to include island perimeter points
-c
-        if(nisle.eq.0)goto 710
-        do 700 isle=1,nisle
-          cofis(isle) = c0
-          do 690 n=1,nippts(isle)
-            i = iperm(iofs(isle)+n)
-            j = jperm(iofs(isle)+n)
-            fxa = c2*cstr(j)*cstr(j)
-            fxb = c2*csu(j  )*dyr*dyr*cstr(j)
-            fxc = c2*csu(j-1)*dyr*dyr*cstr(j)
-            fxd = -c2dtsf*acor*cstr(j)*dyr*omega
-            if(hr(i-1,j  ) .ne. c0 .or. hr(i  ,j  ) .ne. c0)
-     &        cfn(i,j) = fxb/(h(i-1,j)+h(i,j))
-            if(hr(i-1,j-1) .ne. c0 .or. hr(i  ,j-1) .ne. c0)
-     &        cfs(i,j) = fxc/(h(i-1,j-1)+h(i,j-1))
-            if(hr(i  ,j  ) .ne. c0 .or. hr(i  ,j-1) .ne. c0)
-     &        cfe(i,j) = fxa*dxr*dxr/(h(i,j)+h(i,j-1))
-            if(hr(i-1,j  ) .ne. c0 .or. hr(i-1,j-1) .ne. c0)
-     &        cfw(i,j) = fxa*dxr*dxr/(h(i-1,j)+h(i-1,j-1))
-c
-            cpf(i,j) = c1/(cfn(i,j)+cfs(i,j)+cfe(i,j)+cfw(i,j))
-c
-            if(hr(i-1,j  ) .ne. c0 .or. hr(i  ,j  ) .ne. c0)
-     $        cfn(i,j) = cfn(i,j)
-     $        +fxd*dxr*(hr(i,j)-hr(i-1,j))*sine(j)
-            if(hr(i-1,j-1) .ne. c0 .or. hr(i  ,j-1) .ne. c0)
-     $        cfs(i,j) = cfs(i,j)
-     $        -fxd*dxr*(hr(i,j-1)-hr(i-1,j-1))*sine(j-1)
-            if(hr(i  ,j  ) .ne. c0 .or. hr(i  ,j-1) .ne. c0)
-     $        cfe(i,j) = cfe(i,j)
-     $        -fxd*dxr*(hr(i,j)*sine(j)-hr(i,j-1)*sine(j-1))
-            if(hr(i-1,j  ) .ne. c0 .or. hr(i-1,j-1) .ne. c0)
-     $        cfw(i,j) = cfw(i,j)
-     $        +fxd*dxr*(hr(i-1,j)*sine(j)-hr(i-1,j-1)*sine(j-1))
-            cfn(i,j) = cfn(i,j)*cpf(i,j)
-            cfs(i,j) = cfs(i,j)*cpf(i,j)
-            cfe(i,j) = cfe(i,j)*cpf(i,j)
-            cfw(i,j) = cfw(i,j)*cpf(i,j)
-            cof(i,j) = cst(j)*dx*dy/cpf(i,j)
-            cofis(isle) = cofis(isle)+cof(i,j)
-690       continue
-          cofis(isle) = c1/cofis(isle)
-700     continue
-710     continue
+        h0(ic,jc,np0) = h0(ic,jc,nm0) + dtbt*dhdt
       endif
 c
-c------------------------------------------------------------------
-c     normalize vorticity "ztd"
-c------------------------------------------------------------------
+c---------------------------------------------------------------------
+c  timestep velocity fields using semi-implicit scheme
+c  for the coriolis term.
+c---------------------------------------------------------------------
 c
-      do 800 j=1,jmt
-        do 790 i=1,imt
-          ztd(i,j) = ztd(i,j)*cpf(i,j)
-790     continue
-800   continue
+      if(kmu(ic,jc).ne.0)then
+        boxar = dxr*dyr*csur(jc)
+        fac1=fcor(jc)*dtbt*p5
+        fac2=c1/(c1+fac1*fac1)
 c
-c-----------------------------------------------------------------
-c     estimate a first guess by extrapolating the two
-c     previous solutions forward in time.
-c-----------------------------------------------------------------
+c---------------------------------------------------------------------
+c    compute pressure gradients
+c---------------------------------------------------------------------
 c
-      fxa=c1
-      if (mixts .or. mxpas2) fxa=p5
-      if(.not.mxpas2)then
-        do 900 j=1,jmt
-        do 890 i=1,imt
-          ptd(i,j,np) = fxa*(c2*ptd(i,j,nc)-ptd(i,j,nm))
-890     continue
-900     continue
+        fxa = grav*dx2r*csur(jc)
+        fxb = grav*dy2r
+        temp1 = h0(ip,jp,nc0) - h0(ic,jc,nc0)
+        temp2 = h0(ic,jp,nc0) - h0(ip,jc,nc0)
+        dpdx  = (temp1-temp2)*fxa
+        dpdy  = (temp1+temp2)*fxb
 c
-c-----------------------------------------------------------------
-c  allow for change in nm and nc indices during second pass
-c  of euler backward
-c-----------------------------------------------------------------
+c---------------------------------------------------------------------
+c   compute horizontal viscosity terms
+c---------------------------------------------------------------------
 c
-      else
-        do 920 j=1,jmt
-        do 910 i=1,imt
-          ptd(i,j,np) = fxa*(c2*ptd(i,j,nm)-ptd(i,j,np))
-910     continue
-920     continue
+        fricu =
+     &            0.0
+c    &    (bbu(jc)*(u0(ip,jc,nm0) - u0(ic,jc,nm0)
+c    &             +u0(im,jc,nm0) - u0(ic,jc,nm0))
+c    &   + ccu(jc)*(u0(ic,jp,nm0) - u0(ic,jc,nm0))
+c    &   + ddu(jc)*(u0(ic,jm,nm0) - u0(ic,jc,nm0)) )*boxar
+c
+        fricv =
+     &            0.0
+c    &    (bbu(jc)*(v0(ip,jc,nm0) - v0(ic,jc,nm0)
+c    &             +v0(im,jc,nm0) - v0(ic,jc,nm0))
+c    &   + ccu(jc)*(v0(ic,jp,nm0) - v0(ic,jc,nm0))
+c    &   + ddu(jc)*(v0(ic,jm,nm0) - v0(ic,jc,nm0)) )*boxar
+c
+c---------------------------------------------------------------------
+c  calculate partial solutions
+c---------------------------------------------------------------------
+c
+        ustar = u0(ic,jc,nm0) + dtbt*(zu(ic,jc) - dpdx + fricu)
+        vstar = v0(ic,jc,nm0) + dtbt*(zv(ic,jc) - dpdy + fricv)
+c
+c---------------------------------------------------------------------
+c  final step of semi-implicit scheme
+c---------------------------------------------------------------------
+c
+        u0(ic,jc,np0)= (ustar + fac1*vstar)*fac2
+        v0(ic,jc,np0)= (vstar - fac1*ustar)*fac2
+c**********************************************************
+c  DEBUG
+c**********************************************************
+      if(ic.eq.3.and.jc.eq.3.and. .false.)then
+       print *,'frees - ic,jc,im,ip,jm,jp,np0,nc0,nm0',
+     &                  ic,jc,im,ip,jm,jp,np0,nc0,nm0
+       print *,'        h0,u0,v0[nm0]    =',
+     &          h0(ic,jc,nm0),u0(ic,jc,nm0),v0(ic,jc,nm0)
+       print *,'        h0,u0,v0[nc0]    =',
+     &          h0(ic,jc,nc0),u0(ic,jc,nc0),v0(ic,jc,nc0)
+       print *,'        h0,u0,v0[np0]    =',
+     &          h0(ic,jc,np0),u0(ic,jc,np0),v0(ic,jc,np0)
+       print *,
+     & 'u0(im,jm,nc0),u0(ic,jm,nc0),u0(im,jc,nc0),u0(ic,jc,nc0)',
+     &  u0(im,jm,nc0),u0(ic,jm,nc0),u0(im,jc,nc0),u0(ic,jc,nc0)
+       print *,
+     & 'v0(im,jm,nc0),v0(ic,jm,nc0),v0(im,jc,nc0),v0(ic,jc,nc0)',
+     &  v0(im,jm,nc0),v0(ic,jm,nc0),v0(im,jc,nc0),v0(ic,jc,nc0)
+       print *,'h0(ic,jc,np0),h0(ic,jc,nm0),dtbt,dhdt',
+     &          h0(ic,jc,np0),h0(ic,jc,nm0),dtbt,dhdt 
+       print *,
+     & 'h0(ic,jc,nc0),h0(ip,jc,nc0),h0(ic,jp,nc0),h0(ip,jp,nc0)',
+     &  h0(ic,jc,nc0),h0(ip,jc,nc0),h0(ic,jp,nc0),h0(ip,jp,nc0)
+       print *,
+     & 'u0(ic,jc,np0),u0(ic,jc,nm0),dtbt,zu(ic,jc),dpdx',
+     &  u0(ic,jc,np0),u0(ic,jc,nm0),dtbt,zu(ic,jc),dpdx
+       print *,
+     & 'v0(ic,jc,np0),v0(ic,jc,nm0),dtbt,zv(ic,jc),dpdy',
+     &  v0(ic,jc,np0),v0(ic,jc,nm0),dtbt,zv(ic,jc),dpdy
+
+       lastc=ic
+       continue
+      endif
+c**********************************************************
       endif
 c
-c     compute criterion for convergence and set residuals to zero
-c
-      crtp = crit*fxa
-      do 1000 j=1,jmt
-      do 990 i=1,imt
-        res(i,j) = c0
-990   continue
-1000  continue
-c
-c==================================================================
-c     begin section to do the relaxation
-c==================================================================
-c
-      nwcnt = 0
-      nwmax = 300
-      mscan = 0
-1001  continue
-      mscan = mscan + 1
-      resmax = c0
-c
-c------------------------------------------------------------------
-c     consider the arrays as being defined on the squares of an
-c     "imt by jmt" checkerboard. take two passes: first solve the
-c     equation on the black squares, then on the red squares.
-c------------------------------------------------------------------
-c
-      do 1200 icolor=1,2
-        do 1190 j=3,jscan
-          ishypr   = 1 + mod(icolor+j,2)
-          if (ishypr .eq. 1) ishypr = 3
-          do 1160 i=ishypr,imtm1,2
-            res(i,j) = rmsk(i,j)*(cfn(i,j)*ptd(i,j+1,np)
-     &                 +cfs(i,j)*ptd(i,j-1,np)
-     &                 +cfe(i,j)*ptd(i+1,j,np)
-     &                 +cfw(i,j)*ptd(i-1,j,np)
-     &                 -ptd(i,j,np)-ztd(i,j))
-1160      continue
-          if (ishypr .eq. 3) ishypr = 1
-          res(1,j)   = res(imum1,j)
-          res(imt,j) = res(2,j)
-c
-c------------------------------------------------------------------
-c         make a correction to ptd based on the residuals
-c------------------------------------------------------------------
-c
-          do 1170 i=ishypr,imt,2
-            ptd(i,j,np) = ptd(i,j,np) + sor*res(i,j)
-1170      continue
-c
-c------------------------------------------------------------------
-c         find the maximum absolute residual to determine 
-c         convergence
-c------------------------------------------------------------------
-c
-          do 1180 i=ishypr,imt,2
-            resmax = max(abs(res(i,j)),resmax)
-1180      continue
-1190    continue
-1200  continue
-c
-c------------------------------------------------------------------
-c     do hole relaxation for each island
-c------------------------------------------------------------------
-c
-      do 1400 isle=1,nisle
-        resis = c0
-        do 1360 n=1,nippts(isle)
-          i = iperm(iofs(isle)+n)
-          j = jperm(iofs(isle)+n)
-          resis = resis + (cfn(i,j)*ptd(i,j+1,np)
-     &                  +  cfs(i,j)*ptd(i,j-1,np)
-     &                  +  cfe(i,j)*ptd(i+1,j,np)
-     &                  +  cfw(i,j)*ptd(i-1,j,np)
-     &                  -  ptd(i,j,np) - ztd(i,j))*cof(i,j)
-1360    continue
-c
-c       normalize the island residual and update the maximum
-c       absolute residual of the relaxation if necessary
-c
-        resis  = resis*cofis(isle)
-        resmax = max(abs(resis),resmax)
-        resis  = resis*sor
-c
-c       make a correction to ptd over the island and its perimeter
-c
-        do 1370 n=1,nippts(isle)
-          i = iperm(iofs(isle)+n)
-          j = jperm(iofs(isle)+n)
-          ptd(i,j,np) = ptd(i,j,np) + resis
-1370    continue
-1400  continue
-c
-c------------------------------------------------------------------
-c  set cyclic boundary condition
-c------------------------------------------------------------------
-c
-      do 1600 j=1,jmt
-        ptd(1,j,np)   = ptd(imum1,j,np)
-        ptd(imu,j,np) = ptd(2,j,np)
-1600  continue
-c
-c------------------------------------------------------------------
-c     test maximum residual for convergence of the relaxation.
-c     if not converged, proceed with another scan.
-c     (if the number of scans reaches mxscan, leave the loop)
-c------------------------------------------------------------------
-c
-      if (resmax.ge.crtp .and. mscan.lt.mxscan) go to 1001
-c
-c==================================================================
-c  end of the relaxation
-c==================================================================
-c
-c------------------------------------------------------------------
-c  update the stream function based on the relaxation solution
-c------------------------------------------------------------------
-c
-      do 1700 j=1,jmt
-      do 1690 i=1,imt
-        p(i,j,np) = p(i,j,nm) + ptd(i,j,np)
-1690  continue
-1700  continue
-c
-c------------------------------------------------------------------
-c    on a mixing timestep, alter ptd to be consistent with
-c    normal, leap-frog stepping)
-c------------------------------------------------------------------
-c
-      if (mixts .and. eb) return
-      if (mxpas2 .or. mixts) then
-        do 1900 j=1,jmt
-        do 1890 i=1,imt
-          ptd(i,j,np) = c2*ptd(i,j,np)
-1890    continue
-1900    continue
-      endif
       return
       end
+
+
+
 
       subroutine setvbc (ic, jc)
 c
@@ -1537,7 +1431,6 @@ c==================================================================
       dimension wsxobs(nolatp), wsyobs(nolatp)
       dimension olatt(nolat), olatv(nolatp)
       dimension stf(nt), smf(2)
-      save sstobs,salobs,wsxobs,wsyobs,olatt,olatv,in,dolat,rdolat
 c
 c     units of boundary condition values are:
 c       degrees C, parts per thousand, dynes per square centimeter
@@ -1559,6 +1452,8 @@ c         Physical Oceanography, 13, 1093-1104,1983.
 c       Levitus, S., Climatological atlas of the world ocean, NOAA
 c         Prof. Paper 13, US Gov't printing Office, Washington, DC, 
 c         1982.
+c
+      save in,dolat,rdolat,olatt,olatv,sstobs,salobs,wsxobs,wsyobs
 c
       data sstobs / -1.75, -1.75, -1.50, -1.50, -1.28,
      &              -0.55,  0.90,  2.92,  5.45,  8.62,
@@ -1673,88 +1568,31 @@ c
       return
       end
 
-      subroutine addv( i, j)
+      subroutine addv( ic, jc)
 c
 c==================================================================
 c
 c  add barotropic to baroclinic velocities
-c  and calculate barotropic correction for
-c      momentum advection equation
 c
 c==================================================================
 c
 #include "param.h"
-#include "grdvar.h"
-#include "emode.h"
+c
+#include "frees.h"
 #include "levind.h"
 #include "timelv.h"
 #include "slabs.h"
 c
-c-----------------------------------------------------------------
-c  calculate barotropic velocity
-c-----------------------------------------------------------------
-c
-      diag1  = p(i+1,j+1,np) - p(i  ,j  ,np)
-      diag2  = p(i  ,j+1,np) - p(i+1,j  ,np)
-      ubar   = -(diag1+diag2)*dy2r*hr(i,j)
-      vbar   =  (diag1-diag2)*dx2r*hr(i,j)*csur(j)
-c  add to baroclinic velocity
-      do 100 k=1,kmu(i,j)
-      u(k,i,j,np) = u(k,i,j,np)+ubar
-      v(k,i,j,np) = v(k,i,j,np)+vbar
+      ubar=u0(ic,jc,np0)
+      vbar=v0(ic,jc,np0)
+      do 100 k=1,kmu(ic,jc)
+      u(k,ic,jc,np) = u(k,ic,jc,np) + ubar
+      v(k,ic,jc,np) = v(k,ic,jc,np) + vbar
  100  continue
 c
       return
       end
 
-      subroutine corv( i, j)
-c
-c==================================================================
-c
-c   calculate barotropic correction for momentum advection equation
-c
-c==================================================================
-c
-#include "param.h"
-#include "grdvar.h"
-#include "emode.h"
-#include "levind.h"
-#include "timelv.h"
-#include "slabs.h"
-c
-c-----------------------------------------------------------------
-c  calculate barotropic velocity
-c-----------------------------------------------------------------
-c
-      diag1  = p(i+1,j+1,nc) - p(i  ,j  ,nc)
-      diag2  = p(i  ,j+1,nc) - p(i+1,j  ,nc)
-      ubar   = -(diag1+diag2)*dy2r*hr(i,j)
-      vbar   =  (diag1-diag2)*dx2r*hr(i,j)*csur(j)
-c  add to baroclinic velocity
-c
-c-----------------------------------------------------------------
-c  calculate barotropic correction
-c-----------------------------------------------------------------
-c
-c  calculate v barotropic velocity in box to south
-      diag1  = p(i+1,j  ,nc) - p(i  ,j-1,nc)
-      diag2  = p(i  ,j  ,nc) - p(i+1,j-1,nc)
-      vbars  =  (diag1-diag2)*dx2r*hr(i,j-1)*csur(j-1)
-c  calculate u barotropic velocity in box to west
-      diag1  = p(i  ,j+1,nc) - p(i-1,j  ,nc)
-      diag2  = p(i-1,j+1,nc) - p(i  ,j  ,nc)
-      ubarw  = -(diag1+diag2)*dy2r*hr(i-1,j)
-c  calculate external mode velocities
-      sfu(i,j) = -(p(i,j+1,nc)-p(i,j,nc))*dyr*
-     &                   min(hr(i-1,j),hr(i,j))
-      sfv(i,j) =  (p(i+1,j,nc)-p(i,j,nc))*dxr*
-     &                   min(hr(i,j),hr(i,j-1))*cstr(j)
-c  calculate  correction
-      sfu(i,j) = sfu(i,j) - p5*(ubar+ubarw)
-      sfv(i,j) = sfv(i,j) - p5*(vbar+vbars)
-c
-      return
-      end
 
       subroutine diag( ic, jc)
 c
@@ -1774,14 +1612,12 @@ c
 c
 #include "scalar.h"
 #include "switch.h"
-#include "emode.h"
 #include "grdvar.h"
 #include "levind.h"
 #include "timelv.h"
 #include "slabs.h"
 c
 #include "cdiag.h"
-
 c
       ku = kmu(ic,jc)
       kt = kmt(ic,jc)
@@ -1809,7 +1645,17 @@ c
      &            + abs(t(k,ic,jc,m,np)-t(k,ic,jc,m,nm))*boxv
         tvar(m) = tvar(m)+(t(k,ic,jc,m,np)**2
      &                       -t(k,ic,jc,m,nm)**2)*boxv
- 500    continue
+       call idebug('diag',ic,jc,k,m)
+c  DEBUG
+      if(dtabs(m).gt.1d20)then
+        print *,' subroutine diag. error'
+        print *,' ic,jc,k,m,np,nm=',ic,jc,k,m,np,nm
+        print *,' t(k,ic,jc,m,np)=',t(k,ic,jc,m,np)
+        print *,' t(k,ic,jc,m,nm)=',t(k,ic,jc,m,nm)
+        print *,' boxv=',boxv
+        stop
+      endif
+500     continue
       endif
       return
       end
@@ -1951,7 +1797,7 @@ c
 #include "coord.h"
 #include "ctmngr.h"
 #include "cvbc.h"
-#include "emode.h"
+#include "frees.h"
 #include "grdvar.h"
 #include "iounit.h"
 #include "levind.h"
@@ -1969,7 +1815,7 @@ c------------------------------------------------------------------
 c     initialize t,s,u,v.
 c          velocities set to zero
 c          temperature an salinity set to 0.0 and 35.0 at sea
-c                                      to -2.0 and 40.0 over land.
+c                                      to -2.0 and 45.0 over land.
 c------------------------------------------------------------------
 c
       sconst=0.0349
@@ -1982,6 +1828,9 @@ c
         if(k.gt.kmt(i,j))then
           t(k,i,j,1,n)=-2.0
           t(k,i,j,2,n)=0.01
+c  DEBUG *****************************************************
+c         t(k,i,j,1,n)= 1e30
+c         t(k,i,j,2,n)= 1e30
         else
           t(k,i,j,1,n)= theta0 (yt(j), zt(k))
           t(k,i,j,2,n)= sconst-0.035
@@ -1989,16 +1838,15 @@ c
 200   continue
 c
 c------------------------------------------------------------------
-c     initialize stream function p and rate of change ztd
+c     initialize free surface model
 c------------------------------------------------------------------
 c
       do 300 n=1,3
-        do 290 j=1,jmt
-        do 280 i=1,imt
-          p(i,j,n) = c0
-          ptd(i,j,n) = c0
-280     continue
-290     continue
+      do 300 j=1,jmt
+      do 300 i=1,imt
+        h0(i,j,n) = c0
+        u0(i,j,n) = c0
+        v0(i,j,n) = c0
 300   continue
 c
 c------------------------------------------------------------------
@@ -2258,379 +2106,6 @@ c
 100   continue
       return
       end
-      subroutine iperim (kmz)
- 
-c
-c==================================================================
-c
-c     find island perimeter coordinates & analyze for errors in 
-c     land mass distribution
-c
-c     inputs:
-c
-c     kmz   = scratch area
-c     kmt   = number of levels on the "t" grid
-c     kmu   = number of levels on the "u" grid
-c
-c     output:
-c
-c     all island variables in "index.h"
-c
-c==================================================================
-c
-      character*1 dir, blank
-      logical prblm, fatal
-#include "param.h"
-#include "coord.h"
-#include "index.h"
-#include "levind.h"
-      dimension kmz(imt,jmt)
-      dimension ncol(imt)
-c
-      data blank /' '/
-c
-c------------------------------------------------------------------
-c     statement functions
-c------------------------------------------------------------------
-c
-      iwest(i) = mod(i-2+imt,imt) + 1
-      ieast(i) = mod(i,imt) + 1
-c
-c------------------------------------------------------------------
-c     save the original "kmt" field (to be restored later)
-c     and initialize "chisl" field
-c------------------------------------------------------------------
-c
-      do 100 j=1,jmt
-        do 90 i=1,imt
-          kmz(i,j) = kmt(i,j)
-90      continue
-100   continue
-c
-c------------------------------------------------------------------
-c     search for & knockout isolated bays ... "t" grid boxes at the
-c     surface which can't be influenced by advection
-c------------------------------------------------------------------
-c
-      do 400 j=2,jmtm1
-        do 390 i=2,imtm1
-          if (kmt(i,j) .ne. 0) then
-            if (kmu(i,j) .eq. 0 .and. kmu(i-1,j) .eq. 0 .and.
-     &        kmu(i,j-1) .eq. 0 .and. kmu(i-1,j-1) .eq. 0) then
-              kmt(i,j) = 0
-            endif
-          endif
-390     continue
-400   continue
-c
-c------------------------------------------------------------------
-c     find the coordinates of the perimeter of each island
-c------------------------------------------------------------------
-c
-      fatal = .false.
-      do 600 n=1,nisle
-c
-c------------------------------------------------------------------
-c       convert island latitude & longitude "seed" values to nearest
-c       model points incices.
-c------------------------------------------------------------------
-c
-        i = indp (alonis(n), xt, imt)
-        j = indp (alatis(n), yt, jmt)
-        if (kmt(i,j) .ne. 0) then
-          write (stdout,'(a17,i2,a18,5x,a5,f8.2,a6,f8.2)')
-     &    ' => island seed #',n,' is an ocean point'
-     &,   ' lon=',alonis(n),', lat=',alatis(n)
-          stop '=>iperim'
-        endif
-c
-c------------------------------------------------------------------
-c       determine a first perimeter point
-c------------------------------------------------------------------
-c
-        if (j .le. jmt/2) then
-          jend = jmt
-          jd   = 1
-        else
-          jend = 1
-          jd   = -1
-        endif
-        do 500 jj=j,jend,jd
-          if (kmt(i,jj) .ne. 0) then
-            j = jj
-            go to 510
-          endif
-500     continue
-510     continue
-        i0  = i
-        j0  = j
-        dir = blank
-c
-c------------------------------------------------------------------
-c       scan for the rest of the perimeter
-c------------------------------------------------------------------
-c
-        if (n .eq. 1) then
-          iofs(n)  = 0
-        else
-          iofs(n)  = nippts(n-1) + iofs(n-1)
-        endif
-        lenp       = iofs(n) + 1
-        iperm(lenp) = i
-        jperm(lenp) = j
-c
-        do 580 m=1,maxipp
-          iw  = iwest(i)
-          ie  = ieast(i)
-          js  = max(1,j-1)
-          jn  = min(jmt,j+1)
-          if (iw .eq. 1) then
-            iw  = imt-1
-          endif
-          if (ie .eq. imt) then
-            ie  = 2
-          endif
-c
-c------------------------------------------------------------------
-c         analyze the geometry to verify that the island and any other
-c         land mass are separated by at least 2 ocean "t" grid boxes
-c------------------------------------------------------------------
-c
-          prblm = .false.
-c
-          if ((kmt(ie,jn) .eq. 0 .and. kmt(iw,js) .eq. 0) .or.
-     &        (kmt(ie,js) .eq. 0 .and. kmt(iw,jn) .eq. 0)) then
-            if (kmt(iw,j) .ne. 0 .and. kmt(ie,j) .ne. 0 .and.
-     &          kmt(i,jn) .ne. 0 .and. kmt(i,js) .ne. 0 ) prblm = .true.
-            if (kmt(iw,j) .ne. 0 .and. kmu(iw,j) .eq. 0 .and.
-     &          kmu(iw,js) .eq. 0) prblm = .true.
-            if (kmt(ie,j) .ne. 0 .and. kmu(i,j) .eq. 0 .and.
-     &          kmu(i,js) .eq. 0) prblm = .true.
-            if (kmt(i,jn) .ne. 0 .and. kmu(i,j) .eq. 0 .and.
-     &          kmu(iw,j) .eq. 0) prblm = .true.
-            if (kmt(i,js) .ne. 0 .and. kmu(i,js) .eq. 0 .and.
-     &          kmu(iw,js) .eq. 0) prblm = .true.
-          endif
-          if (prblm) then
-            write (stdout,9200) n, i, j, xt(i), yt(j)
-            fatal = .true.
-          endif
-c
-c------------------------------------------------------------------
-c         look west (only if not comming from west)
-c------------------------------------------------------------------
-c
-          k2 = kmt(iw,jn)  * kmt(iw,js)
-          k3 = kmt(i,jn)   * kmt(i,js)
-          if (k2 .eq. 0 .or. k3 .eq. 0) then
-            k = 0
-          else
-            k = 1
-          endif
-          if (kmt(iw,j) .ne. 0 .and. k .eq. 0 .and. dir .ne. 'e') then
-            if (lenp .lt. maxipp) then
-              if (iw .ne. i0 .or. j .ne. j0) then
-                dir          = 'w'
-                lenp         = lenp + 1
-                i            = iw
-                iperm(lenp)  = iw
-                jperm(lenp)  = j
-                go to 580
-              else
-                go to 590
-              endif
-            else
-              write (stdout,'(a23)') '=> maxipp limit reached'
-              stop '=>west'
-            endif
-          endif
-c
-c------------------------------------------------------------------
-c         look north (only if not comming from north)
-c------------------------------------------------------------------
-c
-          k2 = kmt(ie,jn)  * kmt(iw,jn)
-          k3 = kmt(ie,j)   * kmt(iw,j)
-          if (k2 .eq. 0 .or. k3 .eq. 0) then
-            k = 0
-          else
-            k = 1
-          endif
-          if (kmt(i,jn) .ne. 0 .and. k .eq. 0 .and. jn .ne. j
-     &        .and. dir .ne. 's') then
-            if (lenp .lt. maxipp) then
-              if (i .ne. i0 .or. jn .ne. j0) then
-                dir          = 'n'
-                lenp         = lenp + 1
-                j            = jn
-                iperm(lenp)  = i
-                jperm(lenp)  = jn
-                go to 580
-              else
-                go to 590
-              endif
-            else
-              write (stdout,'(a23)') '=> maxipp limit reached'
-              stop '=>north'
-            endif
-          endif
-c
-c------------------------------------------------------------------
-c         look east (only if not comming from east)
-c------------------------------------------------------------------
-c
-          k2 = kmt(ie,jn)  * kmt(ie,js)
-          k3 = kmt(i,jn)   * kmt(i,js)
-          if (k2 .eq. 0 .or. k3 .eq. 0) then
-            k = 0
-          else
-            k = 1
-          endif
-          if (kmt(ie,j) .ne. 0 .and. k .eq. 0 .and. dir .ne. 'w') then
-            if (lenp .lt. maxipp) then
-              if (ie .ne. i0 .or. j .ne. j0) then
-                dir          = 'e'
-                lenp         = lenp + 1
-                i            = ie
-                iperm(lenp)  = ie
-                jperm(lenp)  = j
-                go to 580
-              else
-                go to 590
-              endif
-            else
-              write (stdout,'(a23)') '=> maxipp limit reached'
-              stop '=>east'
-            endif
-          endif
-c
-c------------------------------------------------------------------
-c         look south (only if not comming from south)
-c------------------------------------------------------------------
-c
-          k2 = kmt(ie,js)  * kmt(iw,js)
-          k3 = kmt(ie,j)   * kmt(iw,j)
-          if (k2 .eq. 0 .or. k3 .eq. 0) then
-            k = 0
-          else
-            k = 1
-          endif
-          if (kmt(i,js) .ne. 0 .and. k .eq. 0 .and. js .ne. j
-     &        .and. dir .ne. 'n') then
-            if (lenp .lt. maxipp) then
-              if (i .ne. i0 .or. js .ne. j0) then
-                dir          = 's'
-                lenp         = lenp + 1
-                j            = js
-                iperm(lenp)  = i
-                jperm(lenp)  = js
-                go to 580
-              else
-                go to 590
-              endif
-            else
-              write (stdout,'(a23)') '=> maxipp limit reached'
-              stop '=>south'
-            endif
-          endif
-580     continue
-590     continue
-        nippts(n) = lenp - iofs(n)
-        write (stdout,9000) n, nippts(n)
-        ls = iofs(n) + 1
-        le = lenp
-        write (stdout,9100) (iperm(l),jperm(l), l=ls,le)
-600   continue
-c
-c------------------------------------------------------------------
-c     restore the original "kmt" field
-c------------------------------------------------------------------
-c
-      do 700 j=1,jmt
-        do 690 i=1,imt
-          kmt(i,j) = kmz(i,j)
-690     continue
-700   continue
-c
-c------------------------------------------------------------------
-c     if a fatal error was encountered print out error message and stop
-c     otherwise load perimeter field into "kmz" and print it out
-c------------------------------------------------------------------
-c
-      if (fatal) then
-c
-        write (stdout,*)
-     &   ' Fatal error(s) in "iperim" land mass analysis'
-        write (stdout,*)
-     &    ' The "kmt" field must be fixed up before continuing ...'
-        stop '=>iperim'
-c
-      else
-c
-c------------------------------------------------------------------
-c     initialize scratch "kmz" field
-c------------------------------------------------------------------
-c
-        do 800 j=1,jmt
-          do 790 i=1,imt
-            kmz(i,j) = 0
-790       continue
-800     continue
-c
-c------------------------------------------------------------------
-c       identify perimeter points with island number
-c------------------------------------------------------------------
-c
-        do 900 ni=1,nisle
-          ls = iofs(ni) + 1
-          le = ls + nippts(ni) - 1
-          do 890 m=ls,le
-            kmz(iperm(m),jperm(m)) = ni
-890       continue
-900     continue
-c
-c------------------------------------------------------------------
-c       print out island perimeter field
-c------------------------------------------------------------------
-c
-        linemx = 100
-        linel  = 105
-        line   = linel - 5
-        if (line .gt. linemx) line = linemx
-        nwr = (imt/line) + 1
-c
-        do 950 i=1,imt
-          ncol(i) = mod(i,10)
-950     continue
-c
-       write (stdout,9300)
-        do 1000 n=1,nwr
-          ia = 1 + (line*(n-1))
-          ib = ia + line - 1
-          if (ib .gt. imt) ib = imt
-          write(stdout,9400) (ncol(i),i=ia,ib)
-          do 990 jj=1,jmt
-            jjj = jmt - jj + 1
-            write(stdout,9500)jjj,(kmz(i,jjj),i=ia,ib)
-990       continue
-1000    continue
-c
-      endif
-c
-9000  format (/' Island # ',i2,' perimeter length is ',i4, ' points.'
-     &, ' (i,j) coordinates are:'/)
-9100  format (10(1x,'(',i4,',',i4,') '))
-9200  format (///1x, ' ==> Error on island # ',i2,' at (i,j) = (',i4,','
-     &,  i4,') ... (lon,lat) = (',f7.2,',',f7.2,')'/
-     &, 1x,'    There must be at least two ocean points separating '
-     &,    'an island and another land mass.'/)
-9300  format (/,' Island perimeter locations '/)
-9400  format('  i=>',100(i1))
-9500  format(1x,i3,1x,100(i1))
-c
-      return
-c
-      end
 
       function theta0 (ydeg, depth)
 c
@@ -2671,7 +2146,7 @@ c     1982.
 c
       parameter (ndeg=7)
       dimension coeft(ndeg+1)
-      save coeft, tmin, tmax, reflat, in, c0, c1, c2, pi, refcos
+      save coeft, tmin, tmax, reflat, c0,c1,c2,pi,refcos
       data coeft / 0.184231944E+02,-0.430306621E-01, 0.607121504E-04
      &           ,-0.523806281E-07, 0.272989082E-10,-0.833224666E-14
      &           , 0.136974583E-17,-0.935923382E-22/
@@ -2812,6 +2287,8 @@ c
       call wrrest
       return
       end
+
+
       subroutine pdiag
 c
 c==================================================================
@@ -2821,7 +2298,7 @@ c
 #include "param.h"
 #include "coord.h"
 #include "ctmngr.h"
-#include "emode.h"
+#include "frees.h"
 #include "timelv.h"
 #include "slabs.h"
       dimension ptemp(imt,km)
@@ -2891,18 +2368,41 @@ c
       endif
 700   continue
 c
-c-----------------------------------------------------------------
-c       print the stream function
-c-----------------------------------------------------------------
+c-------------------------------------------------------------------
+c       print the free surface model solution
+c-------------------------------------------------------------------
 c
-      scl=1.e12
+      scl = c100
       is = indp (slonxy, xt, imt)
       ie = indp (elonxy, xt, imt)
       js = indp (slatxy, yt, jmt)
       je = indp (elatxy, yt, jmt)
-      write (stdout,8000) ' stream function (sverdrups)'
+      write (stdout,8000) ' surface height (m)'
      &, itt, xt(is), xt(ie), yt(js), yt(je), scl
-      call matrix (p(1,1,np), imt, is, ie, -js, -je, scl)
+      call matrix (h0(1,1,np0), imt, is, ie, -js, -je, scl)
+c
+      scl = c1
+      write (stdout,8000) ' u velocity (cm/s)'
+     &, itt, xt(is), xt(ie), yt(js), yt(je), scl
+      call matrix (u0(1,1,np0), imt, is, ie, -js, -je, scl)
+c
+      write (stdout,8000) ' v velocity (cm/s)'
+     &, itt, xt(is), xt(ie), yt(js), yt(je), scl
+      call matrix (v0(1,1,np0), imt, is, ie, -js, -je, scl)
+c****************************************************************
+c  DEBUG
+c****************************************************************
+      if(.false.)then
+       scl=0.0001
+       write (stdout,8000) ' zu '
+     &, itt, xt(is), xt(ie), yt(js), yt(je), scl
+       call matrix (zu(1,1), imt, is, ie, -js, -je, scl)
+c
+       write (stdout,8000) ' zv '
+     &, itt, xt(is), xt(ie), yt(js), yt(je), scl
+       call matrix (zv(1,1), imt, is, ie, -js, -je, scl)
+      endif
+c** end DEBUG ***************************************************
 c
       return
 c
@@ -2914,6 +2414,7 @@ c
      &,', lon:',f6.2,' ==> ',f6.2,', depth(m):',f6.1,' ==> ',f6.1
      &,', scaling=',1pg10.3)
       end
+
 
       subroutine restio
 c
@@ -2927,17 +2428,21 @@ c==================================================================
 c
 #include "param.h"
 #include "ctmngr.h"
+#include "frees.h"
 #include "iounit.h"
+#include "levind.h"
 #include "slabs.h"
+#include "switch.h"
 #include "timelv.h"
-#include "emode.h"
       dimension t1(imt,jmt,km,nt), t2(imt,jmt,km,nt), 
      &          t3(imt,jmt,km,nt)
       dimension u1(imt,jmt,km),  u2(imt,jmt,km), u3(imt,jmt,km)
       dimension v1(imt,jmt,km),  v2(imt,jmt,km), v3(imt,jmt,km)
-      dimension p1(imt,jmt),   p2(imt,jmt),   p3(imt,jmt)
-      dimension ptd1(imt,jmt), ptd2(imt,jmt), ptd3(imt,jmt)
+      dimension h01(imt,jmt),    h02(imt,jmt),   h03(imt,jmt)
+      dimension u01(imt,jmt),    u02(imt,jmt),   u03(imt,jmt)
+      dimension v01(imt,jmt),    v02(imt,jmt),   v03(imt,jmt)
       character*80 file
+c
       equivalence (t1(1,1,1,1),t(1,1,1,1,1))
       equivalence (t2(1,1,1,1),t(1,1,1,1,2))
       equivalence (t3(1,1,1,1),t(1,1,1,1,3))
@@ -2947,14 +2452,20 @@ c
       equivalence (v1(1,1,1),v(1,1,1,1))
       equivalence (v2(1,1,1),v(1,1,1,2))
       equivalence (v3(1,1,1),v(1,1,1,3))
-      equivalence (p1(1,1),p(1,1,1))
-      equivalence (p2(1,1),p(1,1,2))
-      equivalence (p3(1,1),p(1,1,3))
-      equivalence (ptd1(1,1),ptd(1,1,1))
-      equivalence (ptd2(1,1),ptd(1,1,2))
-      equivalence (ptd3(1,1),ptd(1,1,3))
 c
+      equivalence (h01(1,1),h0(1,1,1))
+      equivalence (h02(1,1),h0(1,1,2))
+      equivalence (h03(1,1),h0(1,1,3))
+      equivalence (u01(1,1),u0(1,1,1))
+      equivalence (u02(1,1),u0(1,1,2))
+      equivalence (u03(1,1),u0(1,1,3))
+      equivalence (v01(1,1),v0(1,1,1))
+      equivalence (v02(1,1),v0(1,1,2))
+      equivalence (v03(1,1),v0(1,1,3))
+c
+c------------------------------------------------------------------
 c     read restart data set from archive for timesteps itt 
+c------------------------------------------------------------------
 c
       entry rdrest
 c  check np equals 3
@@ -2963,40 +2474,79 @@ c  check np equals 3
         stop
       endif
 c
+c------------------------------------------------------------------
+c     initialize t,s,u,v.
+c          velocities set to zero
+c          temperature and salinity set to land values
+c          -2.0 and 45.0 ppt
+c------------------------------------------------------------------
+c
+      do 200 n=1,3
+      do 200 j=1,jmt
+      do 200 i=1,imt
+      do 200 k=1,km
+        u(k,i,j,n)=c0
+        v(k,i,j,n)=c0
+        t(k,i,j,1,n)= -2.0
+        t(k,i,j,2,n)= 0.01
+c  DEBUG!! ****************************************************
+c       t(k,i,j,1,n)= -1e20
+c       t(k,i,j,2,n)= 1e20
+200   continue
+c
+c------------------------------------------------------------------
+c     initialize free surface model
+c------------------------------------------------------------------
+c
+      do 300 n=1,3
+      do 300 j=1,jmt
+      do 300 i=1,imt
+        h0(i,j,n) = c0
+        u0(i,j,n) = c0
+        v0(i,j,n) = c0
+
+300   continue
+c
+c------------------------------------------------------------------
 c  read archived data.  Use file fnrest if defined.
+c------------------------------------------------------------------
 c
       if(fnrest(1:1).ne.' ')then
-      open (iorest, access='SEQUENTIAL', form='UNFORMATTED')
-        open(iorest, file=fnrest, form='UNFORMATTED', 
+      open(iorest, file=fnrest, form='UNFORMATTED', 
      &       access='SEQUENTIAL')
       else
         open(iorest, form='UNFORMATTED', access='SEQUENTIAL')
       endif
-      read(iorest) itt0, totsec, totday, years, kmt,
-     &             p3, ptd3, ptd2, t3, u3, v3
+      read(iorest) itt, totsec, totday, years, kmt
+      read(iorest) h03,  u03,  v03
+      read(iorest) t3,   u3,   v3
       close(iorest)
-      write (stdout,22) iorest, itt0
-      if(itt.ne.itt0)then
-        write(stdout,23)itt
+      write (stdout,22) iorest, itt
+      if(mod(itt,nmix).ne.0)then
+        write(stdout,23) itt, nmix
         stop
       endif
       return
 c
   21  format(' Routine restio.',/,
-     &       ' Trying to restart with (np not equal to 3).',/,
+     &       ' Trying to restart with np not equal to 3.',/,
      &       ' np, nc, nm  =',3i5,/,' Programme stopped.')
   22  format(' Routine restio',/,
      &       ' Restart file read from unit ',i2,'.  timestep =',i7)
-  23  format(' Routine restio',/,
-     &       ' Timestep of restart file not equal to requested',
-     &       ' timestep.  Requested timestep =',i7,/,
-     &       ' Program stopped')
+  23  format(' Routine restio - WARNING!',/,
+     &       ' Trying to restart without forward timestep,',/,
+     &       ' i.e. mod(itt,nmix).eq.0.    itt, nmix =',2i5,/,
+     &       ' Programme stopped.')
 c
+c------------------------------------------------------------------
 c     write restart data set to archive.
+c------------------------------------------------------------------
 c
       entry wrrest
 c
+c------------------------------------------------------------------
 c  create archive file name
+c------------------------------------------------------------------
 c
       write (file,'(i10.10)')nint(totday)
       file = 'd'//file(7:10)//'.restart'
@@ -3005,13 +2555,9 @@ c
 c
       write (stdout,24) itt, file, iorest
       write(iorest) itt, totsec, totday, years, kmt
-      if(np.eq.1) write(iorest)  p1, ptd1
-      if(np.eq.2) write(iorest)  p2, ptd2
-      if(np.eq.3) write(iorest)  p3, ptd3
-c
-      if(nc.eq.1) write(iorest)  ptd1
-      if(nc.eq.2) write(iorest)  ptd2
-      if(nc.eq.3) write(iorest)  ptd3
+      if(np0.eq.1) write(iorest)  h01, u01, v01
+      if(np0.eq.2) write(iorest)  h02, u02, v02
+      if(np0.eq.3) write(iorest)  h03, u03, v03
 c
       if(np.eq.1) write(iorest)  t1, u1, v1
       if(np.eq.2) write(iorest)  t2, u2, v2
@@ -3099,3 +2645,24 @@ c
 c
       end
 
+
+
+      subroutine idebug(text,ic,jc,k,m)
+      character text*(*)
+      character*20 out(4),in(3)
+      data in/'invalid','division','overflow'/
+c
+      do 10 i=1,3
+      out(i)=' '
+c      ieeer = ieee_flags('get','exception',in(i),out(i))
+ 10   continue
+c      ieeer = ieee_flags('clear','exception','all',out(4))
+      do 20 i=1,3
+      if(out(i).eq.in(i))then
+        write(stdout,'(1x,6a,4i5)')
+     & 'Routine ',text,'.  exception:',in(i),out(i),
+     &  '  ic,jc,k,m=',ic,jc,k,m
+      endif
+ 20   continue
+      return
+      end

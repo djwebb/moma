@@ -1,7 +1,7 @@
 c====================== include file "levind.h" ========================
 #ifdef hcomments
 c
-c     @(#) SCCS module: levind.h, version 1.4
+c     @(#) SCCS module: levind.h, version 1.5
 c
 c     vertical level indicators which define model geometry & 
 c     bottom topography:

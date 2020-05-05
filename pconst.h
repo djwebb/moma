@@ -1,7 +1,7 @@
 c====================== include file "pconst.h" =========================
 #ifdef hcomments
 c
-c     @(#) SCCS module: pconst.h, version 1.4
+c     @(#) SCCS module: pconst.h, version 1.5
 c
 c     rules for parameter constants
 c
@@ -14,8 +14,8 @@ c       (ie: c5e4 for 5.0e4, c1em10 for 1.0e-10)
 c
 #endif
       parameter (c0=0.0, c1=1.0, c2=2.0, c4=4.0, c5=5.0, c8=8.0)
-      parameter (c16=16.0, c360=360.0)
-      parameter (p25=0.25, p5=0.5, p75=0.75)
+      parameter (c16=16.0, c360=360.0, c100=100.0)
+      parameter (p25=0.25, p5=0.5, p75=0.75, p125=0.125)
       parameter (epsln=1.0e-20)
       parameter (c24=24.0, c60=60.0, c1440=1440.0)
       parameter (r24=c1/c24, r60=c1/c60, r1440=c1/c1440)

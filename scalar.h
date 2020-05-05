@@ -1,28 +1,31 @@
 c====================== include file "scalar.h" ========================
 #ifdef hcomments
 c
-c     @(#) SCCS module: scalar.h, version 1.4
+c     @(#) SCCS module: scalar.h, version 1.5
 c
 c     various scalar quantities:
 c
 c     dtts   = time step for density & tracers (in seconds)
 c     dtuv   = time step for baroclinic velocity (in seconds)
-c     dtsf   = time step for barotropic velocity (in seconds)
+c     dtbt   = time step for barotropic velocity (in seconds)
+c              used by free surface model
 c     c2dtts = 2*dtts
 c     c2dtuv = 2*dtuv
-c     c2dtsf = 2*dtsf
 c     area   = surface area of ocean (cm**2)
 c     volume = volume of ocean (cm**3)
 c     omega  = earth's rotation rate (radians/sec)
 c     radius = earth's radius (cm)
 c     grav   = earth's gravitational acceleration (cm/sec**2)
 c     cdbot  = bottom drag coefficient
+c
 c     ncon   = number of  passes through convective code in tracer
+c     ntbt   = number of free surface timesteps per baroclinic velocity
+c              time steps.
 c
 #endif
-      common /scalar/ dtts, dtuv, dtsf, c2dtts, c2dtuv, c2dtsf
+      common /scalar/ dtts, dtuv, dtbt, c2dtts, c2dtuv 
      &,               area, volume, omega, radius, grav, cdbot
-      common /scalri/ ncon
+      common /scalri/ ncon, ntbt
 #ifdef hcomments
 c
 c     non dimensional quantities:
@@ -32,3 +35,4 @@ c     pi     = something good to eat
 c
 #endif
       common /ndcon/ radian, pi
+

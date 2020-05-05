@@ -1,7 +1,7 @@
 c====================== include file "emode.h" =========================
 #ifdef hcomments
 c
-c     @(#) SCCS module: emode.h, version 1.4
+c     @(#) SCCS module: emode.h, version 1.5
 c
 c     variables for rigid lid calculation of external mode
 c

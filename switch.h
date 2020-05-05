@@ -1,7 +1,7 @@
 c====================== include file "switch.h" =========================
 #ifdef hcomments
 c
-c     @(#) SCCS module: switch.h, version 1.4
+c     @(#) SCCS module: switch.h, version 1.5
 c
 c     all time dependent decisions are made in time manager
 c     "tmngr.F" and communicated elsewhere in the model via 
@@ -41,11 +41,12 @@ c     first   = true if this is the first timestep of a run
 c     eots    = end of a time step. always true except for first
 c               pass of an euler backward time step
 c     mxpas2  = second pass of mixing timestep
+c     frpas1  = first pass of a free surface model timestep
 c
 #endif
-      logical init, restrt, eb, first, last, mixts,
-     &        eots, mxpas2, prntsi, diagts, snapts 
+      logical init, restrt, eb, first, last, mixts, eots,
+     &        mxpas2, frpas1, prntsi, diagts, snapts 
       common /switch/ days, init, nmix, eb, acor, tsi, dgnstc,  
-     &        snaps, restrt, first, last, mixts, eots, mxpas2,
-     &        prntsi, diagts, snapts 
+     &        snaps, restrt, first, last, mixts, eots, mxpas2,  
+     &        frpas1, prntsi, diagts, snapts 
 

@@ -1,28 +1,20 @@
 
  File 'ocean.in'.  Input file for MOMA model. 
- ****    version for MOM-A code
- ****    Two day test run.   
-
+ ****    version for free surface MOM-A code 
+ ****    2 day test run.   
 
 
  &contrl
-     init=.true.,       fnrest=' '
-     days = 2.00,       restrt=.true.,
-     nmix=24,           eb=.true.,      ncon=1,
-     tsi   = 0.08333333,dgnstc= 2.00, snaps = 1.0,
+     init=.true.,        fnrest=' ',
+     days = 2.0,        restrt=.true.,
+     nmix=  12,          eb=.true.,      ncon=1,
+     tsi   = 0.0416666,  dgnstc= 2.00,   snaps =1.0
  &end
  &eddy
       am    = 1.0e9,   ah    = 2.0e7,
-      fkph  = 20.0,    fkpm  = 1.0,    cdbot = 0.001,
+      fkph  = 20.0,    fkpm  = 1.0,    cdbot = 0.001
  &end
  &tsteps
-     dtts=7200.0,      dtuv=7200.0,     dtsf=7200.0,
- &end
- &parms
-     mxscan=100,       sor=1.60,       crit=.1e9,
-     acor=0.6,
- &end
- &iland
-     alonis = 130.0, 130.0,  alatis=-66.0, -22.0,
+     dtts=3600.0,      dtuv=3600.0,    dtbt = 100.0
  &end
 
