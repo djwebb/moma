@@ -213,32 +213,32 @@
    3 15 15 15 15 15 15 15 15 15 15 15 15
    2 15 15 15 15 15 15 15 15 15 15 15  0
    1  0  0  0  0  0  0  0  0  0  0  0  0
- ts=      1 totday =    0.08,years =   0.000, ke= 3.381533E-01 dtemp= 5.096776E-08 dsalt= 6.679898E-13 times=     78.50     79.70
- ts=      2 totday =    0.17,years =   0.000, ke= 3.381544E-01 dtemp= 5.097297E-08 dsalt= 6.679965E-13 times=     52.60    132.30
- ts=      3 totday =    0.25,years =   0.001, ke= 6.988377E-01 dtemp= 6.241356E-08 dsalt= 6.665071E-13 times=     52.60    184.90
- ts=      4 totday =    0.33,years =   0.001, ke= 7.406849E-01 dtemp= 6.146859E-08 dsalt= 6.659050E-13 times=     52.60    237.50
- ts=      5 totday =    0.42,years =   0.001, ke= 6.649090E-01 dtemp= 5.025075E-08 dsalt= 6.643859E-13 times=     52.60    290.10
- ts=      6 totday =    0.50,years =   0.001, ke= 7.372933E-01 dtemp= 5.567106E-08 dsalt= 6.605566E-13 times=     52.60    343.10
- ts=      7 totday =    0.58,years =   0.002, ke= 7.498980E-01 dtemp= 5.802162E-08 dsalt= 6.579165E-13 times=     52.40    396.20
- ts=      8 totday =    0.67,years =   0.002, ke= 7.117733E-01 dtemp= 5.704121E-08 dsalt= 6.564783E-13 times=     52.70    449.40
- ts=      9 totday =    0.75,years =   0.002, ke= 6.908644E-01 dtemp= 5.577652E-08 dsalt= 6.545611E-13 times=     52.90    502.50
- ts=     10 totday =    0.83,years =   0.002, ke= 6.931133E-01 dtemp= 5.577344E-08 dsalt= 6.549382E-13 times=     53.10    555.60
- ts=     11 totday =    0.92,years =   0.003, ke= 6.505226E-01 dtemp= 5.727072E-08 dsalt= 6.559118E-13 times=     53.10    608.70
- ts=     12 totday =    1.00,years =   0.003, ke= 5.661079E-01 dtemp= 5.007132E-08 dsalt= 6.551330E-13 times=     53.10    661.80
+ ts=      1 totday =    0.08,years =   0.000, ke= 3.381533E-01 dtemp= 5.096776E-08 dsalt= 6.679898E-13 times=     79.50     81.10
+ ts=      2 totday =    0.17,years =   0.000, ke= 3.381544E-01 dtemp= 5.097297E-08 dsalt= 6.679965E-13 times=     53.30    134.70
+ ts=      3 totday =    0.25,years =   0.001, ke= 6.988377E-01 dtemp= 6.241356E-08 dsalt= 6.665071E-13 times=     53.60    188.30
+ ts=      4 totday =    0.33,years =   0.001, ke= 7.406849E-01 dtemp= 6.146859E-08 dsalt= 6.659050E-13 times=     53.50    241.80
+ ts=      5 totday =    0.42,years =   0.001, ke= 6.649090E-01 dtemp= 5.025075E-08 dsalt= 6.643859E-13 times=     53.60    295.40
+ ts=      6 totday =    0.50,years =   0.001, ke= 7.372933E-01 dtemp= 5.567106E-08 dsalt= 6.605566E-13 times=     53.60    349.00
+ ts=      7 totday =    0.58,years =   0.002, ke= 7.498980E-01 dtemp= 5.802162E-08 dsalt= 6.579165E-13 times=     53.60    402.60
+ ts=      8 totday =    0.67,years =   0.002, ke= 7.117733E-01 dtemp= 5.704121E-08 dsalt= 6.564783E-13 times=     53.50    456.10
+ ts=      9 totday =    0.75,years =   0.002, ke= 6.908644E-01 dtemp= 5.577652E-08 dsalt= 6.545611E-13 times=     53.50    509.70
+ ts=     10 totday =    0.83,years =   0.002, ke= 6.931133E-01 dtemp= 5.577344E-08 dsalt= 6.549382E-13 times=     53.00    563.30
+ ts=     11 totday =    0.92,years =   0.003, ke= 6.505226E-01 dtemp= 5.727072E-08 dsalt= 6.559118E-13 times=     53.70    617.00
+ ts=     12 totday =    1.00,years =   0.003, ke= 5.661079E-01 dtemp= 5.007132E-08 dsalt= 6.551330E-13 times=     53.60    670.60
   Writing restart file for itt =      12
   filename = d0001.restart                                                                     unit = 21
- ts=     13 totday =    1.08,years =   0.003, ke= 6.154710E-01 dtemp= 5.278106E-08 dsalt= 6.551978E-13 times=     52.70    715.80
- ts=     14 totday =    1.17,years =   0.003, ke= 7.222841E-01 dtemp= 5.569246E-08 dsalt= 6.565750E-13 times=     52.80    768.90
- ts=     15 totday =    1.25,years =   0.003, ke= 7.415112E-01 dtemp= 5.452880E-08 dsalt= 6.574517E-13 times=     53.00    822.00
- ts=     16 totday =    1.33,years =   0.004, ke= 7.318259E-01 dtemp= 5.184051E-08 dsalt= 6.582909E-13 times=     53.10    875.10
- ts=     17 totday =    1.42,years =   0.004, ke= 7.556921E-01 dtemp= 5.401561E-08 dsalt= 6.559217E-13 times=     53.20    928.30
- ts=     18 totday =    1.50,years =   0.004, ke= 7.490138E-01 dtemp= 5.095126E-08 dsalt= 6.480550E-13 times=     53.00    981.30
- ts=     19 totday =    1.58,years =   0.004, ke= 7.601727E-01 dtemp= 5.188137E-08 dsalt= 6.403078E-13 times=     53.10   1034.40
- ts=     20 totday =    1.67,years =   0.005, ke= 7.461802E-01 dtemp= 5.146922E-08 dsalt= 6.406105E-13 times=     53.10   1087.50
- ts=     21 totday =    1.75,years =   0.005, ke= 6.889979E-01 dtemp= 4.981989E-08 dsalt= 6.423278E-13 times=     52.90   1140.50
- ts=     22 totday =    1.83,years =   0.005, ke= 6.824410E-01 dtemp= 5.181104E-08 dsalt= 6.427721E-13 times=     52.60   1193.60
- ts=     23 totday =    1.92,years =   0.005, ke= 7.104779E-01 dtemp= 5.007604E-08 dsalt= 6.442945E-13 times=     52.80   1246.70
- ts=     24 totday =    2.00,years =   0.005, ke= 7.494549E-01 dtemp= 5.182062E-08 dsalt= 6.487119E-13 times=     53.10   1299.80
+ ts=     13 totday =    1.08,years =   0.003, ke= 6.154710E-01 dtemp= 5.278106E-08 dsalt= 6.551978E-13 times=     53.30    725.30
+ ts=     14 totday =    1.17,years =   0.003, ke= 7.222841E-01 dtemp= 5.569246E-08 dsalt= 6.565750E-13 times=     53.00    778.90
+ ts=     15 totday =    1.25,years =   0.003, ke= 7.415112E-01 dtemp= 5.452880E-08 dsalt= 6.574517E-13 times=     53.20    832.70
+ ts=     16 totday =    1.33,years =   0.004, ke= 7.318259E-01 dtemp= 5.184051E-08 dsalt= 6.582909E-13 times=     53.30    886.20
+ ts=     17 totday =    1.42,years =   0.004, ke= 7.556921E-01 dtemp= 5.401561E-08 dsalt= 6.559217E-13 times=     53.60    939.80
+ ts=     18 totday =    1.50,years =   0.004, ke= 7.490138E-01 dtemp= 5.095126E-08 dsalt= 6.480550E-13 times=     53.60    993.40
+ ts=     19 totday =    1.58,years =   0.004, ke= 7.601727E-01 dtemp= 5.188137E-08 dsalt= 6.403078E-13 times=     53.60   1047.00
+ ts=     20 totday =    1.67,years =   0.005, ke= 7.461802E-01 dtemp= 5.146922E-08 dsalt= 6.406105E-13 times=     53.60   1100.60
+ ts=     21 totday =    1.75,years =   0.005, ke= 6.889979E-01 dtemp= 4.981989E-08 dsalt= 6.423278E-13 times=     53.50   1154.20
+ ts=     22 totday =    1.83,years =   0.005, ke= 6.824410E-01 dtemp= 5.181104E-08 dsalt= 6.427721E-13 times=     53.60   1207.90
+ ts=     23 totday =    1.92,years =   0.005, ke= 7.104779E-01 dtemp= 5.007604E-08 dsalt= 6.442945E-13 times=     53.00   1261.40
+ ts=     24 totday =    2.00,years =   0.005, ke= 7.494549E-01 dtemp= 5.182062E-08 dsalt= 6.487119E-13 times=     53.30   1315.10
 
  Zonal section printouts at specified latitudes:
 

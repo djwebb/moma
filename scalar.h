@@ -1,7 +1,7 @@
 c====================== include file "scalar.h" ========================
 #ifdef hcomments
 c
-c     @(#) SCCS module: scalar.h, version 1.6
+c     @(#) SCCS module: scalar.h, version 1.7
 c
 c     various scalar quantities:
 c

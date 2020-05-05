@@ -1,7 +1,7 @@
       program moma
 c
 c==================================================================
-c  Program MOMA,     Version 1.6
+c  Program MOMA,     Version 1.7
 c
 c  Free surface ocean model for use with array processors.
 c
@@ -10,7 +10,7 @@ c                   Institute of Oceanographic Sciences,
 c                   Godalming, Surrey GU8 5UB, U.K..
 c  
 c @(#) SCCS information - module:  moma.F     
-c @(#)                    version: 1.6    date: 02/24/93
+c @(#)                    version: 1.7    date: 02/24/93
 c
 c
 c  This code is a free surface version of the Bryan-Cox-Semtner
@@ -941,7 +941,7 @@ c
 
       endif
 
-      if(loldaw)then
+      if(loldav)then
       fw(k)  = (fue(k)-fuw(k)+fvn(k)-fvs(k))
       else
       fw(k-1)  = (fuw(k)-fue(k)+fvs(k)-fvn(k))
@@ -952,7 +952,7 @@ c end DEBUG ****************************************************
 c
 c  DEBUG !! ****************************************************
 c  old vertical advection
-      if(loldaw)then
+      if(loldav)then
       fw(0) = c0
       do 179 k=1,kmc-1
       fw(k)=fw(k)+fw(k-1)

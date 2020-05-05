@@ -1,7 +1,7 @@
 c====================== include file "cvbc.h" ==========================
 #ifdef hcomments
 c
-c     @(#) SCCS module: cvbc.h, version 1.6
+c     @(#) SCCS module: cvbc.h, version 1.7
 c
 c     vertical boundary condition variables:
 c
