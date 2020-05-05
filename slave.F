@@ -4,8 +4,8 @@
       subroutine slave
 #endif
 c
-c @(#) SCCS module: slave.F  version: 1.4
-c     Creation date: 03/23/95
+c @(#) SCCS module: slave.F  version: 1.5
+c     Creation date: 03/24/95
 c
 c======================================================================
 c
@@ -475,6 +475,17 @@ c
         ggu(j) = am*(c1-tng(j)*tng(j))/(radius*radius)
         hhu(j) = am*c2*sine(j)/(radius*csu(j)*csu(j))
 2670  continue
+#ifdef SYNC_3 || SYNC_2
+c
+c  set flags ready to receive first clear messages
+c
+#endif
+#ifdef SYNC_3
+      call initslvc(1)
+#endif
+#ifdef SYNC_2
+      call initslvc(2)
+#endif  
 c
 c  report to master and wait
 c

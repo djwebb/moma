@@ -1,7 +1,7 @@
       subroutine init_kmt
 c
-c @(#) SCCS module: init_kmt.F  version: 1.4
-c     Creation date: 03/23/95
+c @(#) SCCS module: init_kmt.F  version: 1.5
+c     Creation date: 03/24/95
 c
 c==================================================================
 c

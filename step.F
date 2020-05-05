@@ -1,7 +1,7 @@
       subroutine step 
 c
-c @(#) SCCS module: step.F  version: 1.4
-c     Creation date: 03/23/95
+c @(#) SCCS module: step.F  version: 1.5
+c     Creation date: 03/24/95
 c
 c=======================================================================
 c
@@ -77,7 +77,7 @@ c     do 200 ic=1,it
         call setp (ia(l),ja(l))
  200  continue 
 # ifdef SYNC_3
-      do 200 l = 1,nouter
+      do 210 l = 1,nouter
         call setp(iout(l),jout(l))
  210  continue
 # endif
@@ -201,7 +201,7 @@ c  initialise slave arrays and timestep pointers for 2-D data
 c  then send 2-D ready to receive
 c-----------------------------------------------------------------------
 c
-            call initslv(2)
+            call initslvd(2)
             call s_send(MSG_CLR_BD2)
 #endif
 c
@@ -293,7 +293,7 @@ c  initialise slave arrays and timestep pointers for 2-D data
 c  then send 2-D ready to receive
 c-----------------------------------------------------------------------
 c
-          call initslv(1)
+          call initslvd(1)
           call s_send(MSG_CLR_BD1)
 #endif
 c        

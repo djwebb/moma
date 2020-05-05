@@ -5,8 +5,8 @@
 #endif
 c
 c=======================================================================
-c @(#) SCCS module: master.F  version: 1.4
-c      Creation date: 03/23/95
+c @(#) SCCS module: master.F  version: 1.5
+c      Creation date: 03/24/95
 c=======================================================================
 c
 c  This program and the corresponding master program make up  

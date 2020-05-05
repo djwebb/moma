@@ -1,5 +1,5 @@
 #
-# @(#) SCCS module: makefile.sgi  version: 1.4
+# @(#) SCCS module: makefile.sgi  version: 1.5
 #      Creation date: 03/24/95
 #
 #     Moma.pvm make file for SGI
@@ -39,7 +39,7 @@ HFILES=archive.h cdiag.h chmix.h coord.h                     \
 DOPTNS=	-Dpvm_buffer \
         -Dcyclic_master \
 	-Dde_checkbd \
-        -Dpresetp -Dncsa_hdf
+        -Dpresetp -Dncsa_hdf 
 
 FC =	f77   
 INCLUDE= -I$(PVM_ROOT)/include  -I$(HDF_ROOT)/include/$(PVM_ARCH)
