@@ -1,7 +1,9 @@
+#define newhorizuadv
+#define newvertwbc
       program moma
 c
 c==================================================================
-c  Program MOMA,     Version 1.8
+c  Program MOMA,     Version 1.9
 c
 c  Free surface ocean model for use with array processors.
 c
@@ -10,7 +12,7 @@ c                   Institute of Oceanographic Sciences,
 c                   Godalming, Surrey GU8 5UB, U.K..
 c  
 c @(#) SCCS information - module:  moma.F     
-c @(#)                    version: 1.8    date: 02/24/93
+c @(#)                    version: 1.9    date: 07/30/93
 c
 c
 c  This code is a free surface version of the Bryan-Cox-Semtner
@@ -48,14 +50,14 @@ c        (b) Moma code options.
 c      It should now be straightforward (but possibly time consuming)
 c      to add the features back into the present code if they are 
 c      required:
-c   5. The stream function code is removed and replaced by a free-
+c  5.  The stream function code is removed and replaced by a free-
 c      surface code.  The latter is similar to Killworth, Stainforth
 c      Webb and Patterson (1989).  For efficiency, the mean horizontal
 c      velocity is now used instead of horizontal transport and
 c      the viscous terms are calculated in routine clinic.
-c  2.  In the baroclinic momentum equation, a revised horizontal
+c  6.  In the baroclinic momentum equation, a revised horizontal
 c      advection scheme option is included.
-c  3.  Near topography, in the baroclinic momentum equation, a revised
+c  7.  Near topography, in the baroclinic momentum equation, a revised
 c      vertical advection scheme option is included.
 c
 c  References:
@@ -119,8 +121,8 @@ c
 c     constants usually initialised in block data
 c
       model(1) =' Stripped down MOM code for array processor.'
-      model(2) ='  Module: moma.F.  Version: 1.5.'//
-     &          '  Date: 2/15/93.'
+      model(2) =' Module: moma.F.  Version: 1.9. '//
+     &          ' Date: 07/30/93'
       stlon = -4.0
       stlat = -72.0
       dxdeg = 4.0
@@ -616,7 +618,7 @@ c
 c
 c==================================================================
 c
-c     clinic computes internal mode velocities at time level n+1
+c     clinic computes internal mode velocities at time level t+1
 c     for a vertical column of k cells with i and j values equal to
 c     ic and jc.
 c
@@ -678,7 +680,7 @@ c
      &         (u(k,im,jp,nc)+2.0*u(k,im,jc,nc)+u(k,im,jm,nc)))
 #else
 c
-c  origional horizontall advection scheme
+c  original horizontall advection scheme
 c
       fvn(k) = (v(k,ic,jc,nc)+v(k,ic,jp,nc))*p5*dx*cst(jp)*dz(k)
       fvs(k) = (v(k,ic,jc,nc)+v(k,ic,jm,nc))*p5*dx*cst(jc)*dz(k)
@@ -1098,12 +1100,13 @@ c
 c     note.. for precision purposes, there is a depth dependent
 c     constant subtracted from the density returned by this
 c     routine.
-c     so... this routine should be used only for horizontal 
-c     gradients of density.
+c     so.. this routine should be used only for calculating  
+c     horizontal gradients of density or vertical stability
+c     with adjacent levels referred to the same reference level.
 c
 c     inputs:
 c
-c     t = the input column of temperatures
+c     t = the input column of temperatures (degrees C)
 c     s = the input column of salinities (units: (ppt-35)/1000)
 c     ind = 0 for normal density calculations
 c         = 1 for comparing levels 1 to 2, 3 to 4, etc.
@@ -1112,13 +1115,19 @@ c           (if ind = 1 or 2, the coefficients for the lower
 c            of the 2 levels are used)
 c     kk = bottom level to be calculated
 c
-c     note: salinities are converted to (s-35.0)/1000 for
-c     use with constants given in "dncoef.h".  The latter are
-c     assumed to use the normal GFDL model salinity units.
+c     note: model salinities are equal to (S-35.0)/1000.0 where
+c     S is the standard oceanographic salinity.  This convention,
+c     which dates from the early Bryan and Cox model, increases 
+c     the precision by about 5 binary bits.  This can be 
+c     significant in density gradient calculations on 32-bit
+c     computers.  The convention is also the one used by the
+c     mom/gfdl program used to generate the include file  
+c     'dncoef.h'.
 c
 c     output:
 c
-c     rho = density with depth dependent offset
+c     rho = density with depth level dependent offset 
+c           (units: g/cc minus constant)
 c
 c=============================================================
 c
@@ -1172,7 +1181,6 @@ c
         do 400 k=1,kk
         tq=t(k)-to(k)
         sq=s(k)-so(k)
-c       sq=(s(k)-35.0)/1000.0-so(k)
         rho(k) = (c(k,1) + (c(k,4) + c(k,7)*sq)*sq +
      &           (c(k,3) + c(k,8)*sq + c(k,6)*tq)*tq)*tq +
      &           (c(k,2) + (c(k,5) + c(k,9)*sq)*sq)*sq
@@ -1187,7 +1195,6 @@ c
         k=k1+k2
         tq=t(k)-to1(k)
         sq=s(k)-so1(k)
-c       sq=(s(k)-35.0)/1000.0-so1(k)
         rho(k) = (co1(k,1) + (co1(k,4)    + co1(k,7)*sq)*sq
      &         + (co1(k,3) +  co1(k,8)*sq + co1(k,6)*tq)*tq)*tq
      &         + (co1(k,2) + (co1(k,5)    + co1(k,9)*sq)*sq)*sq
@@ -1201,7 +1208,6 @@ c
         k=k1+k2
         tq=t(k)-to2(k)
         sq=s(k)-so2(k)
-c       sq=(s(k)-35.0)/1000.0-so2(k)
         rho(k) = (co2(k,1) + (co2(k,4)    + co2(k,7)*sq)*sq
      &         + (co2(k,3) +  co2(k,8)*sq + co2(k,6)*tq)*tq)*tq
      &         + (co2(k,2) + (co2(k,5)    + co2(k,9)*sq)*sq)*sq
@@ -1390,6 +1396,12 @@ c     (1982).
 c     "observed" windstress data are based on global, annual mean,
 c     zonally averaged values from Hellerman and Rosenstein (1981).
 c     some smoothing was done.
+c
+c     units:  temperature - degrees Centigrade
+c             salinity    - standard oceanographic salinity units
+c             wind stress - dynes per sq cm
+c     The salinity is transformed into model units in routine
+c     'setvbc'.
 c
 c     references:
 c       Hellerman, S, and M. Rosenstein, normal monthly wind stress
@@ -2130,7 +2142,7 @@ c     days   = day at which to end run.
 c
 c     outputs:
 c
-c     itt    = itt + 1
+c     itt    = itt (on input)  + 1
 c     totday = total number of days elapsed 
 c              (0.5 = noon on first day).
 c     years is number of years elapsed (365.5 days = 1 year)
