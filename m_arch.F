@@ -1,7 +1,7 @@
       subroutine archrd(ncntl)
 c
-c @(#) SCCS module: m_arch.F  version: 1.7
-c     Creation date: 06/30/95
+c @(#) SCCS module: m_arch.F  version: 1.8
+c     Creation date: 08/24/95
 c
 c=======================================================================
 c subroutine to read restart data and send to slaves
@@ -27,7 +27,8 @@ c
       subroutine archrd_ufm(ncntl)
 c
 c=======================================================================
-c  subroutine to read an unformatted file c=======================================================================
+c  subroutine to read an unformatted file
+c=======================================================================
 c
 #include "def_master.h"
 #include "param.h"
@@ -392,7 +393,7 @@ c------------------------------------------------------------------
 c at end close file 
 c------------------------------------------------------------------
 c
-        if(jarchu.ge.JMT_M)then
+        if(idvar.eq.NARCHV.and.jarchu.ge.JMT_M)then
           close(unit=iorest)
         endif 
       endif

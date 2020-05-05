@@ -1,7 +1,7 @@
       subroutine init_kmt
 c
-c @(#) SCCS module: init_kmt.F  version: 1.7
-c     Creation date: 06/30/95
+c @(#) SCCS module: init_kmt.F  version: 1.8
+c     Creation date: 08/23/95
 c
 c==================================================================
 c
@@ -112,7 +112,7 @@ c------------------------------------------------------------------
 c
       llog1 = .false.
       llog2 = .false.
-      do 450 i=1,imt
+      do 450 i=1,IMT_M
         if(kmt(i,1).ne.0.or.kmt(i,JMT_M).ne.0)llog1=.true.
  450  continue
       if(llog1)then

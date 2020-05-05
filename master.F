@@ -5,8 +5,8 @@
 #endif
 c
 c=======================================================================
-c @(#) SCCS module: master.F  version: 1.7
-c      Creation date: 06/30/95
+c @(#) SCCS module: master.F  version: 1.8
+c      Creation date: 08/24/95
 c=======================================================================
 c
 c  This program and the corresponding master program make up  
@@ -69,6 +69,7 @@ c
 #include "versno.h"
 c
       integer time
+      logical log1
       character*12 nodename
       character*8 archit
 c
@@ -99,7 +100,7 @@ c
 c
       model(1) =' Stripped down MOM code for array processor.'
       model(2) =' Module: master.F.  Version: 1 '//
-     &          ' Date: 06/30/95'
+     &          ' Date: 08/24/95'
 #ifdef no_namelist
       open (stdin,file='ocean.in2')
 #else
@@ -289,7 +290,7 @@ c-----------------------------------------------------------------------
 c    start up slave processes
 c-----------------------------------------------------------------------
 c
-      write(stdout,*) ' Starting ocean model on ',nproc,' processors'
+      write(stdout,101)nproc
       call getmyid( mytid )
 c
 c-----------------------------------------------------------------------
@@ -306,17 +307,28 @@ c
       nodename = 'slave'
 #endif
       archit = '*'
-      write(stdout,*)' Starting program: ',nodename
-      write(stdout,*)'  on architecture: ',archit
+      write(stdout,102)nodename,archit
 #ifndef cray-t3d
-#ifdef DEBUG
+# ifdef DEBUG
       call spawn( nodename, PVMDEBUG  , archit, nproc, itida, info )
-#else
+# else
       call spawn( nodename, PVMDEFAULT, archit, nproc, itida, info )
-#endif
+# endif
+      log1 = info.lt.0
+      write(stdout,103)info
       do 100 i=1, nproc
-         write(stdout,*) ' tid',i,itida(i),' info: ',info
+         write(stdout,104) i,itida(i)
+         log1 = log1.or.itida(i).lt.0
  100  continue
+      if(log1)write(stdout,105)
+      write(stdout,106)
+ 101  format(' Starting ocean model on ',i4,' processors')
+ 102  format(' Starting program: ',a,/,'  on architecture: ',a,/)
+ 103  format(' Number of PVM slave tasks reported started = ',i5)
+ 104  format(' Slave: ',i4,',   PVM task identifier = ',i8) 
+ 105  format(' (negative numbers indicate an error ',
+     &       '- see the PVM manual)')
+ 106  format(' ')
 #endif
 c
 c-----------------------------------------------------------------------
@@ -353,6 +365,13 @@ c
       call m_send(MSG_TOPOG)
 c
 c-----------------------------------------------------------------------
+c initialise prininfo
+c-----------------------------------------------------------------------
+c
+      call prininfo(1)
+      call prininfo(3)
+c
+c-----------------------------------------------------------------------
 c  broadcast the meteorological grid information
 c-----------------------------------------------------------------------
 c
@@ -383,8 +402,9 @@ c-----------------------------------------------------------------------
 c  checkpoint - wait for all slaves to check in and then start.
 c-----------------------------------------------------------------------
 c
-      call mchkpnt(10)
       call prininfo(1)
+      call prininfo(3)
+      call mchkpnt(10)
 c
 c-----------------------------------------------------------------------
 c  enter timestepping loop
@@ -437,8 +457,8 @@ c  loop processing messages until safe to proceed
 c  print information arrays every few seconds while waiting
 c-----------------------------------------------------------------------
 c
-      call m_recv(MSG_ANY)
       call prininfo(3)
+      call m_recv(MSG_ANY)
 c +->
 c |
   25  if((prntsn .and. ltsip) .or. (snaptn .and. lsnapp)
@@ -450,7 +470,7 @@ c |
         call sleep(1)
 #endif
         call m_recv(MSG_ANY)
-        call prininfo(4)
+        call prininfo(2)
 c |
 c-|----------------------------------------------------------------
 c | if an archive is in progress and if previous, partial archive request 
@@ -464,7 +484,7 @@ c | if a snapshot is in progress and if previous snapshot request
 c | has been fulfilled, then send off the next part:
 c-|----------------------------------------------------------------
 c |
-      if(lsnapp.and..not.lsnapq)  call snapreq
+        if(lsnapp.and..not.lsnapq)  call snapreq
 c |
         goto 25
       endif      

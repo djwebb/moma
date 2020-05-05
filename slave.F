@@ -4,8 +4,8 @@
       subroutine slave
 #endif
 c
-c @(#) SCCS module: slave.F  version: 1.7
-c     Creation date: 06/30/95
+c @(#) SCCS module: slave.F  version: 1.8
+c     Creation date: 08/23/95
 c
 c======================================================================
 c
@@ -517,72 +517,72 @@ c
         first= loop .eq. 1
         call tmngr (dtts)
         call step 
-c
-c-----------------------------------------------------------------------
-c      call routine to check requests from master, then send 
-c      time step information, snapshots and archive data 
-c      as required.  Loop until safe to continue
-c-----------------------------------------------------------------------
-c
         call sendposn(35)
- 25   continue
-      call s_recv(MSG_ANY)
-      call flush(ioslave)
-      if(prntsn .and. ltsip)then
-        call sleep(1)
-        goto 25
-      endif
-      if(archtn .and. larchp)then
 c
-c Pause to allow master request to come in
+c-----------------------------------------------------------------------
+c      print tsi information
+c      save snapshot and archive data as required
+c      then check requests from master until safe to continue
+c-----------------------------------------------------------------------
 c
-#ifndef cray-t3d
-       if(.not.larchq) call sleep(1)
-#endif
-       goto 25
-      endif
-      if(snaptn .and. lsnapp)then
-c
-c Pause to allow master request to come in
-c
-#ifndef cray-t3d
-       if(.not.lsnapq) call sleep(1)
-#endif
-       goto 25 
-      endif
-c
-      if (prntsi)then
+        if (prntsi)then
 #ifdef cray-t3d
-        utime(3) =rtc()*6.6e-9-time_start
-        write (ioslave,9602) itt, stamp, ektot/volume,
-     &        dtabs(1)/volume, dtabs(2)/volume,utime(3)
+          utime(3) =rtc()*6.6e-9-time_start
+          write (ioslave,9602) itt, stamp, ektot/volume,
+     &          dtabs(1)/volume, dtabs(2)/volume,utime(3)
 #else
 c
 c  get total elapsed time and user time since last call
 c
-        utime(3) = etime(utime)
-        tempzz   = dtime(utime)
-        write (ioslave,9602) itt, stamp, ektot/volume,
-     &        dtabs(1)/volume, dtabs(2)/volume,tempzz,utime(3)
+          utime(3) = etime(utime)
+          tempzz   = dtime(utime)
+          write (ioslave,9602) itt, stamp, ektot/volume,
+     &          dtabs(1)/volume, dtabs(2)/volume,tempzz,utime(3)
 #endif
-        call flush(ioslave)
-      endif
+          call flush(ioslave)
+        endif
 c
-      if (diagts) call pdiag
-      if (archts) then
-        call wrrest
-        larchp = .true.
-      endif
-      if (snapts) then
-        call snap
-        lsnapp = .true.
-      endif
+        if (diagts) call pdiag
+        if (archts) then
+          call wrrest
+          larchp = .true.
+        endif
+        if (snapts) then
+          call snap
+          lsnapp = .true.
+        endif
+c
+ 25     continue
+        call s_recv(MSG_ANY)
+        call flush(ioslave)
+        if(prntsn .and. ltsiw)then
+#ifndef cray-t3d
+          call sleep(1)
+#endif
+          goto 25
+        endif
+        if(archtn .and. larchp)then
+#ifndef cray-t3d
+          if(.not.larchq) call sleep(1)
+#endif
+          goto 25
+        endif
+        if(snaptn .and. lsnapp)then
+c
+c Pause to allow master request to come in
+c
+#ifndef cray-t3d
+          if(.not.lsnapq) call sleep(1)
+#endif
+          goto 25 
+        endif
+c
 c
 c------------------------------------------------------------------
 c       end timestepping loop
 c------------------------------------------------------------------
 c
-      if (last) go to 3401
+        if (last) go to 3401
 3400  continue
 3401  continue
 c

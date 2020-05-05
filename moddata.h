@@ -1,8 +1,8 @@
 c====================== include file "moddata.h" =======================
 #ifdef hcomments
 c
-c @(#) SCCS module: moddata.h  version: 1.7
-c     Creation date: 06/30/95
+c @(#) SCCS module: moddata.h  version: 1.8
+c     Creation date: 08/23/95
 c
 c-----------------------------------------------------------------------
 c This module contains various data statements for inline inclusion

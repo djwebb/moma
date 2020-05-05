@@ -1,8 +1,8 @@
 #ifdef ncsa_hdf
       subroutine archrd_hdf(ncntl)
 c
-c @(#) SCCS module: hdf.F  version: 1.7
-c     Creation date: 06/30/95
+c @(#) SCCS module: hdf.F  version: 1.8
+c     Creation date: 08/23/95
 c
 c=======================================================================
 c  subroutine to read hdf version of the restart file
@@ -26,8 +26,9 @@ c
 c  local variables
 c
       logical   around
-      integer*4 file_id,sds_id,ret,
+      integer*4 file_id,sds_id,index,ret,
      &          start(MAXDIMS),stride(MAXDIMS),edge(MAXDIMS)
+      save file_id
 c
 c=======================================================================
 c  open archive file when ncntl zero (entry from routine init_kmt).
@@ -200,9 +201,11 @@ c
 
       subroutine archwr_hdf
 c
-c=======================================================================c  subroutine to save hdf version of the restart file
+c=======================================================================
+c  subroutine to save hdf version of the restart file
 c  The generated file name starts with 'd' and ends with '.hdf'.
-c=======================================================================c
+c=======================================================================
+c
 #include "def_master.h"
 #include "param.h"
 #include "archive.h"
@@ -222,10 +225,11 @@ c
 c
 c  local variables
 c
-      logical   around
+      logical around
       integer*4 write_id,sdsid,dimid1,dimid2,dimid3,ret,ret2,
      &          srcdims(MAXDIMS),stride(MAXDIMS),edge(MAXDIMS),
      &          irank
+      save write_id,sdsid
 c
 c  initialise the hdf common blocks
 c
@@ -263,8 +267,10 @@ c     &  'v-velocity               ', 'cm/s        ', .false. /
      &  'U VELOCITY',                   'U_GRID'        ,
      &  'V VELOCITY',                   'U_GRID'        /
 c
-c=======================================================================c open file and write fixed data
-c=======================================================================c
+c=======================================================================
+c open file and write fixed data
+c=======================================================================
+c
       if(idvar.eq.0)then
 c
         write(hdffile, '(i10.10)') nint(totday)
@@ -409,7 +415,8 @@ c
 c
 c=======================================================================
 c write two dimensional datasets to file
-c=======================================================================c
+c=======================================================================
+c
       elseif(idvar.le.NUM2D)then
         irank = 2
 c
@@ -473,7 +480,7 @@ c
 c
 c=======================================================================
 c archive the 3-D datasets
-c=======================================================================c
+c=======================================================================
 c
       if(idvar.gt.NARCHV)then
         write(stdout,*)' archwr_hdf: routine called with idvar .gt.',
@@ -593,11 +600,13 @@ c
 
       subroutine snap_hdf
 c
-c=======================================================================c  This routine produces hdf snapshots.  The present version of the
+c=======================================================================
+c  This routine produces hdf snapshots.  The present version of the
 c  routine saves the fields h0, u0, v0.
 c  The generated file name starts with 's' and ends with '.hdf'.
 c  At present only supports 2-D data
-c=======================================================================c
+c=======================================================================
+c
 #include "def_master.h"
 #include "param.h"
 #include "coord.h"
@@ -620,9 +629,12 @@ c
       logical   around
       integer*4 write_id,sdsid,dimid1,dimid2,ret,ret2,
      &          srcdims(MAXDIMS),stride(MAXDIMS),irank
+      save write_id,sdsid
 c
-c=======================================================================c open file and write fixed data
-c=======================================================================c
+c=======================================================================
+c open file and write fixed data
+c=======================================================================
+c
       if(idsnp.eq.0)then
 c
 c  zero dataset
@@ -641,7 +653,7 @@ c
           return
         endif
         write (stdout,24) itt, hdffile
-  24  format('  Writing hdf file for itt = ',i7,/,
+  24  format('  Writing hdf snapshot file for itt = ',i7,/,
      &       '  hdf filename = ',a) 
 c
 c write the dataset containing 'itt'

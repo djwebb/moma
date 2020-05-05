@@ -1,7 +1,7 @@
       function tmnset (days, totday, dt)
 c
-c @(#) SCCS module: tmnset.F  version: 1.7
-c     Creation date: 06/30/95
+c @(#) SCCS module: tmnset.F  version: 1.8
+c     Creation date: 08/23/95
 c
 c==================================================================
 c     tmnset = true if current time is within 1/2 time step of

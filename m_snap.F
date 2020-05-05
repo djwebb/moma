@@ -1,7 +1,7 @@
       subroutine snapreq
 c
-c @(#) SCCS module: m_snap.F  version: 1.7
-c     Creation date: 06/30/95
+c @(#) SCCS module: m_snap.F  version: 1.8
+c     Creation date: 08/23/95
 c
 c==================================================================
 c subroutine to prepare for the next snapshot request
@@ -92,8 +92,8 @@ c
 
       subroutine snapwr
 c
-c @(#) SCCS module: m_snap.F  version: 1.7
-c     Creation date: 06/30/95
+c @(#) SCCS module: m_snap.F  version: 1.8
+c     Creation date: 08/23/95
 c
 c------------------------------------------------------------------
 c  subroutine to write out the next snapshot field
@@ -234,7 +234,7 @@ c
       write(op,5107) (to(i),i=1,3)
       write(op,5108) (nop(i),i=1,3)
       write(op,5110) rintlv
-      write(op,5111) ttsec ,dtts
+      write(op,5111) totsec ,dtts
  5100 format('VARIABLE :',a15,2x,a9,t41,'FORMAT   :',a2)
  5101 format('VARIABLE :',a15,t41,'FORMAT   :',a2)
  5102 format('MODEL : ',a2,'      COMMENTS:',a55)

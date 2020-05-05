@@ -1,8 +1,8 @@
 c====================== include file "chmix.h" =========================
 #ifdef hcomments
 c
-c @(#) SCCS module: chmix.h  version: 1.7
-c     Creation date: 06/30/95
+c @(#) SCCS module: chmix.h  version: 1.8
+c     Creation date: 08/23/95
 c
 c-----------------------------------------------------------------------
 c     am  = lateral eddy viscosity (cm**2/sec)

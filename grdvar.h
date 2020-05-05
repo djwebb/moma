@@ -1,8 +1,8 @@
 c====================== include file "grdvar.h" ========================
 #ifdef hcomments
 c
-c @(#) SCCS module: grdvar.h  version: 1.7
-c     Creation date: 06/30/95
+c @(#) SCCS module: grdvar.h  version: 1.8
+c     Creation date: 08/23/95
 c
 c-----------------------------------------------------------------------
 c  This version assumes all dx and dy boxes are of equal size when

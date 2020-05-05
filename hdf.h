@@ -1,8 +1,8 @@
 c===================== include file "hdf.h" =========================
 #ifdef hcomments 
 c
-c @(#) SCCS module: hdf.h  version: 1.7
-c     Creation date: 06/30/95
+c @(#) SCCS module: hdf.h  version: 1.8
+c     Creation date: 08/23/95
 c
 c-----------------------------------------------------------------------
 c    Include file for hdf routines
@@ -85,10 +85,10 @@ c
      &   lonlabel(2),latlabel(2)
       common /hdf3/ rank3,dims3(MAXDIMS),labels3(MAXDIMS),
      &   units3(MAXDIMS),fmats3(MAXDIMS) 
+c
       integer*4 itdims,itsize
       character hdffile*40,cfext*10,varid*25,varcordsys*12
       character*MAXLABLEN tlabel
-      common /hdfl/ around
       common /hdfi/ itdims(MAXDIMS),itsize
       common /hdfa/ hdffile,cfext(2),tlabel(MAXDIMS)
      &                ,varid(NARCHV),varcordsys(NARCHV)

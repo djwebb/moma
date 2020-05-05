@@ -1,7 +1,7 @@
      	program masterslave
 c
-c @(#) SCCS module: masterslave.F  version: 1.7
-c     Creation date: 06/30/95
+c @(#) SCCS module: masterslave.F  version: 1.8
+c     Creation date: 08/23/95
 c
 c==================================================================
 c     top level routine for running moma.pvm on a multiprocessor

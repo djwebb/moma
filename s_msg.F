@@ -1,7 +1,7 @@
       subroutine initmess
 c
-c @(#) SCCS module: s_msg.F  version: 1.7
-c     Creation date: 06/30/95
+c @(#) SCCS module: s_msg.F  version: 1.8
+c     Creation date: 08/23/95
 c
 c=======================================================================
 c  slave subroutine to initialise message passsing logic
@@ -164,6 +164,7 @@ c
 #include "param.h"
 #include "mesdta.h"
 #include "switch.h"
+#include "iounit.h"
 c
 c Note: pvmfinitsend will clear the buffer of any partially packed 
 c messages.
@@ -264,8 +265,6 @@ c
        call pvmfpack( REAL_PVM,  dtabs(1), 2, 1, info )
        call pvmfpack( REAL_PVM,  dtabs(1), 2, 1, info )
        call pvmfsend( mtid, msgtype, info )
-c unset tsi flag (in case next master request arrives early)
-       prntsn = .false.
        if(idebug.gt.3)then
          write(ioslave,*)' Slave - message MSG_RY_TSI sent'
        endif
@@ -1259,7 +1258,7 @@ c
         lbuff = nint(bufout(1))
         if(lbuff.gt.LENBUF)then
           write(ioslave,*) ' error in s_when receiving MSG_BOUND2'
-          write(iosalve,*) ' buffer overflow'
+          write(ioslave,*) ' buffer overflow'
           call msgbye
         endif
         call pvmfunpack (REAL_PVM, bufout(2), lbuff-1, 1, info)

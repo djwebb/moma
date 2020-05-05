@@ -1,13 +1,13 @@
 ****
-****  @(#) SCCS module: ocean.in2  version: 1.7 Creation date: 06/30/95
+****  @(#) SCCS module: ocean.in2  version: 1.8 Creation date: 08/23/95
 ****
-****   3 day test run.
+****   5 day test run.
 ****
 INIT      FNREST
 .true.    'd0002.hdf'
 **
 DAYS      RESTRT   
-3.0       .false.  
+3.0       .true.  
 **
 NMIX      EB         NCON       ACOR
 24        .true.     1          0.6

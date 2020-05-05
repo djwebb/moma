@@ -1,8 +1,8 @@
       subroutine m_initmess
 c
 c=======================================================================
-c @(#) SCCS module: m_msg.F  version: 1.7
-c     Creation date: 06/30/95
+c @(#) SCCS module: m_msg.F  version: 1.8
+c     Creation date: 08/23/95
 c=======================================================================
 c
 c
@@ -64,7 +64,6 @@ c
 c  set position
 c
       iposn = iposn0
-      call prininfo(3)
 c
 c  receive and process all waiting messages
 c
@@ -73,7 +72,6 @@ c
 c  check position and timestep correct for all processors
 c
       do 20 i=1,nproc
-c         print *,' mchkpnt :',i,infoa(1,i),infoa(2,i),infoa(3,i)
         if(infoa(1,i).ne.iposn .or. infoa(2,i).ne.itt)goto 40
   20  continue
 c
@@ -248,42 +246,68 @@ c
 c
 c=======================================================================
 c  subroutine to print position information
-c  if  iopt = 1 - reset main loop time flag
-c           = 2 - main loop, print every statms sec
-c           = 3 - reset waiting loop time flag
-c           = 4 - waiting loop, print every statis sec
+c  if  iopt = 1 - reset main loop time flag (print after waiting statms s)
+c           = 2 - check flags and if necessary print
+c           = 3 - reset waiting loop time flag (print after waiting statis
+c                 seconds with no messages arriving)
+c           = 4 - as 2 but master at checkpoint
 c=======================================================================
 c
 #include "param.h"
 #include "mesdta.h"
 #include "switch.h"
 c
-      data tmain,twait /0.0,0.0/
+      integer tnow, time, tmain, twait, twaiti
+      data tmain,twait /0,0/
+      save tmain,twait,twaiti
+c
+c  find the current time
 c
 #ifdef cray-t3d
       tnow = rtc()*6.6e-9-time_start
 #else
       tnow = time()-intime
 #endif
+c
+c  entry points to reset clocks
+c
       if(iopt.eq.1)then
-        tmain = tnow
+        if(statms.gt.0.0)then
+          tmain = (int(tnow/statms)+1)*statms
+          tmain = max(tmain,tnow+1)
+        else
+          tmain = 0
+        endif
         return
       elseif(iopt.eq.3)then
         twait = tnow
+        if(statis.gt.0.0)then
+          twaiti = max(1,int(statis))
+        else
+          twaiti= 0
+        endif
         return
       endif
-c  
-      if((iopt.eq.2.and.statms.gt.0.0.and.tnow-tmain.gt.statms).or.
-     &   (iopt.eq.4.and.statis.gt.0.0.and.tnow-twait.gt.statis))then
+c
+c  if the main loop status message is due or if no messages
+c  have been received from the slaves for some time then
+c  print the status arrays
+c 
+      if((statms.gt.0.0.and.tnow.gt.tmain).or.
+     &   (twaiti.gt.0.and.tnow.ge.twait+twaiti))then
+        now = mod(tnow,100000)
         if(iopt.eq.2)then
-          now = mod(tnow,100000.0)
-          tmain = tnow
-          print 31, now
+          write(stdout,31) now
         else
-          now = mod(tnow,100000.0)
-          tmain = tnow
-          twait = tnow
-          print 32, now
+          write(stdout,32) now
+        endif
+        if(statms.gt.0.0.and.tnow.gt.tmain)then
+          tmain = (int(tnow/statms)+1)*statms
+          tmain = max(tmain,tnow+1)
+        endif
+        if(twaiti.gt.0.and.tnow.ge.twait+twaiti)then
+          write(stdout,36)tnow-twait
+          twaiti = twaiti+twaiti
         endif
         print 33
         do 40 i=1,nproc
@@ -293,19 +317,22 @@ c
         else
           mposmg = 0
         endif
-        print 34, i, infoa(1,i), infoa(2,i), infoa(3,i), messtr(mposmg)
+        write(stdout,34)i,infoa(1,i),infoa(2,i),infoa(3,i),
+     &                  messtr(mposmg)
   40    continue
-        print 35
-        call flush(stderr)
+        write(stdout,35)
+        call flush(stdout)
       endif
   31  format(' ',/,' Status arrays at time =', i6,' s.',
      &             '  Master in main loop')
   32  format(' ',/,' Status arrays at time =', i6,' s.'
-     &             '  Master waiting for slaves')
+     &             '  Master waiting at checkpoint')
   33  format(' slave,  posn,  slave itt,  slave itbt,',
      &       '  Last reported: ')
   34  format(i5,i8,i10,i12,7x,a30)
   35  format(' ',/)
+  36  format(' NOTE: Master has not received any messages from the',
+     &       ' slaves for ',i5,' s.')
       return
       end
 
@@ -738,6 +765,10 @@ c
         call pvmfnrecv (-1, MSG_ANY, ibuff)
         if(ibuff.eq.0)return
       endif
+c
+c  message received - reset waiting flag
+c
+      call prininfo(3)
 c
 c=======================================================================
 c  get information about the buffer
