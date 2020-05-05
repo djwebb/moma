@@ -1,7 +1,7 @@
 c====================== include file "cvmix.h" =========================
 #ifdef hcomments
 c
-c     @(#) SCCS module: cvmix.h, version 1.9
+c     @(#) SCCS module: cvmix.h, version 1.10
 c
 c     variables used for vertical diffusion
 c

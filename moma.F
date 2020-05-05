@@ -1,9 +1,7 @@
-#define newhorizuadv
-#define newvertwbc
       program moma
 c
 c==================================================================
-c  Program MOMA,     Version 1.9
+c  Program MOMA,     Version 1.10
 c
 c  Free surface ocean model for use with array processors.
 c
@@ -12,17 +10,18 @@ c                   Institute of Oceanographic Sciences,
 c                   Godalming, Surrey GU8 5UB, U.K..
 c  
 c @(#) SCCS information - module:  moma.F     
-c @(#)                    version: 1.9    date: 07/30/93
+c @(#)                    version: 1.10    date: 08/05/93
 c
 c
 c  This code is a free surface version of the Bryan-Cox-Semtner
 c  code reorganised for efficient running on array processor
 c  computers.  The basic finite difference scheme used in the
 c  model is described in Bryan (1969), Semtner (1974) and
-c  Cox (1984).  The present model follows most closely
-c  the format of the GFDL Modular Ocean Model (ref)
-c  and makes use of many of the subroutines and include
-c  files of that model.
+c  Cox (1984).  The present code follows most closely
+c  the format of the GFDL Modular Ocean Model (Pacanowski et al,
+c  1990), and makes use of many of the subroutines and include
+c  files of that model.  More detailed information about the 
+c  present code is given in Webb (1993).
 c
 c  The code may be freely adapted and used without charge.
 c
@@ -82,7 +81,10 @@ c  Pacanowski, R.C., Dixon, K., Rosati, A., 1990:  The GFDL Modular
 c  Ocean Model 1.0.  Geophysical Fluid Dynamics Laboratory/NOAA, 
 c  Princeton University, Princeton N.J., U.S.A.
 c  (Unpublished manuscript).
-c  
+c
+c  Webb, D.J., 1993:  An ocean model code for array processor
+c  computers.  Institute of Oceanographic Sciences, Deacon
+c  Laboratoy, Internal Document No.###.
 c
 c==================================================================
 c
@@ -121,8 +123,8 @@ c
 c     constants usually initialised in block data
 c
       model(1) =' Stripped down MOM code for array processor.'
-      model(2) =' Module: moma.F.  Version: 1.9. '//
-     &          ' Date: 07/30/93'
+      model(2) =' Module: moma.F.  Version: 1.10. '//
+     &          ' Date: 08/05/93'
       stlon = -4.0
       stlat = -72.0
       dxdeg = 4.0
@@ -461,6 +463,19 @@ c       return here for second pass of euler backward timestep
 c------------------------------------------------------------------
 c
  100  continue
+#ifdef precalcden
+c
+c-----------------------------------------------------------------
+c  
+c     precalculate the density field for use by subroutine clinic
+c
+c-----------------------------------------------------------------
+c  
+      do 150 jc=1,jmt
+      do 150 ic=1,imt
+        call setden (ic,jc)
+ 150  continue 
+#endif
 c
 c-----------------------------------------------------------------
 c      main baroclinic timestep loop over grid cells, from south 
@@ -661,7 +676,15 @@ c
       dxp5 = p5*dx
       dyp5 = p5*dy
       do 100 k=1,kmd
-#ifdef newhorizuadv
+#ifdef oldhorizuadv
+c
+c  original horizontall advection scheme
+c
+      fvn(k) = (v(k,ic,jc,nc)+v(k,ic,jp,nc))*p5*dx*cst(jp)*dz(k)
+      fvs(k) = (v(k,ic,jc,nc)+v(k,ic,jm,nc))*p5*dx*cst(jc)*dz(k)
+      fue(k) = (u(k,ic,jc,nc)+u(k,ip,jc,nc))*p5*dy*dz(k)
+      fuw(k) = (u(k,ic,jc,nc)+u(k,im,jc,nc))*p5*dy*dz(k)
+#else
 c
 c  new horizontal advection scheme
 c
@@ -678,38 +701,20 @@ c
      &         (u(k,ip,jp,nc)+2.0*u(k,ip,jc,nc)+u(k,ip,jm,nc)))
       fuw(k) = dz(k)*dy*p125*( fuic +
      &         (u(k,im,jp,nc)+2.0*u(k,im,jc,nc)+u(k,im,jm,nc)))
-#else
-c
-c  original horizontall advection scheme
-c
-      fvn(k) = (v(k,ic,jc,nc)+v(k,ic,jp,nc))*p5*dx*cst(jp)*dz(k)
-      fvs(k) = (v(k,ic,jc,nc)+v(k,ic,jm,nc))*p5*dx*cst(jc)*dz(k)
-      fue(k) = (u(k,ic,jc,nc)+u(k,ip,jc,nc))*p5*dy*dz(k)
-      fuw(k) = (u(k,ic,jc,nc)+u(k,im,jc,nc))*p5*dy*dz(k)
 #endif
-#ifdef newvertwbc
-c
-c  new vertical boundary conditions on w at u points
-c
-      fw(k-1)  = (fuw(k)-fue(k)+fvs(k)-fvn(k))
-#else
+#ifdef oldvertwbc
 c
 c  original vertical boundary condition on w at u points.
 c
       fw(k)  = (fue(k)-fuw(k)+fvn(k)-fvs(k))
+#else
+c
+c  new vertical boundary conditions on w at u points
+c
+      fw(k-1)  = (fuw(k)-fue(k)+fvs(k)-fvn(k))
 #endif
  100  continue
-#ifdef newvertwbc
-c
-c=============================================================
-c    integrate up from the bottom level
-c=============================================================
-c
-      fw(kmd)=c0
-      do 210 k=kmd,1,-1
-      fw(k-1)=fw(k-1)+fw(k)
- 210  continue
-#else
+#ifdef oldvertwbc
 c
 c=============================================================
 c    integrate down from the top level
@@ -720,7 +725,18 @@ c
       fw(k)=fw(k)+fw(k-1)
  210  continue
       fw(kmc)=c0
+#else
+c
+c=============================================================
+c    integrate up from the bottom level
+c=============================================================
+c
+      fw(kmd)=c0
+      do 210 k=kmd,1,-1
+      fw(k-1)=fw(k-1)+fw(k)
+ 210  continue
 #endif
+#ifndef precalcden
 c
 c-----------------------------------------------------------------
 c     compute density on surrounding 't' points
@@ -734,6 +750,7 @@ c
      &            kmt(ip,jp) ,0)
       call state (t(1,ic,jp,1,nc), t(1,ic,jp,2,nc), rhop, 
      &            kmt(ic,jp) ,0)
+#endif
 c
 c-----------------------------------------------------------------
 c         compute hydrostatic pressure gradient
@@ -743,8 +760,13 @@ c    1. compute it at the first level
 c
       fxa = grav*dzw(0)*csur(jc)
       fxb = grav*dzw(0)*dy2r
+#ifdef precalcden
+      temp1 = rho(1,ip,jp) - rho(1,ic,jc)
+      temp2 = rho(1,ic,jp) - rho(1,ip,jc)
+#else
       temp1  = rhpp(1) - rhoo(1)
       temp2  = rhop(1) - rhpo(1)
+#endif
       dpdx(1) = (temp1-temp2)*fxa*dx2r
       dpdy(1) = (temp1+temp2)*fxb
 c
@@ -753,8 +775,15 @@ c
       fxa = grav*csur(jc)*p5
       fxb = grav*dy4r
       do 300 k=2,kmc
+#ifdef precalcden
+        temp1 = rho(k,ip,jp) + rho(k-1,ip,jp) 
+     &        - rho(k,ic,jc) - rho(k-1,ic,jc)
+        temp2 = rho(k,ic,jp) + rho(k-1,ic,jp) 
+     &        - rho(k,ip,jc) - rho(k-1,ip,jc)
+#else
         temp1 = rhpp(k)+rhpp(k-1)- rhoo(k)-rhoo(k-1)
         temp2 = rhop(k)+rhop(k-1)- rhpo(k)-rhpo(k-1)
+#endif
         dpdx(k) = (temp1-temp2)*fxa*dzw(k-1)*dx2r
         dpdy(k) = (temp1+temp2)*fxb*dzw(k-1)
  300  continue
@@ -1312,6 +1341,30 @@ c
 c
       return
       end
+
+
+#ifdef precalcden
+      subroutine setden (ic, jc)
+c
+c==================================================================
+c
+c     precalculate the density field for use by subroutine clinic
+c
+c==================================================================
+c
+#include "param.h"
+#include "slabs.h"
+#include "timelv.h"
+#include "levind.h"
+c
+      if(kmt(ic,jc).ne.0)then
+        call state (t(1,ic,jc,1,nc), t(1,ic,jc,2,nc),  
+     &              rho(1,ic,jc), kmt(ic,jc) ,0)
+      endif
+      return
+      end
+#endif
+
 
 
       subroutine setvbc (ic, jc)
@@ -2455,9 +2508,9 @@ c
      &       ' np, nc, nm  =',3i5,/,' Programme stopped.')
   22  format(' Routine restio',/,
      &       ' Restart file read from unit ',i2,'.  timestep =',i7)
-  23  format(' Routine restio - WARNING!',/,
+  23  format(' Routine restio - RESTART ERROR!',/,
      &       ' Trying to restart without forward timestep,',/,
-     &       ' i.e. mod(itt,nmix).eq.0.    itt, nmix =',2i5,/,
+     &       ' i.e. mod(itt,nmix).ne.0.    itt, nmix =',2i5,/,
      &       ' Programme stopped.')
 c
 c------------------------------------------------------------------

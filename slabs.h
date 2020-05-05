@@ -1,7 +1,7 @@
 c====================== include file "slabs.h" =========================
 #ifdef hcomments
 c
-c     @(#) SCCS module: slabs.h, version 1.9
+c     @(#) SCCS module: slabs.h, version 1.10
 c
 c     This defines the basic array storage scheme.  In the MOM
 c     model the data is stored on disk in slabs (hence the name).
@@ -68,4 +68,14 @@ c
      &     fw(0:km),  fwb1(0:km), fwb2(0:km), temp (km),
      &     maskpo(km), maskmo(km), maskop(km), maskom(km),
      &     rhoo(km),   rhpo(km),   rhpp(km),   rhop(km)
+#ifdef precalcden
+#ifdef hcomments
+c
+c  common denc stores the density field precalculated for
+c  subroutine clinic by subroutine setden
+c
+#endif
+      common /denc/  rho(km,imt,jmt)
+#endif
+     
 

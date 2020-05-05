@@ -1,7 +1,7 @@
 c====================== include file "chmix.h" =========================
 #ifdef hcomments
 c
-c     @(#) SCCS module: chmix.h, version 1.9
+c     @(#) SCCS module: chmix.h, version 1.10
 c
 c     horizontal mixing coefficients
 c
