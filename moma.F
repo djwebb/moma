@@ -1,7 +1,7 @@
       program moma
 c
 c==================================================================
-c  Program MOMA,     Version 1.12
+c  Program MOMA,     Version 1.13
 c
 c  Free surface ocean model for use with array processors.
 c
@@ -10,7 +10,7 @@ c                   Institute of Oceanographic Sciences,
 c                   Godalming, Surrey GU8 5UB, U.K..
 c  
 c @(#) SCCS information - module:  moma.F     
-c @(#)                    version: 1.12    date: 09/22/93
+c @(#)                    version: 1.13    date: 07/28/94
 c
 c
 c  This code is a free surface version of the Bryan-Cox-Semtner
@@ -135,8 +135,8 @@ c
 c     constants usually initialised in block data
 c
       model(1) =' Stripped down MOM code for array processor.'
-      model(2) =' Module: moma.F.  Version: 1.12. '//
-     &          ' Date: 09/22/93'
+      model(2) =' Module: moma.F.  Version: 1.13. '//
+     &          ' Date: 07/28/94'
       stlon = -4.0
       stlat = -72.0
       dxdeg = 4.0
@@ -216,7 +216,7 @@ c
       if(dtbt.ne.dtuv/ntbt)then
         dtbt = dtuv/ntbt
         write(stdout,'(a)') ' dtuv not integer multiple of dtbt.'
-        write(stdout,'(a,i5)') ' dtbt now set to set to:',dtuv
+        write(stdout,'(a,i5)') ' dtbt now set to set to:',dtbt
       endif
 c
 c------------------------------------------------------------------
@@ -781,8 +781,8 @@ c
       fxa = grav*dx4r*csur(jc)
       fxb = grav*dy4r
       do 300 k=2,kmc
-        temp1 = rhpp(k)+rhpp(k-1)- rhoo(k)-rhoo(k-1)
-        temp2 = rhop(k)+rhop(k-1)- rhpo(k)-rhpo(k-1)
+        temp1 = rhpp(k)+rhpp(k-1)- (rhoo(k)+rhoo(k-1))
+        temp2 = rhop(k)+rhop(k-1)- (rhpo(k)+rhpo(k-1))
         dpdx(k) = (temp1-temp2)*fxa*dzw(k-1)
         dpdy(k) = (temp1+temp2)*fxb*dzw(k-1)
  300  continue
@@ -2430,10 +2430,10 @@ c
 #include "slabs.h"
 #include "switch.h"
 #include "timelv.h"
-      dimension t1(imt,jmt,km,nt), t2(imt,jmt,km,nt), 
-     &          t3(imt,jmt,km,nt)
-      dimension u1(imt,jmt,km),  u2(imt,jmt,km), u3(imt,jmt,km)
-      dimension v1(imt,jmt,km),  v2(imt,jmt,km), v3(imt,jmt,km)
+      dimension t1(km,imt,jmt,nt), t2(km,imt,jmt,nt), 
+     &          t3(km,imt,jmt,nt)
+      dimension u1(km,imt,jmt),  u2(km,imt,jmt), u3(km,imt,jmt)
+      dimension v1(km,imt,jmt),  v2(km,imt,jmt), v3(km,imt,jmt)
       dimension h01(imt,jmt),    h02(imt,jmt),   h03(imt,jmt)
       dimension u01(imt,jmt),    u02(imt,jmt),   u03(imt,jmt)
       dimension v01(imt,jmt),    v02(imt,jmt),   v03(imt,jmt)
