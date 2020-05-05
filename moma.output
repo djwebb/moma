@@ -1,6 +1,6 @@
 
                           Stripped down MOM code for array processor.                                    
-                          Module: moma.F.  Version: 1.11.  Date: 8/26/93                                 
+                          Module: moma.F.  Version: 1.12.  Date: 9/22/93                                 
 
 
  &contrl  init=  T, fnrest=

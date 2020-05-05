@@ -1,7 +1,7 @@
       program moma
 c
 c==================================================================
-c  Program MOMA,     Version 1.11
+c  Program MOMA,     Version 1.12
 c
 c  Free surface ocean model for use with array processors.
 c
@@ -10,7 +10,7 @@ c                   Institute of Oceanographic Sciences,
 c                   Godalming, Surrey GU8 5UB, U.K..
 c  
 c @(#) SCCS information - module:  moma.F     
-c @(#)                    version: 1.11    date: 08/26/93
+c @(#)                    version: 1.12    date: 09/22/93
 c
 c
 c  This code is a free surface version of the Bryan-Cox-Semtner
@@ -135,8 +135,8 @@ c
 c     constants usually initialised in block data
 c
       model(1) =' Stripped down MOM code for array processor.'
-      model(2) =' Module: moma.F.  Version: 1.11. '//
-     &          ' Date: 08/26/93'
+      model(2) =' Module: moma.F.  Version: 1.12. '//
+     &          ' Date: 09/22/93'
       stlon = -4.0
       stlat = -72.0
       dxdeg = 4.0
@@ -1307,7 +1307,6 @@ c  for the coriolis term.
 c---------------------------------------------------------------------
 c
       if(kmu(ic,jc).ne.0)then
-        boxar = dxr*dyr*csur(jc)
         fac1=fcor(jc)*dtbt*p5
         fac2=c1/(c1+fac1*fac1)
 c
