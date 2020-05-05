@@ -1,7 +1,7 @@
       subroutine archrd(ncntl)
 c
-c @(#) SCCS module: m_arch.F  version: 1.8
-c     Creation date: 08/24/95
+c @(#) SCCS module: m_arch.F  version: 1.9
+c     Creation date: 12/18/95
 c
 c=======================================================================
 c subroutine to read restart data and send to slaves
@@ -102,10 +102,8 @@ c
           call mchkarch(2)
  400  continue
 c
-c   tell slaves to continue past checkpoint 
-c   and close restart file
+c   close restart file
 c
-      call m_send(MSG_CONT)
       close(unit=iorest)
       write(stdout,*) ' Restart complete'
       return
@@ -114,7 +112,7 @@ c  error
 c
  666  write(stdout,*) ' Error: restart dataset not found'
       write(stdout,*) ' restart failed.....aborting'
-      call m_send(MSG_ABORT)
+      call m_abort
       end
 
 

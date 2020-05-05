@@ -1,7 +1,7 @@
       subroutine clinic(ic,jc)
 c
-c @(#) SCCS module: clinic.F  version: 1.8
-c     Creation date: 08/23/95
+c @(#) SCCS module: clinic.F  version: 1.9
+c     Creation date: 12/18/95
 c
 c==================================================================
 c
@@ -26,24 +26,25 @@ c
 #include "mesdta.h"
 c
 #include "chmix.h"
-c#include "cvbc.h"
+#include "cvbc.h"
 #include "cvmix.h"
+#include "iounit.h"
 c
-c	TASK COMMON /cvbc/ smf(2),bmf(2),stf(nt),btf(nt)
-	COMMON /cvbc/ smf(2),bmf(2),stf(nt),btf(nt)
-c	dimension fue(km),fuw(km),fvn(km),fvs(km),
-c    &		  fw(0:km),fwb1(0:km),fwb2(0:km),
-c    &		  dpdx(km),dpdy(km),vmf(0:km,2),
-c    &		  rhoo(km),rhpo(km),rhpp(km),rhop(km)
-
+c=============================================================
+c exit if this point represents land
+c=============================================================
+c
       kmc=kmu(ic,jc)
       if(kmc.eq.0)return
+c
       jp = jc+1
       jm = jc-1
       ip = ic+1
       im = ic-1
 c
+c=============================================================
 c  find max of all the neighbouring points.
+c=============================================================
 c
 c#ifdef oldadv
 c      kmd  = max(kmu(ip,jc),kmu(im,jc),kmu(ic,jp),kmu(ic,jm),kmc)

@@ -1,16 +1,16 @@
 c===================== include file "switch.h" =========================
 #ifdef hcomments
 c
-c @(#) SCCS module: switch.h  version: 1.8
-c     Creation date: 08/23/95
+c @(#) SCCS module: switch.h  version: 1.9
+c     Creation date: 12/18/95
 c
 c-----------------------------------------------------------------------
 c
-c     All time dependent decisions are made in time manager
-c     "tmngr.F" and communicated elsewhere in the model via 
-c     logical switches .
+c   All time dependent decisions are made in time manager
+c   "tmngr.F" and communicated elsewhere in the model via 
+c   logical switches .
 c
-c     inputs: (set through namelist)
+c   inputs: (set through namelist)
 c
 c     days    = number of days to integrate
 c     init    = true if this run is starts from scratch
@@ -33,7 +33,7 @@ c     restrt  = true if a restart data set is to be written
 c               at the end of this run
 c     idebug  =  controls printing of debug information
 c
-c     outputs: (set in tmngr.F)
+c   outputs: (set in tmngr.F)
 c
 c     the following logical switches are set within "tmngr" every
 c     time step based on the above requirements.
@@ -48,15 +48,17 @@ c     snapts  = master :true if this is a snapshot timestep
 c               slave: true if this is a snapshot timestep and
 c               as yet not all data sent to master.
 c     archts  = master: true if this is an archive timestep 
-c               slaves: true if this is a snapshot timestep and
+c               slaves: true if this is a archive timestep and
 c               as yet not all data sent to master.
+c     metts   = true if a met update is now due
 c
 c     lastn   = true if the next timestep is the last timestep of a run
 c     prntsn  = true if time step info to be printed next timestep
 c     snaptn  = true if there is a snapshot next timestep
 c     archtn  = true if there is an archive next timestep
+c     mettn   = true if there is a met update due next timestep
 c
-c     the following switches are set within the main program
+c   the following switches are set within the main program
 c
 c     first   = true if this is the first timestep of a run
 c     eots    = end of a time step. always true except for first
@@ -68,18 +70,22 @@ c     lchkbd  = logical variable used within the barotropic
 c               time loop to decide whether or not to apply
 c               the del-cross-del-plus filter
 # endif
+c
+c  note: other switches used for message passing are defined within 
+c  include file "mesdta.h"
+c
 c-----------------------------------------------------------------------
 c
 #endif
       logical init, restrt, eb, first, last, mixts, eots
      &,       mxpas2, frpas1, prntsi, diagts, snapts, archts
-     &,       lastn , prntsn, snaptn, archtn 
+     &,       lastn , prntsn, snaptn, archtn, metts, mettn
 #ifdef de_checkbd
      &,       lchkbd
 #endif
       common /switchl/init, eb, restrt, first, last, mixts, eots
      &,       mxpas2, frpas1, prntsi, diagts, snapts, archts
-     &,       lastn , prntsn, snaptn, archtn 
+     &,       lastn , prntsn, snaptn, archtn, metts, mettn 
 #ifdef de_checkbd
      &,       lchkbd
 #endif

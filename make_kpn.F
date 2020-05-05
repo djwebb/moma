@@ -1,7 +1,7 @@
       program make_kpn
 c
-c @(#) SCCS module: make_kpn.F  version: 1.8
-c     Creation date: 08/23/95
+c @(#) SCCS module: make_kpn.F  version: 1.9
+c     Creation date: 12/18/95
 c
 c==================================================================
 c
@@ -25,30 +25,31 @@ c
       logical lexist
 c
       print *,' Program make_kpn'
-10    print *,' Maximum dimensions if kpn array with present version'
+  10  print *,' Maximum dimensions if kpn array with present version'
       print *,' of make_kpn is: ',IMT_M,' by ',JMT_M
       print *
-15    print *,' Input name of kmt file'
-      read  *,name_kmt
+  15  print *,' Input name of kmt file'
+      read  16,name_kmt
+  16  format(a)
       inquire(file=name_kmt,exist=lexist,iostat=ios)
-      if(.not.lexist.or.iostat.ne.0)then
+      if(.not.lexist.or.ios.ne.0)then
         print *
         if(.not.lexist)then
           print *,' File does not exist'
         else
           print *,' Error opening file'
-          print *,' iostat = ',iostat
+          print *,' iostat = ',ios
         endif
         print *,' Try again:'
         print *
         goto 15
       endif
 c
-      open(11,file=name_kmt,status='old',iostat = iostat)
-      if(iostat.ne.0)then
+      open(11,file=name_kmt,status='old',iostat = ios)
+      if(ios.ne.0)then
         print *
         print *,' Error opening kmt file'
-        print *,' iostat = ',iostat
+        print *,' iostat = ',ios
         print *,' Try again:'
         print *
         goto 15
@@ -109,7 +110,7 @@ c
   40  continue
 c
   60  print *,' Input name of kpn output file:'
-      read (*,*,err=60)name
+      read (*,'(a)',err=60)name
       open(10,file=name,status='unknown',iostat=ios)
       if(ios.ne.0)then
         print *

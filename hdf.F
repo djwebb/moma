@@ -1,8 +1,8 @@
 #ifdef ncsa_hdf
       subroutine archrd_hdf(ncntl)
 c
-c @(#) SCCS module: hdf.F  version: 1.8
-c     Creation date: 08/23/95
+c @(#) SCCS module: hdf.F  version: 1.9
+c     Creation date: 12/18/95
 c
 c=======================================================================
 c  subroutine to read hdf version of the restart file
@@ -188,10 +188,8 @@ c
  300    continue
  400  continue
 c
-c   tell slaves to continue past checkpoint 
-c   and close restart file
+c   and close file
 c
-      call m_send(MSG_CONT)
       ret = sfend(file_id)
       call hdf_error( ret,' error closing SD interface', 0)
       write(stdout,*) ' Restart complete'
@@ -486,7 +484,7 @@ c
         write(stdout,*)' archwr_hdf: routine called with idvar .gt.',
      &                 ' NARCHV '
         write(stdout,*)' program stopping ...'
-        call m_send(MSG_ABORT)
+        call m_abort
       endif
       irank = 3
 c
@@ -913,7 +911,7 @@ c
           else
             write(stdout,*)'HDF Error: ',cstr
           endif
-          call m_send(MSG_ABORT)
+          call m_abort
         endif
 c
         return

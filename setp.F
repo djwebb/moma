@@ -1,8 +1,8 @@
       subroutine setp (ic, jc)
 #ifdef presetp
 c
-c @(#) SCCS module: setp.F  version: 1.8
-c     Creation date: 08/23/95
+c @(#) SCCS module: setp.F  version: 1.9
+c     Creation date: 12/18/95
 c
 c==================================================================
 c
@@ -36,6 +36,21 @@ c
      &                       + dzw(k-1)*fxa*(temp(k)+temp(k-1))
           endif
  100    continue
+      endif
+c
+c------------------------------------------------------------------
+c   set cyclic conditions
+c------------------------------------------------------------------
+c
+      if(icycl.eq.1)then
+        if(ic.eq.itm1)then
+          do 200 k=1,kmc
+ 200      p(k,1,jc) = p(k,ic,jc)
+        endif
+        if(ic.eq.2)then
+          do 210 k=1,kmc
+ 210      p(k,it,jc) = p(k,ic,jc)
+        endif
       endif
 #endif
       return

@@ -1,8 +1,8 @@
       subroutine m_initmess
 c
 c=======================================================================
-c @(#) SCCS module: m_msg.F  version: 1.8
-c     Creation date: 08/23/95
+c @(#) SCCS module: m_msg.F  version: 1.9
+c     Creation date: 12/18/95
 c=======================================================================
 c
 c
@@ -36,16 +36,31 @@ c
       do 20 i=1,MXSLAVE
         ltsia(i)  = .false.
         lsnapa(i) = .false.
-        lfluxa(i) = .true.
+        lmeta(i)  = .true.
   20  continue
       ltsip  = .false.
       lsnapp = .false.
       lsnapq = .false.
       larchp = .false.
       larchq = .false.
+      lmetp  = .true.
+      lmetq  = .false.
 c
       return
       end
+
+      subroutine m_abort
+c
+c=======================================================================
+c  subroutine to abort master after slaves have been spawned
+c=======================================================================
+c
+#include "param.h"
+#include "mesdta.h"
+      call m_send(MSG_ABORT)
+      return
+      end
+
 
       subroutine mchkpnt(iposn0)
 c
@@ -148,10 +163,35 @@ c
       goto 10
       end
  
+      subroutine nextmet
+#ifdef hcomments
+c
+c @(#) SCCS module: m_msg.F  version: 1.9
+c    Creation date: 12/18/95
+c
+c=======================================================================
+c  subroutine to read in the next set of meteorological data and
+c  send MSG_MET_RDY message
+c=======================================================================
+c
+c 
+#endif
+#include "def_master.h"
+#include "param.h"
+#include "mesdta.h"
+#include "ctmngr.h"
+c
+      call metrd(mnextp)
+      nmeta = nproc
+      lmetp = .true.
+      call m_send(MSG_MET_RDY)
+      return
+      end
+
       subroutine inittsi
 c
 c=======================================================================
-c  subroutine to initialise tso processing
+c  subroutine to initialise tsi processing
 c=======================================================================
 c
 #include "param.h"
@@ -353,6 +393,7 @@ c
 #include "ctmngr.h"
 #include "chmix.h"
 #include "cvmix.h"
+#include "cvbc.h"
 #include "coord.h"
 #include "grdvar.h"
 #include "levind.h"
@@ -376,7 +417,8 @@ c
         stop
 c
 c=======================================================================
-c pack and send command to continue (message MSG_CONT)
+c  1.  Send message type MSG_CONT
+c      command to continue
 c=======================================================================
 c
       elseif(msgtype.eq.MSG_CONT) then
@@ -387,7 +429,8 @@ c
         endif
 c
 c=======================================================================
-c pack and send tid information from the master
+c 2.  Send message type MSG_IDS
+c     pack and send tid information to the slaves
 c=======================================================================
 c
       elseif(msgtype.eq.MSG_IDS) then
@@ -404,7 +447,8 @@ c
         endif
 c
 c=======================================================================
-c pack and send control information from the master
+c  3.  Send message type MSG_CONTROL
+c      pack and send control information to the slaves
 c=======================================================================
 c
       elseif(msgtype.eq.MSG_CONTROL) then
@@ -447,7 +491,8 @@ c
         endif
 c
 c=======================================================================
-c pack and send kmt and grid information
+c  4.  Send message type MSG_TOPOG
+c      pack and send kmt and grid information
 c=======================================================================
 c
       elseif(msgtype.eq.MSG_TOPOG) then
@@ -466,13 +511,13 @@ c
          bufout(8) = swla(n)
          lbuff = 8
 #else
-         call pvmfpack( INTEGER_PVM,  it_l(n),        1, 1, info )
-         call pvmfpack( INTEGER_PVM,  jt_l(n),        1, 1, info )
-         call pvmfpack( INTEGER_PVM,  icycl_M(n),        1, 1, info )
-         call pvmfpack( INTEGER_PVM,  iswm1_M(n),        1, 1, info )
-         call pvmfpack( INTEGER_PVM,  jswm1_M(n),        1, 1, info )
-         call pvmfpack( REAL_PVM,     swlo(n),        1, 1, info )
-         call pvmfpack( REAL_PVM,     swla(n),        1, 1, info )
+         call pvmfpack( INTEGER_PVM,  it_l(n),      1, 1, info )
+         call pvmfpack( INTEGER_PVM,  jt_l(n),      1, 1, info )
+         call pvmfpack( INTEGER_PVM,  icycl_M(n),   1, 1, info )
+         call pvmfpack( INTEGER_PVM,  iswm1_M(n),   1, 1, info )
+         call pvmfpack( INTEGER_PVM,  jswm1_M(n),   1, 1, info )
+         call pvmfpack( REAL_PVM,     swlo(n),      1, 1, info )
+         call pvmfpack( REAL_PVM,     swla(n),      1, 1, info )
 #endif
          do 10 j=jt_s(n),jt_e(n)
          do 10 i=it_s(n),it_e(n)
@@ -528,7 +573,7 @@ c
 #endif
 c
          call pvmfsend( itida(n), msgtype, info )
- 20      continue
+ 20    continue
        if(idebug.gt.2)then
          print *,' Master:  Message MSG_TOPOG sent to all slaves.'
        endif
@@ -647,6 +692,136 @@ c
         endif
 c
 c=======================================================================
+c 10.  Send message type MSG_MET1 to slaves
+c      initial met data including month one
+c=======================================================================
+c
+        elseif(msgtype.eq.MSG_MET1)then
+c  loop over slaves, clearing the input buffers on the way
+          do 130 n=1,nproc
+            call m_recv(MSG_ANY)
+c
+            call pvmfinitsend( PVMDEFAULT, info )
+            call pvmfpack( INTEGER_PVM, mlast    , 1, 1, info )
+            call pvmfpack( INTEGER_PVM, iw_l(n)  , 1, 1, info )
+            call pvmfpack( INTEGER_PVM, jw_l(n)  , 1, 1, info )
+            call pvmfpack( INTEGER_PVM, i_w      , 1, 1, info )
+            call pvmfpack(    REAL_PVM, swlo_w(n), 1, 1, info )
+            call pvmfpack(    REAL_PVM, swla_w(n), 1, 1, info )
+            call pvmfpack(    REAL_PVM, dx_w     , 1, 1, info )
+            call pvmfpack(    REAL_PVM, dy_w     , 1, 1, info )
+c
+            do 110 j=jw_s(n),jw_e(n)
+            do 110 i=iw_s(n),iw_e(n)
+              ii=mod(i-1,NWX_M) + 1
+              call pvmfpack( REAL_PVM, wstx(ii,j), 1, 1, info )
+              call pvmfpack( REAL_PVM, wsty(ii,j), 1, 1, info )
+ 110        continue
+c
+            call pvmfpack( INTEGER_PVM, is_l(n)  , 1, 1, info )
+            call pvmfpack( INTEGER_PVM, js_l(n)  , 1, 1, info )
+            call pvmfpack( INTEGER_PVM, i_s      , 1, 1, info )
+            call pvmfpack(    REAL_PVM, swlo_s(n), 1, 1, info )
+            call pvmfpack(    REAL_PVM, swla_s(n), 1, 1, info )
+            call pvmfpack(    REAL_PVM, dx_s     , 1, 1, info )
+            call pvmfpack(    REAL_PVM, dy_s     , 1, 1, info )
+c
+            do 120 j=js_s(n),js_e(n)
+            do 120 i=is_s(n),is_e(n)
+              ii=mod(i-1,NSX_M) + 1
+              call pvmfpack( REAL_PVM, ssta(ii,j), 1, 1, info )
+              call pvmfpack( REAL_PVM, sssa(ii,j), 1, 1, info )
+ 120        continue
+c
+            call pvmfsend( itida(n), msgtype, info )
+ 130     continue
+c
+       if(idebug.gt.2)then
+         print *,' Master:  Message MSG_MET1 sent to all slaves.'
+       endif
+c
+c=======================================================================
+c 11.  Send message type MSG_MET2 to slaves
+c=======================================================================
+c
+        elseif(msgtype.eq.MSG_MET2)then
+c  loop over slaves, clearing the input buffers on the way
+          do 160 n=1,nproc
+            call m_recv(MSG_ANY)
+c
+            call pvmfinitsend( PVMDEFAULT, info )
+            call pvmfpack( INTEGER_PVM, mnext, 1, 1, info )
+            do 140 j=jw_s(n),jw_e(n)
+            do 140 i=iw_s(n),iw_e(n)
+              ii=mod(i-1,NWX_M) + 1
+              call pvmfpack( REAL_PVM, wstx(ii,j), 1, 1, info )
+              call pvmfpack( REAL_PVM, wsty(ii,j), 1, 1, info )
+ 140        continue
+c
+            do 150 j=js_s(n),js_e(n)
+            do 150 i=is_s(n),is_e(n)
+              ii=mod(i-1,NSX_M) + 1
+              call pvmfpack( REAL_PVM, ssta(ii,j), 1, 1, info )
+              call pvmfpack( REAL_PVM, sssa(ii,j), 1, 1, info )
+  150       continue
+            call pvmfsend( itida(n), msgtype, info )
+  160    continue
+c
+       if(idebug.gt.2)then
+         print *,' Master:  Message MSG_MET2 sent to all slaves.'
+       endif
+c
+c=======================================================================
+c 12.  Send message type MSG_MET3 to slaves
+c=======================================================================
+c
+        elseif(msgtype.eq.MSG_MET3)then
+c  loop over slaves, clearing the input buffers on the way
+          do 230 n=1,nproc
+            if(lmeta(n))then
+              call pvmfinitsend( PVMDEFAULT, info )
+              call pvmfpack( INTEGER_PVM, mnextp, 1, 1, info )
+              do 210 j=jw_s(n),jw_e(n)
+              do 210 i=iw_s(n),iw_e(n)
+                ii=mod(i-1,NWX_M) + 1
+                call pvmfpack( REAL_PVM, wstx(ii,j), 1, 1, info )
+                call pvmfpack( REAL_PVM, wsty(ii,j), 1, 1, info )
+ 210          continue
+c
+              do 220 j=js_s(n),js_e(n)
+              do 220 i=is_s(n),is_e(n)
+                ii=mod(i-1,NSX_M) + 1
+                call pvmfpack( REAL_PVM, ssta(ii,j), 1, 1, info )
+                call pvmfpack( REAL_PVM, sssa(ii,j), 1, 1, info )
+ 220          continue
+              call pvmfsend( itida(n), msgtype, info )
+              lmeta(n) = .false.
+              nmeta = nmeta - 1
+           endif
+ 230      continue
+          lmetq = .false.
+          if(nmeta.eq.0)then
+            lmetp = .false.
+          endif
+c
+       if(idebug.gt.2)then
+         print *,' Master:  Message MSG_MET3 sent to one',
+     &           ' or more slaves'
+       endif
+c
+c=======================================================================
+c 13.  Send message type MSG_MET_RDY to slaves
+c=======================================================================
+c
+      elseif(msgtype.eq.MSG_MET_RDY)then
+        call pvmfinitsend( PVMDEFAULT, info )
+        call pvmfmcast(nproc, itida, MSG_MET_RDY, info )
+        if(idebug.gt.2)then
+          print *,
+     &    ' Master:  Message MSG_MET_RDY sent to all slaves.'
+        endif
+c
+c=======================================================================
 c  entry point to ask for tsi information (message MSG_RQ_TSI)
 c  from all slaves for timestep itttsi 
 c=======================================================================
@@ -711,7 +886,8 @@ c=======================================================================
 c
       else
         write(stderr,*) 
-     &  ' Master:  Message type: ',msgtype,' not yet implemented'
+     &  ' Master:  Message type: ',msgtype,
+     &  ' not yet implemented in routine m_send'
       endif
 c
 c=======================================================================
@@ -746,6 +922,7 @@ c
 #include "iounit.h"
 #include "cdiag.h"
 #include "chmix.h"
+#include "ctmngr.h"
 #include "levind.h"
 #include "archive.h"
 #include "snaps.h"
@@ -796,8 +973,9 @@ c  process abort request message (MSG_BYE)
 c=======================================================================
 c
       if(msgtag.eq.MSG_BYE)then
-        write(stderr,*) ' Abort request received from slave: ',mes
-        write(stderr,*) ' Closing down all slaves'
+        write(stderr,*) ' Master: '
+        write(stderr,*) '  Abort request received from slave: ',mes
+        write(stderr,*) '  Closing down all slaves'
         call m_send(MSG_ABORT)
 c
 c=======================================================================
@@ -810,8 +988,9 @@ c
         call pvmfunpack( INTEGER_PVM, infoa(2,mes),  1, 1, info )
         call pvmfunpack( INTEGER_PVM, infoa(3,mes),  1, 1, info )
         if(idebug.gt.2)then
-          write(stderr,*) ' Master:  Message MSG_POSN received: ',
+          write(stderr,901) ' Master:  Message MSG_POSN received: ',
      &    mes, infoa(1,mes),infoa(2,mes),infoa(3,mes)
+ 901  format(a,i5,3i10)
         endif
 c
 c=======================================================================
@@ -822,11 +1001,12 @@ c
       elseif(msgtag.eq.MSG_OUTSTR) then
         call pvmfunpack( STRING,   outstr,80, 1, info )
         if(idebug.gt.2)then
-          write(stderr,*) ' Master:  Message MSG_OUTSTR received ',
-     &                      'from slave ',mes,' ',outstr
+          write(stderr,*) ' Master:  Message MSG_OUTSTR received',
+     &                    ' from slave ',mes
+          write(stderr,*) ':',outstr
         else
           write(stderr,921)mes,outstr
- 921  format(' msg from',i4,':  ',a)
+ 921  format(' msg from',i4,': ',a)
         endif
 c
 c=======================================================================
@@ -866,8 +1046,9 @@ c
         dtabs(1) = dtabs(1) + dtemps
         dtabs(2) = dtabs(2) + dsalts
         if(idebug.gt.2)then
-        print *,' Master:  Message MSG_RY_TSI. volume, ektot,dtabs =',
-     &            volume, ektot, dtabs(1), dtabs(2)
+        write(stderr,*) ' Master:  Message MSG_RY_TSI. volume,',
+     &                  ' ektot, dtabs ='
+        write(stderr,*) '    ', volume, ektot, dtabs(1), dtabs(2)
         endif
 c
 c print tsi line
@@ -1017,9 +1198,9 @@ c
        if(nseapt.ge.nseachk) call archwr       
 c
        if(idebug.gt.2)then
-          print *,' Master:  Message MSG_RY_ARC from slave ',
-     &            mes,'  idvar, itt, nseapt, nseachk = ',
-     &                   idvar,ittsav,nseapt,nseachk
+        write(stderr,*) ' Master:  Message MSG_RY_ARC from slave ',
+     &                    mes,'  idvar, itt, nseapt, nseachk = ',
+     &                    idvar,ittsav,nseapt,nseachk
        endif
 c
 c=======================================================================
@@ -1095,9 +1276,34 @@ c
        if(nssnap.eq.0) call snapwr
 c
         if(idebug.gt.2)then
-          print *,' Master:  Message MSG_RY_SNAP from slave ',
-     &            mes,'  idsnp, itt, nssnap = ',
-     &                   idsnp2,ittsnap2,nssnap         
+        write(stderr,*) ' Master:  Message MSG_RY_SNAP from slave ',
+     &                    mes,'  idsnp, itt, nssnap = ',
+     &                    idsnp2,ittsnap2,nssnap         
+        endif
+c
+c=======================================================================
+c  receive met requests (MSG_CLR_MET)
+c=======================================================================
+c
+      elseif(msgtag.eq.MSG_CLR_MET)then
+        call pvmfunpack(INTEGER_PVM, mplus, 1, 1, info )
+        if(lmeta(mes))then
+          write(stderr,*)' Master: Message MSG_CLR_MET received from ',
+     &           'slave ',mes,' before previous request answered'
+        endif
+        if(mplus.ne.mnextp)then
+          write(stderr,*)' Master: Message MSG_CLR_MET requests wrong ',
+     &           'month.  Request for:',mplus,',   should be:',mnextp
+        endif
+c
+c  set flags so that main loop sends data to requesting slave
+c
+        lmetq      = .true.
+        lmeta(mes) = .true.
+c
+        if(idebug.gt.2)then
+          write(stderr,*) ' Master:  Message MSG_CLR_MET received',
+     &                    ' from slave ', mes 
         endif
 c
 c=======================================================================
@@ -1105,8 +1311,9 @@ c  error
 c=======================================================================
 c
       else
-        write(stderr,*) ' Master:  Message type: ',msgtag,
-     &                  ' not yet implemented'
+        write(stderr,*) ' Master (m_recv):  Message type: ',msgtag,
+     &                  ' received from slave',mes
+        write(stderr,*) ' This message type is not yet implemented'
       endif
 c
 c=======================================================================
@@ -1116,6 +1323,25 @@ c
       if(idebug.gt.2)then
           call flush(stderr)
       endif
+c
+c=======================================================================
+c  PART 2.
+c  send off any flux messages now ready
+c  to go
+c=======================================================================
+c
+      if(lmetp .and. lmetq)then
+c        call m_send(MSG_MET3)
+      endif
+c
+c=======================================================================
+c  flush stderr to ensure debug messages are received
+c=======================================================================
+c
+      if(idebug.gt.2)then
+          call flush(stderr)
+      endif
+c
       if(msgtype.ne.msgtag)goto 10
       return
       end

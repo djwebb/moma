@@ -1,7 +1,7 @@
       subroutine ocn1st
 c
-c @(#) SCCS module: ocn1st.F  version: 1.8
-c     Creation date: 08/23/95
+c @(#) SCCS module: ocn1st.F  version: 1.9
+c     Creation date: 12/18/95
 c
 c==================================================================
 c
@@ -13,7 +13,6 @@ c
 #include "param.h"
 #include "coord.h"
 #include "ctmngr.h"
-c#include "cvbc.h"
 #include "frees.h"
 #include "grdvar.h"
 #include "iounit.h"

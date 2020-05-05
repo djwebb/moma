@@ -1,7 +1,7 @@
       function theta0 (ydeg, depth)
 c
-c @(#) SCCS module: theta0.F  version: 1.8
-c     Creation date: 08/23/95
+c @(#) SCCS module: theta0.F  version: 1.9
+c     Creation date: 12/18/95
 c
 c==================================================================
 c     this subroutine returns estimates of global mean potential

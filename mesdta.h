@@ -1,8 +1,8 @@
 c======================include file: mesdta.h==========================
 #ifdef hcomments
 c
-c @(#) SCCS module: mesdta.h  version: 1.8
-c      Creation date: 08/23/95
+c @(#) SCCS module: mesdta.h  version: 1.9
+c      Creation date: 12/18/95
 c
 c-----------------------------------------------------------------------
 c Common storage for miscellaneous message handling data
@@ -78,9 +78,14 @@ c  ittarch  - timestep for which archive information is being collected
 c  jarchl   - lower bound of the last sub-volume processed by master
 c  jarchu   - upper bound of the last sub-volume processed by master
 c
-c  flux:
+c  surface flux data flux:
 c
-c  lfluxa   - array set true when flux data sent to slave
+c  lmetp    -  Master: set true until current data sent to last slave
+c              Slave:  set true while waiting for data from master
+c  lmetq    -  Master: set true while any slave request outstanding
+c              Slave:  set true when clear to send request
+c                      set false once request has been sent
+c  lmeta    -  Master: array set true while slave request outstanding 
 c
 c  others:
 c
@@ -196,16 +201,17 @@ c
 #endif
       character*80    outstr
       character*32    timetsi
-      logical         ltsia(MXSLAVE), lsnapa(MXSLAVE), lfluxa(MXSLAVE),
-     &                ltsip, ltsiw, lsnapp, lsnapq, lbrkpt, 
-     &                larchp, larchq, lidvra(NARCHV)
+      logical         ltsia(MXSLAVE), lsnapa(MXSLAVE), lmeta(MXSLAVE),
+     &                ltsip, ltsiw,  lsnapp, lsnapq, lbrkpt, lmetp,
+     &                lmetq, larchp, larchq, lidvra(NARCHV)
       common /mesdti/ itida(MXSLAVE),nproc,mtid,mytid,me,iposn,
-     &                infoa(3,MXSLAVE),iotime,intime,
+     &                infoa(3,MXSLAVE),iotime,intime,nmeta,
      &                itttsi,ittsnap,ittarch,nstsi,nssnap,nsarch,
      &                nseat,nseau,idvar,idsnp,jarchl,jarchu
       common /mesdta/ outstr,timetsi
-      common /mesdtl/ ltsia,  lsnapa, lfluxa, ltsip, ltsiw, 
-     &                lsnapp, lsnapq, larchp, larchq, lidvra, lbrkpt
+      common /mesdtl/ ltsia,  lsnapa, lmeta,  ltsip, ltsiw, 
+     &                lsnapp, lsnapq, lbrkpt, lmetp, lmetq,
+     &                larchp, larchq, lidvra
       common /mesdtr/ utime(3),time_start
 #ifdef pvm_buffer
       common /pvmbuf/ bufout(LENBUF)
@@ -242,22 +248,27 @@ c Message types defined as Fortran parameters.
 c
       parameter( MSG_ANY     = -1 )
       parameter( MSG_ABORT   =  1 )
-      parameter( MSG_BYE     =  1 )
-      parameter( MSG_POSN    =  2 )
-      parameter( MSG_CONT    =  3 )
-      parameter( MSG_OUTSTR  =  3 )
+      parameter( MSG_BYE     =  2 )
+      parameter( MSG_POSN    =  3 )
+      parameter( MSG_CONT    =  4 )
+      parameter( MSG_OUTSTR  =  5 )
       parameter( MSG_IDS     = 10 )
       parameter( MSG_CONTROL = 11 )
       parameter( MSG_TOPOG   = 12 )
       parameter( MSG_RQ_TSI  = 20 )
-      parameter( MSG_RY_TSI  = 20 )
+      parameter( MSG_RY_TSI  = 21 )
       parameter( MSG_RQ_ARC  = 22 )
-      parameter( MSG_RY_ARC  = 22 )
-      parameter( MSG_ARC_CLR = 23 )
-      parameter( MSG_TIMEVAR = 24 )
-      parameter( MSG_RESTART = 25 )
-      parameter( MSG_RQ_SNAP = 26 )
-      parameter( MSG_RY_SNAP = 27 )
+      parameter( MSG_RY_ARC  = 23 )
+      parameter( MSG_ARC_CLR = 24 )
+      parameter( MSG_TIMEVAR = 25 )
+      parameter( MSG_RESTART = 26 )
+      parameter( MSG_RQ_SNAP = 27 )
+      parameter( MSG_RY_SNAP = 28 )
+      parameter( MSG_MET1    = 30 )
+      parameter( MSG_MET2    = 31 )
+      parameter( MSG_MET3    = 32 )
+      parameter( MSG_MET_RDY = 33 )
+      parameter( MSG_CLR_MET = 34 )
       parameter( MSG_BOUND1  = 100)
       parameter( MSG_BOUND2  = 101)
       parameter( MSG_CLR_BD1 = 102)

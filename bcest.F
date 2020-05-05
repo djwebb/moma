@@ -1,13 +1,17 @@
       subroutine bcest (stf, smf, i, j)
 c
-c @(#) SCCS module: bcest.F  version: 1.8
-c     Creation date: 08/23/95
+c @(#) SCCS module: bcest.F  version: 1.9
+c     Creation date: 12/18/95
 c
 c==================================================================
 c
 c     this routine linearly interpolates global, zonal mean values 
 c     of ocean model surface boundary conditions (SST, salinity, 
 c     WSX, WSY) having 4.5 deg spacing, to the requested latitdude.
+c
+c     Note:  This "mom' routine is not used by moma.pvm after 
+c     version 1.8.  However it is included as it may be useful for
+c     debugging new versions of the program.
 c
 c==================================================================
 c
@@ -155,8 +159,7 @@ c
 300     continue
 	endif
 301   continue
-      smf(1) = (wsxobs(nn)*(dolat - d) + wsxobs(nn+1)*d) *rdolat
-      smf(2) = (wsyobs(nn)*(dolat - d) + wsyobs(nn+1)*d) *rdolat
-c
+      smf(1) = (wsxobs(nn)*(dolat - d) + wsxobs(nn+1)*d)*rdolat
+      smf(2) = (wsyobs(nn)*(dolat - d) + wsyobs(nn+1)*d)*rdolat
       return
       end

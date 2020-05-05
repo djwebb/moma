@@ -1,7 +1,7 @@
 
 =======================================================================
-   @(#) SCCS module: READ.ME  version: 1.8
-        Creation date: 08/23/95
+   @(#) SCCS module: READ.ME  version: 1.9
+        Creation date: 01/22/96
 =======================================================================
 
 README file for moma.pvm 
@@ -34,10 +34,10 @@ Information on moma is given in Webb (1993).
 
 The master and slave programs have been developed by members of the OCCAM 
 core team including:
-           David J. Webb          djw@ios.ac.uk
-           Beverly A. de Cuevas   bac@ios.ac.uk
-           Andrew C. Coward       acc@ios.ac.uk
-           Catherine S. Gwilliam  cgw@ios.ac.uk
+           David J. Webb          djw@soc.soton.ac.uk
+           Beverly A. de Cuevas   bac@soc.soton.ac.uk
+           Andrew C. Coward       acc@soc.soton.ac.uk
+           Catherine S. Gwilliam  cgw@soc.soton.ac.uk
 
 Advice on CRAY T3D specifics has also been received from:
 
@@ -49,10 +49,11 @@ purposes.  Publications that report on work that has made use of the code
 should reference one or more of the relevant publications of the OCCAM core 
 team.
 
-Copyright 1993, 1994, 1995.  D.J. Webb, B.A. de Cuevas, A.C. Coward, 
-                             and C.S. Gwilliam,
-                             Institute of Oceanographic Sciences,
-                             Godalming, Surrey GU8 5UB, U.K..
+Copyright 1993, 1994, 1995, 1996.  D.J. Webb, B.A. de Cuevas, A.C. Coward, 
+                                   A.C. Coward and C.S. Gwilliam,
+                                   Southampton Oceanography Centre,
+                                   Empress Dock, Southampton SO14 3ZH, U.K..
+
 
 Differences from the GFDL MOM code 
 ==================================
@@ -590,6 +591,17 @@ v1.8      Additional corrections (Cai Wenju, Stephen Alderson,
           of timestep information, closing of unformatted restart
           files, the timestep in ascii snapshot files, checking 
           kmt on restart and saving hdf unit numbers.  
+
+v1.9      The surface wind stress and flux data is now sent from the
+          master to the slaves each month (the period can be easily 
+          changed).  The slaves then use linear interpolation in time  
+          and space (setvbc.F).  The master routines for initialising 
+          and 'reading' in the monthly data are in m_flx.F.  For 
+          compatability with earlier versions, the test problem uses
+          wind stress and flux data which is constant in time.
+
+          The error that arose when the slaves were cyclic is now
+          corrected.
 
        
 

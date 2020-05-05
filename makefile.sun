@@ -1,6 +1,6 @@
 #
-# @(#) SCCS module: makefile.sun  version: 1.8
-#      Creation date: 08/23/95
+# @(#) SCCS module: makefile.sun  version: 1.9
+#      Creation date: 12/18/95
 #
 #     Moma.pvm make file for Sun4
 #
@@ -19,8 +19,9 @@
 #
 
 MOFILES=master.o   checks.o   docmnt.o   hdf.o      \
-        init_kmt.o init_kpn.o m_arch.o   m_grids.o  \
-        m_msg.o    m_snap.o   setkmt.o   topog.o     
+        init_kmt.o init_kpn.o m_arch.o   m_flx.o    \
+        m_grids.o  m_msg.o    m_snap.o   setkmt.o   \
+        topog.o     
 
 SOFILES=slave.o    addv.o     bcest.o    bound.o    \
         clinic.o   diag.o     frees.o    matrix.o   \
@@ -30,11 +31,11 @@ SOFILES=slave.o    addv.o     bcest.o    bound.o    \
 
 BOFILES=sysmsg.o   tmngr.o    tmnset.o   indp.o
 
-HFILES=archive.h cdiag.h chmix.h coord.h                     \
-       ctmngr.h cvbc.h cvmix.h dncoef.h  frees.h             \
-       grdvar.h iounit.h levind.h mesdta.h moddata.h \
-       param.h pconst.h scalar.h slabs.h snaps.h switch.h    \
-       thick.h timelv.h varinfo.h versno.h hdf.h
+HFILES=archive.h cdiag.h  chmix.h   coord.h   ctmngr.h   \
+       cvbc.h    cvmix.h  dncoef.h  frees.h   grdvar.h   \
+       iounit.h  levind.h mesdta.h  moddata.h param.h    \
+       pconst.h  scalar.h slabs.h   snaps.h   switch.h   \
+       thick.h   timelv.h varinfo.h versno.h  hdf.h
 
 DOPTNS=	-Dpvm_buffer \
         -Dcyclic_master \

@@ -1,10 +1,10 @@
-      subroutine initmess
+            subroutine initmess
 c
-c @(#) SCCS module: s_msg.F  version: 1.8
-c     Creation date: 08/23/95
+c @(#) SCCS module: s_msg.F  version: 1.9
+c     Creation date: 12/18/95
 c
 c=======================================================================
-c  slave subroutine to initialise message passsing logic
+c  slave subroutine to initialise message passing logic
 c=======================================================================
 c
 #include "def_slave.h"
@@ -154,11 +154,11 @@ c
       subroutine msgbye
 c
 c=======================================================================
-c subroutine to send the MSG_BYE message to the master process
-c This subroutine is a copy of the entry in the block-if in
-c s_send and should only be used to send the message from within
-c s_send in order to avoid recursion. All other instances should
-c use the "call s_send(MSG_BYE)" statement
+c  subroutine to send the MSG_BYE message to the master process.
+c  This subroutine is a copy of the entry in the block-if in s_send
+c  and should only be used to send the message from within s_send
+c  in order to avoid recursion.  Other routines in s_msg can use 
+c  "call s_send(MSG_BYE)".  Other routines should use "call s_abort".
 c=======================================================================
 c
 #include "param.h"
@@ -173,13 +173,28 @@ c
       call pvmfpack( INTEGER_PVM,    me, 1, 1, info )
       call pvmfsend( mtid, MSG_BYE, info )
       if(idebug.gt.3)then
-        write(ioslave,*)' Slave - message MSG_BYE sent. '
+        write(ioslave,*)' Slave, routine msgbye ',
+     &                  ' message MSG_BYE sent.'
       endif
       call schkpnt(1)
       call closedown(info)
       stop
       end
 
+      subroutine s_abort
+c
+c=======================================================================
+c subroutine to abort slave
+c=======================================================================
+c
+#include "param.h"
+#include "mesdta.h"
+#include "iounit.h"
+c
+      write(ioslave,*)' Slave, routine s_abort entered'
+      call s_send(MSG_BYE)
+      return
+      end
 
       subroutine s_send(msgtype)
 c
@@ -198,6 +213,7 @@ c
 #include "iounit.h"
 #include "cdiag.h"
 #include "chmix.h"
+#include "cvbc.h"
 #include "ctmngr.h"
 #include "timelv.h"
 #include "levind.h"
@@ -250,6 +266,25 @@ c
        if(idebug.gt.3)then
          write(ioslave,*)' Slave - message MSG_OUTSTR sent.',
      &                   ' outstr =',outstr
+       endif
+c
+c=======================================================================
+c Type MSG_CLR_MET: tell the master that this slave is ready for
+c      the next set of met data
+c=======================================================================
+c 
+      elseif(msgtype.eq.MSG_CLR_MET) then
+       call pvmfinitsend( PVMDEFAULT, info )
+       call pvmfpack( INTEGER_PVM,     me, 1, 1, info )
+       call pvmfpack( INTEGER_PVM, mnextp, 1, 1, info )
+       call pvmfsend( mtid, msgtype, info )
+c
+c  set lmetq back to false to indicate that a met request has been sent 
+c      
+       lmetq = .false.
+c      
+       if(idebug.gt.3)then
+         write(ioslave,*)' Slave - message MSG_CLR_MET sent'
        endif
 c
 c=======================================================================
@@ -751,6 +786,7 @@ c
 #include "timelv.h"
 #include "chmix.h"
 #include "cvmix.h"
+#include "cvbc.h"
 #include "grdvar.h"
 #include "coord.h"
 #include "levind.h"
@@ -812,7 +848,6 @@ c
 c=======================================================================
 c  1.  Receive message type MSG_CONT
 c      wait for permission to continue and set flag
-c
 c=======================================================================
 c
         elseif(msgtag.eq.MSG_CONT) then
@@ -940,7 +975,7 @@ c-----------------------------------------------------------------------
           endif
 c
 c=======================================================================
-c  6.  Receive message type MSG_RQ_TSI
+c  5.  Receive message type MSG_RQ_TSI
 c      timestep 'tsi' information request from master
 c=======================================================================
 c
@@ -952,7 +987,7 @@ c
           endif
 c
 c=======================================================================
-c  7.  Receive message type MSG_RQ_ARC
+c  6.  Receive message type MSG_RQ_ARC
 c      timestep 'tsi' information request from master
 c=======================================================================
 c
@@ -972,7 +1007,7 @@ c
           endif
 c 
 c=======================================================================
-c  8.  Receive message type MSG_ARC_CLR 
+c  7.  Receive message type MSG_ARC_CLR 
 c      archive complete. Clear archive buffers
 c=======================================================================
 c 
@@ -995,7 +1030,7 @@ c unset archive flag (in case next master request arrives early)
           endif
 c
 c=======================================================================
-c  9.  Receive message type MSG_TIMEVAR restart time variables
+c  8.  Receive message type MSG_TIMEVAR restart time variables
 c=======================================================================
 c
       elseif(msgtag.eq.MSG_TIMEVAR) then
@@ -1009,7 +1044,7 @@ c
         endif
 c
 c=======================================================================
-c 10.  Receive message type MSG_RESTART containing restart data
+c  9.  Receive message type MSG_RESTART containing restart data
 c=======================================================================
 c
         elseif(msgtag.eq.MSG_RESTART)then
@@ -1088,7 +1123,163 @@ c
           endif
 c
 c=======================================================================
-c 11.  Receive message type MSG_RQ_SNAP
+c 10.  Receive message type MSG_MET1 from master
+c      initial met data including month one
+c=======================================================================
+c
+        elseif(msgtag.eq.MSG_MET1)then
+          call pvmfunpack( INTEGER_PVM, mlast, 1, 1, info )
+          nmm = mod(mlast, 3) + 1
+          call pvmfunpack( INTEGER_PVM,    i_w, 1, 1, info )
+          call pvmfunpack( INTEGER_PVM,    j_w, 1, 1, info )
+          call pvmfunpack( INTEGER_PVM,    iw0, 1, 1, info )
+          call pvmfunpack(    REAL_PVM,  stlon_w, 1, 1, info )
+          call pvmfunpack(    REAL_PVM,  stlat_w, 1, 1, info )
+          call pvmfunpack(    REAL_PVM,     dx_w, 1, 1, info )
+          call pvmfunpack(    REAL_PVM,     dy_w, 1, 1, info )
+c
+          do 110 j=1,j_w
+          do 110 i=1,i_w
+            call pvmfunpack( REAL_PVM, wstx(i,j,nmm), 1, 1, info )
+            call pvmfunpack( REAL_PVM, wsty(i,j,nmm), 1, 1, info )
+ 110      continue
+c
+          call pvmfunpack( INTEGER_PVM,    i_s, 1, 1, info )
+          call pvmfunpack( INTEGER_PVM,    j_s, 1, 1, info )
+          call pvmfunpack( INTEGER_PVM,    is0, 1, 1, info )
+          call pvmfunpack(    REAL_PVM,  stlon_s, 1, 1, info )
+          call pvmfunpack(    REAL_PVM,  stlat_s, 1, 1, info )
+          call pvmfunpack(    REAL_PVM,     dx_s, 1, 1, info )
+          call pvmfunpack(    REAL_PVM,     dy_s, 1, 1, info )
+c
+          do 120 j=1,j_s
+          do 120 i=1,i_s
+            call pvmfunpack( REAL_PVM, ssta(i,j,nmm), 1, 1, info )
+            call pvmfunpack( REAL_PVM, sssa(i,j,nmm), 1, 1, info )
+ 120      continue
+c
+          mnext  = mod(mlast,12)+1
+          mnextp = mod(mnext,12)+1
+          lcycw = i_w .eq. iw0
+          lcycs = i_s .eq. is0
+c
+          if(idebug.gt.3)then
+            write(ioslave,912)mlast
+#ifndef cray-t3d
+            write(outstr,912)mlast
+            call s_send(MSG_OUTSTR)
+#endif
+          endif
+ 912  format(' Slave: Message MSG_MET1 received, month = ',i10)
+c
+c=======================================================================
+c 11.  Receive message type MSG_MET2 
+c      met data for month two
+c=======================================================================
+c
+        elseif(msgtag.eq.MSG_MET2)then
+          call pvmfunpack( INTEGER_PVM, msent, 1, 1, info )
+c
+          if(msent.ne.mnext)then
+            write(ioslave,913)
+            write(ioslave,917)msent,mnextp
+#ifndef cray-t3d
+            write(outstr,913)
+            call s_send(MSG_OUTSTR)
+            write(outstr,917)msent,mnextp
+            call s_send(MSG_OUTSTR)
+#endif
+            call s_abort
+          endif
+c      
+          nmp = mod(mnext, 3) + 1
+          do 150 j=1,j_w
+          do 150 i=1,i_w
+            call pvmfunpack( REAL_PVM, wstx(i,j,nmp), 1, 1, info )
+            call pvmfunpack( REAL_PVM, wsty(i,j,nmp), 1, 1, info )
+ 150      continue
+c
+          do 160 j=1,j_s
+          do 160 i=1,i_s
+            call pvmfunpack( REAL_PVM, ssta(i,j,nmp), 1, 1, info )
+            call pvmfunpack( REAL_PVM, sssa(i,j,nmp), 1, 1, info )
+ 160      continue
+c
+          if(idebug.gt.3)then
+            write(ioslave,914)mnext
+#ifndef cray-t3d
+            write(outstr,914)mnext
+            call s_send(MSG_OUTSTR)
+#endif
+          endif
+ 913  format(' Error: message MSG_MET2 has wrong month')
+ 914  format(' Slave: Message MSG_MET2 received, month = ',i10)
+c
+c=======================================================================
+c 12.  Receive message type MSG_MET3 
+c      met data for following month
+c=======================================================================
+c
+        elseif(msgtag.eq.MSG_MET3)then
+          call pvmfunpack( INTEGER_PVM, msent, 1, 1, info )
+c
+          if(mnextp.ne.msent)then
+            write(ioslave,916)
+            write(ioslave,917)msent,mnextp
+#ifndef cray-t3d
+            write(outstr,916)
+            call s_send(MSG_OUTSTR)
+            write(outstr,917)msent,mnextp
+            call s_send(MSG_OUTSTR)
+#endif
+            call s_abort
+          endif
+ 916  format(' Error: message MSG_MET3 has wrong month')
+ 917  format(' Error: month is ', i4,' should be',i4)
+c      
+          nmpp = mod(mnextp, 3) + 1
+          do 200 j=1,j_w
+          do 200 i=1,i_w
+            call pvmfunpack( REAL_PVM, wstx(i,j,nmpp), 1, 1, info )
+            call pvmfunpack( REAL_PVM, wsty(i,j,nmpp), 1, 1, info )
+ 200      continue
+c
+          do 210 j=1,j_s
+          do 210 i=1,i_s
+            call pvmfunpack( REAL_PVM, ssta(i,j,nmpp), 1, 1, info )
+            call pvmfunpack( REAL_PVM, sssa(i,j,nmpp), 1, 1, info )
+ 210      continue
+c
+          lmetp = .false.
+c
+          if(idebug.gt.3)then
+            write(ioslave,920)mnextp
+#ifndef cray-t3d
+            write(outstr,920)mnextp
+            call s_send(MSG_OUTSTR)
+#endif
+ 920  format(' Slave: Message MSG_MET3 received, month = ',i10)
+          endif
+c
+c=======================================================================
+c 13.  Receive message type MSG_MET_RDY
+c      timestep 'tsi' information request from master
+c=======================================================================
+c
+        elseif(msgtag.eq.MSG_MET_RDY)then
+          lmetq = .true.
+c
+          if(idebug.gt.3)then
+            write(ioslave,921)
+#ifndef cray-t3d
+            write(outstr,921)
+            call s_send(MSG_OUTSTR)
+#endif
+ 921  format(' Slave . Message MSG_MET_RDY received')
+          endif
+c
+c=======================================================================
+c 13.  Receive message type MSG_RQ_SNAP
 c      timestep 'tsi' information request from master
 c=======================================================================
 c
@@ -1098,16 +1289,16 @@ c
           call pvmfunpack( INTEGER_PVM, idsnp  , 1, 1, info )
 c
           if(idebug.gt.3)then
-            write(ioslave,902)idsnp
+            write(ioslave,922)idsnp
 #ifndef cray-t3d
-            write(outstr,902) idsnp
+            write(outstr,922) idsnp
             call s_send(MSG_OUTSTR)
 #endif
- 902  format(' Slave . Message MSG_RQ_SNAP received, idsnp = ',i10)
+ 922  format(' Slave . Message MSG_RQ_SNAP received, idsnp = ',i10)
           endif
 c
 c=======================================================================
-c 12.  Receive message type MSG_BOUND1 
+c 14.  Receive message type MSG_BOUND1 
 c      3-d boundary data from other slaves
 c=======================================================================
 c
@@ -1136,7 +1327,7 @@ c
 c 
 c       check information from this slave is expected 
 c 
-        do 85 na = 1,nactive 
+        do 310 na = 1,nactive 
          if(nactme(na).eq.mes) then
           if(bclnflg(na)) then 
            write(ioslave,*) 'Error duplicate or unexpected MSG_BOUND1' 
@@ -1145,11 +1336,11 @@ c
            call s_send(MSG_BYE) 
           else 
            bclnflg(na) = .true. 
-           goto 86 
+           goto 320 
           endif  
          endif  
-   85   continue 
-   86   continue
+  310   continue 
+  320   continue
 c
 c       check timestep
 c
@@ -1160,7 +1351,7 @@ c
      &                     ' should be ',itt3
          call s_send(MSG_BYE)
         endif
-       do 90 l = 1, npts
+       do 410 l = 1, npts
 #ifdef pvm_buffer
           ii = nint(bufout(lbuff+1))
           jj = nint(bufout(lbuff+2))
@@ -1173,22 +1364,22 @@ c
         if(i.le.0) i = i + IMT_M
         j = jj - jswm1
 #ifdef pvm_buffer
-          do 51 k=1, kmt(i,j)
+          do 330 k=1, kmt(i,j)
             lbuff = lbuff+1
             t(k,i,j,1,np3) = bufout(lbuff)
-  51      continue
-          do 52 k=1, kmt(i,j)
+ 330      continue
+          do 340 k=1, kmt(i,j)
             lbuff = lbuff+1
             t(k,i,j,2,np3) = bufout(lbuff)
-  52      continue
-          do 53 k=1, kmu(i,j)
+ 340      continue
+          do 350 k=1, kmu(i,j)
             lbuff = lbuff+1
            u(k,i,j,np3) =  bufout(lbuff)
-  53      continue
-          do 54 k=1, kmu(i,j)
+ 350      continue
+          do 360 k=1, kmu(i,j)
             lbuff = lbuff+1
             v(k,i,j,np3) = bufout(lbuff)
-  54      continue
+ 360      continue
 #else
         call pvmfunpack (REAL_PVM, t(1,i,j,1,np3), kmt(i,j), 1, info)
         call pvmfunpack (REAL_PVM, t(1,i,j,2,np3), kmt(i,j), 1, info)
@@ -1201,23 +1392,23 @@ c  if model is cyclic and point is in the end rows, copy it across
 c
           if(icycl.eq.1)then
             if(i.eq.2)then
-              do 541 k = 1,kmt(i,j)
+              do 370 k = 1,kmt(i,j)
                 t(k,it,j,1,np3) = t(k,2,j,1,np3)
                 t(k,it,j,2,np3) = t(k,2,j,2,np3)
- 541          continue
-               do 542 k = 1,kmt(i,j)
+ 370          continue
+               do 380 k = 1,kmt(i,j)
                 u(k,it,j,np3) = u(k,2,j,np3)
                 v(k,it,j,np3) = v(k,2,j,np3)
- 542          continue
+ 380          continue
             elseif(i.eq.itm1)then
-              do 543 k = 1,kmu(i,j)
+              do 390 k = 1,kmu(i,j)
                 t(k,1,j,1,np3) = t(k,itm1,j,1,np3)
                 t(k,1,j,2,np3) = t(k,itm1,j,2,np3)
- 543          continue
-              do 544 k = 1,kmu(i,j)
+ 390          continue
+              do 400 k = 1,kmu(i,j)
                 u(k,1,j,np3) = u(k,itm1,j,np3)
                 v(k,1,j,np3) = v(k,itm1,j,np3)
- 544          continue
+ 400          continue
             endif
           endif
 #endif
@@ -1232,14 +1423,14 @@ c         call s_send(MSG_BYE)
            iota(i,j,1) = .true.
          nfalse(1) = nfalse(1) - 1
         endif
-   90   continue
+  410   continue
 c
 c check if all active neighbours have sent data
 c
         ibcln = nactive
-        do 94 na = 1,nactive
+        do 420 na = 1,nactive
           if(bclnflg(na)) ibcln = ibcln - 1
-   94   continue 
+  420   continue 
 c
         if(idebug.gt.4)then
           write(ioslave,*)' Slave - message MSG_BOUND1 received.',
@@ -1248,7 +1439,7 @@ c
         return
 c
 c=======================================================================
-c 13.  Receive message type MSG_BOUND2 
+c 15.  Receive message type MSG_BOUND2 
 c      2-d boundary data from other slaves
 c=======================================================================
 c
@@ -1278,7 +1469,7 @@ c
 c
 c       check information from this slave is expected
 c
-        do 95 na = 1,nactive
+        do 430 na = 1,nactive
           if(nactme(na).eq.mes) then
             if(btrpflg(na)) then
               write(ioslave,*) 'Error duplicate or unexpected',
@@ -1288,11 +1479,11 @@ c
               call s_send(MSG_BYE)
             else
               btrpflg(na) = .true.
-              goto 96
+              goto 440
             endif
           endif
-   95   continue
-   96   continue
+  430   continue
+  440   continue
 c
 c       check timesteps
 c
@@ -1316,7 +1507,7 @@ c
           call s_send(MSG_BYE)
         endif
 c
-        do 100 l = 1, npts
+        do 500 l = 1, npts
 #ifdef pvm_buffer
           ii = nint(bufout(lbuff+1))
           jj = nint(bufout(lbuff+2))
@@ -1366,14 +1557,14 @@ c           call s_send(MSG_BYE)
             iota(i,j,2) = .true.
             nfalse(2) = nfalse(2) - 1
           endif
-  100   continue
+  500   continue
 c
 c check if all active neighbours have sent data
 c
         ibtrp = nactive
-        do 105 na = 1,nactive
+        do 510 na = 1,nactive
           if(btrpflg(na)) ibtrp = ibtrp - 1
-  105   continue
+  510   continue
 c
         if(idebug.gt.4)then
           write(ioslave,*)' Slave - message MSG_BOUND2 received.',
@@ -1383,7 +1574,7 @@ c
         return
 c
 c=======================================================================
-c 14.  Receive message type MSG_CLR_BD1
+c 16.  Receive message type MSG_CLR_BD1
 c      Active neighbour ready to receive more baroclinic data
 c=======================================================================
 c
@@ -1399,7 +1590,7 @@ c
 c
 c
 c=======================================================================
-c 15.  Receive message type MSG_CLR_BD2
+c 17.  Receive message type MSG_CLR_BD2
 c      Active neighbour ready to receive more barotropic data
 c=======================================================================
 c
@@ -1415,16 +1606,17 @@ c
 c 
 c
 c=======================================================================
-c 16.  error
+c 17.  error
 c=======================================================================
 c
         else
-          write(ioslave,903)msgtag
+          write(ioslave,924)msgtag
 #ifndef cray-t3d
-          write(outstr,903)msgtag
+          write(outstr,924)msgtag
           call s_send(MSG_OUTSTR)
 #endif
- 903  format( ' Slave . Message type: ',i5,' not yet implemented')
+ 924  format( ' Slave (s_recv):  Message type: ',i5,
+     &        ' not yet implemented')
       endif
 c
 c  if msgtype < 0 then jump back to process any remaining messages

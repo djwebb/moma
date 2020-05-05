@@ -1,8 +1,8 @@
 c====================== include file "param.h" =========================
 #ifdef hcomments
 c
-c @(#) SCCS module: param.h  version: 1.8
-c     Creation date: 08/23/95
+c @(#) SCCS module: param.h  version: 1.9
+c     Creation date: 12/18/95
 c
 c-----------------------------------------------------------------------
 c     Main parameter file which sets ocean characteristics:
@@ -33,6 +33,18 @@ c     NSNAPS   = total number of horizontal snapshots
 c
 c  pvm parameters
 c     LENBUFF  = size of buffer used with pvm
+c
+c  surface flux parameters:
+c    Master:
+c    NWX_M     = size of wind stress array in longitude direction
+c    NWY_M     = size of wind stress array in latitude direction
+c    NSX_M     = size of surface T/S array in longitude direction
+c    NSY_M     = size of surface T/S array in latitude direction
+c    Slave:
+c    NWX_S     = size of wind stress array in longitude direction
+c    NWY_S     = size of wind stress array in latitude direction
+c    NSX_S     = size of surface T/S array in longitude direction
+c    NSY_S     = size of surface T/S array in latitude direction
 c-----------------------------------------------------------------------
 c
 #endif
@@ -45,6 +57,8 @@ c
       parameter  (IMT_S=92,  JMT_S=36,              
      &            IMTM1_S=IMT_S-1,      JMTM1_S=JMT_S-1)
       parameter  (MXSLAVE=255, IBOUND=4*(IMT_S+JMT_S))
+      parameter (NWX_M = 80, NWY_M = 41, NSX_M = 80, NSY_M = 40) 
+      parameter (NWX_S = 80, NWY_S = 41, NSX_S = 80, NSY_S = 40) 
 #ifdef pvm_buffer
       parameter (LENBUF1=3*IMT_S*JMT_S+10           )
       parameter (LENBUF2=IMT_S*(JSUB_M+2)*KM+10     )

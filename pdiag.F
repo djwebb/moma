@@ -1,7 +1,7 @@
       subroutine pdiag
 c
-c @(#) SCCS module: pdiag.F  version: 1.8
-c     Creation date: 08/23/95
+c @(#) SCCS module: pdiag.F  version: 1.9
+c     Creation date: 12/18/95
 c
 c==================================================================
 c     write diagnostics

@@ -1,7 +1,7 @@
       subroutine tracer(ic,jc)
 c
-c @(#) SCCS module: tracer.F  version: 1.8
-c     Creation date: 08/23/95
+c @(#) SCCS module: tracer.F  version: 1.9
+c     Creation date: 12/18/95
 c
 c=============================================================
 c
@@ -19,17 +19,11 @@ c
 #include "slabs.h"
 c
 #include "chmix.h"
-c#include "cvbc.h"
+#include "cvbc.h"
 #include "cvmix.h"
-c	TASK COMMON /cvbc/ smf(2),bmf(2),stf(nt),btf(nt)
-	COMMON /cvbc/ smf(2),bmf(2),stf(nt),btf(nt)
-c	dimension fue(km),fuw(km),fvn(km),fvs(km),
-c    &		  fw(0:km),fwb1(0:km),temp(km),
-c    &		  dpdx(km),dpdy(km),vtf(0:km),
-c    & 		  maskpo(km),maskmo(km),maskop(km),maskom(km)
 c
 c=============================================================
-c    outer loops over i and j indices
+c exit if this point represents land
 c=============================================================
 c
       kmc= kmt(ic,jc)

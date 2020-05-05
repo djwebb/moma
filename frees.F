@@ -4,8 +4,8 @@
 #if defined inline1 || !defined inline
 #ifndef inline1
 c
-c @(#) SCCS module: frees.F  version: 1.8
-c      Creation date: 08/23/95
+c @(#) SCCS module: frees.F  version: 1.9
+c      Creation date: 12/18/95
 c
 c====================================================================
 c
@@ -36,6 +36,7 @@ c
 #include "switch.h"
 #include "timelv.h"
 #include "mesdta.h"
+#include "iounit.h"
 #else
       ic=ia(l)
       jc=ja(l)

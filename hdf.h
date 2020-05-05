@@ -1,8 +1,8 @@
 c===================== include file "hdf.h" =========================
 #ifdef hcomments 
 c
-c @(#) SCCS module: hdf.h  version: 1.8
-c     Creation date: 08/23/95
+c @(#) SCCS module: hdf.h  version: 1.9
+c     Creation date: 12/18/95
 c
 c-----------------------------------------------------------------------
 c    Include file for hdf routines

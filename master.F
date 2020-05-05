@@ -5,8 +5,8 @@
 #endif
 c
 c=======================================================================
-c @(#) SCCS module: master.F  version: 1.8
-c      Creation date: 08/24/95
+c @(#) SCCS module: master.F  version: 1.9
+c      Creation date: 01/22/96
 c=======================================================================
 c
 c  This program and the corresponding master program make up  
@@ -25,23 +25,22 @@ c  Each slave is responsible for its own communications with
 c  its neighbours and responds to the masters's requests for 
 c  snapshot and archive data.
 c 
-c  The master and slave programs have been developed by members of 
-c  the OCCAM core team including:
+c  The master and slave programs have been developed by members of the OCCAM 
+c  core team including:
+c           David J. Webb          djw@soc.soton.ac.uk
+c           Beverly A. de Cuevas   bac@soc.soton.ac.uk
+c           Andrew C. Coward       acc@soc.soton.ac.uk
+c           Catherine S. Gwilliam  cgw@soc.soton.ac.uk
 c
-c           David J. Webb          djw@ios.ac.uk 
-c           Beverly A. de Cuevas   bac@ios.ac.uk 
-c           Andrew C. Coward       acc@ios.ac.uk 
-c           Catherine S. Gwilliam  cgw@ios.ac.uk 
-c 
 c  Advice on CRAY T3D specifics has also been received from:
 c
 c           Mike O'Neill        meon@cray.com
-c           Bob Carruthers      Bob.Curruthers@cray.com
+c           Bob Carruthers      Bob.Carruthers@cray.com
 c
-c  Copyright 1993, 1994, 1995.  D.J. Webb., B.A. de Cuevas, A.C. Coward
-c                   and C.S. Gwillam,  
-c                   Institute of Oceanographic Sciences,
-c                   Godalming, Surrey GU8 5UB, U.K..
+c  Copyright 1993, 1994, 1995, 1996.  D.J. Webb, B.A. de Cuevas, A.C. Coward, 
+c                                     A.C. Coward and C.S. Gwilliam,
+c                                     Southampton Oceanography Centre,
+c                                     Empress Dock, Southampton SO14 3ZH, U.K..
 c
 c  The code may be freely adapted and used without charge for
 c  non-commercial purposes.  Publications which report on work that
@@ -57,6 +56,7 @@ c
 #include "switch.h"
 #include "iounit.h"
 #include "chmix.h"
+#include "cvbc.h"
 #include "cvmix.h"
 #include "coord.h"
 #include "ctmngr.h"
@@ -100,7 +100,7 @@ c
 c
       model(1) =' Stripped down MOM code for array processor.'
       model(2) =' Module: master.F.  Version: 1 '//
-     &          ' Date: 08/24/95'
+     &          ' Date: 01/22/96'
 #ifdef no_namelist
       open (stdin,file='ocean.in2')
 #else
@@ -372,25 +372,47 @@ c
       call prininfo(3)
 c
 c-----------------------------------------------------------------------
-c  broadcast the meteorological grid information
-c-----------------------------------------------------------------------
-c
-
-c
-c-----------------------------------------------------------------------
-c  read in and broadcast the restart data 
+c  read in and broadcast the restart data.  the slaves checkpoint, 
+c  receiving the data, until they receive MSG_CONTINUE
 c-----------------------------------------------------------------------
 c
       if(.not.init) then
         call m_send(MSG_TIMEVAR)
         call archrd(1)
+        call m_send(MSG_CONTINUE)
       endif
 c
 c-----------------------------------------------------------------------
-c  broadcast the flux data sets
+c  initialise and broadcast the flux data sets
 c-----------------------------------------------------------------------
 c
-
+      call initmet
+      nyears = totday/365.25
+      tday = totday - 365.25*nyears
+      do 20 n=0,12
+        if(tday.ge.eday(n).and.tday.lt.eday(n+1))then
+          mlast = n
+          goto 21
+        endif
+  20  continue
+      print *,' error setting up met fields. tday = ',tday
+      print *,' eday = ',eday
+      call m_abort
+c
+  21  if(mlast.eq.0) mlast = 12
+      call metrd(mlast)
+      call m_send(MSG_MET1)
+c
+      mnext = mod(mlast,12) + 1
+      call metrd(mnext)
+      call m_send(MSG_MET2)
+c
+      mnextp = mod(mnext,12) + 1
+      call metrd(mnextp)
+      lmetp = .true.
+      lmetq = .true.
+      nmeta = nproc
+      call m_send(MSG_MET3)
 c
 c-----------------------------------------------------------------------
 c  broadcast the Levitus data sets
@@ -437,6 +459,7 @@ c
       if(prntsi) call inittsi
       if(snapts) call initsnap
       if(archts) call initarch
+      if(metts)  call nextmet
 c
 c-----------------------------------------------------------------------
 c  if an archive is in progress and if previous, partial archive request 
@@ -463,6 +486,7 @@ c +->
 c |
   25  if((prntsn .and. ltsip) .or. (snaptn .and. lsnapp)
      &                        .or. (archtn .and. larchp)
+     &                        .or. (lmettn .and. lmetp)
      &                        .or. (last   .and. ltsip )
      &                        .or. (last   .and. lsnapp)
      &                        .or. (last   .and. larchp) )then

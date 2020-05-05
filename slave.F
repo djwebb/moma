@@ -4,8 +4,8 @@
       subroutine slave
 #endif
 c
-c @(#) SCCS module: slave.F  version: 1.8
-c     Creation date: 08/23/95
+c @(#) SCCS module: slave.F  version: 1.9
+c     Creation date: 01/22/96
 c
 c======================================================================
 c
@@ -25,24 +25,22 @@ c  Each slave is responsible for its own communications with
 c  its neighbours and responds to the masters's requests for 
 c  snapshot and archive data.
 c 
-c  The master and slave programs have been developed by members of 
-c  the OCCAM core team including:
+c  The master and slave programs have been developed by members of the OCCAM 
+c  core team including:
+c           David J. Webb          djw@soc.soton.ac.uk
+c           Beverly A. de Cuevas   bac@soc.soton.ac.uk
+c           Andrew C. Coward       acc@soc.soton.ac.uk
+c           Catherine S. Gwilliam  cgw@soc.soton.ac.uk
 c
-c           David J. Webb          djw@ios.ac.uk 
-c           Beverly A. de Cuevas   bac@ios.ac.uk 
-c           Andrew C. Coward       acc@ios.ac.uk 
-c           Catherine S. Gwilliam  cgw@ios.ac.uk 
-c 
 c  Advice on CRAY T3D specifics has also been received from:
 c
 c           Mike O'Neill        meon@cray.com
 c           Bob Carruthers      Bob.Carruthers@cray.com
 c
-c
-c  Copyright 1993, 1994, 1995.  D.J. Webb., B.A. de Cuevas, A.C. Coward
-c                   and C.S. Gwillam,  
-c                   Institute of Oceanographic Sciences,
-c                   Godalming, Surrey GU8 5UB, U.K..
+c  Copyright 1993, 1994, 1995, 1996.  D.J. Webb, B.A. de Cuevas, A.C. Coward, 
+c                                     A.C. Coward and C.S. Gwilliam,
+c                                     Southampton Oceanography Centre,
+c                                     Empress Dock, Southampton SO14 3ZH, U.K..
 c
 c  The code may be freely adapted and used without charge for
 c  non-commercial purposes.  Publications which report on work that
@@ -149,6 +147,7 @@ c
 #include "cdiag.h"
 #include "chmix.h"
 #include "cvmix.h"
+#include "cvbc.h"
 #include "frees.h"
 #include "iounit.h"
 #include "varinfo.h"
@@ -316,7 +315,7 @@ c
       jtm1 = jt-1
 c
 c-----------------------------------------------------------------------
-c       print map of "kmt" levels.
+c       print map of "kmt" levels (if switch set)
 c-----------------------------------------------------------------------
 c
       if(.true.)then
@@ -334,7 +333,7 @@ c
       endif
 c
 c-----------------------------------------------------------------------
-c       print map of "kmu" levels. 
+c       print map of "kmu" levels (if switch set)
 c-----------------------------------------------------------------------
 c 
       if(.false.)then
@@ -352,7 +351,7 @@ c
       endif
 c
 c-----------------------------------------------------------------------
-c       print map of "kpn" array
+c       print map of "kpn" array (if switch set)
 c-----------------------------------------------------------------------
 c
       if(.false.)then
@@ -381,7 +380,7 @@ c
       else
 c
 c-----------------------------------------------------------------------
-c checkpoint and process messages until the master broadcasts a
+c checkpoint, receiving restart data, until the master broadcasts a
 c continue. The master will keep the slaves at the checkpoint until
 c all the restart data has been received and stored in the buffer
 c-----------------------------------------------------------------------
@@ -392,6 +391,16 @@ c transfer data from the buffer storage
 c
         call rdrest
       endif
+c
+c-----------------------------------------------------------------------
+c     receive the initial flux data sets and
+c     initialise the flux flags
+c-----------------------------------------------------------------------
+c
+      lmetq = .false.
+      call s_recv(MSG_MET1)
+      call s_recv(MSG_MET2)
+      call s_recv(MSG_MET3)
 c
 c-----------------------------------------------------------------------
 c     compute maximum number of vertical levels on the "u" grid
@@ -475,7 +484,7 @@ c
         ggu(j) = am*(c1-tng(j)*tng(j))/(radius*radius)
         hhu(j) = am*c2*sine(j)/(radius*csu(j)*csu(j))
 2670  continue
-#ifdef SYNC_3 || SYNC_2
+#if defined SYNC_3 || defined SYNC_2
 c
 c  set flags ready to receive first clear messages
 c
@@ -489,7 +498,6 @@ c
 c
 c  report to master and wait
 c
-      call flush(ioslave)
       call schkpnt(10)
 c
 c-----------------------------------------------------------------------
@@ -516,6 +524,19 @@ c-----------------------------------------------------------------------
 c
         first= loop .eq. 1
         call tmngr (dtts)
+c
+c-----------------------------------------------------------------------
+c       update met field variables 
+c-----------------------------------------------------------------------
+c
+        if(metts) lmetp = .true.
+c
+        if(lmetp.and.lmetq) call s_send(MSG_CLR_MET)
+c
+c-----------------------------------------------------------------------
+c       step solution 
+c-----------------------------------------------------------------------
+c
         call step 
         call sendposn(35)
 c
@@ -532,7 +553,9 @@ c
      &          dtabs(1)/volume, dtabs(2)/volume,utime(3)
 #else
 c
+c-----------------------------------------------------------------------
 c  get total elapsed time and user time since last call
+c-----------------------------------------------------------------------
 c
           utime(3) = etime(utime)
           tempzz   = dtime(utime)
@@ -541,6 +564,10 @@ c
 #endif
           call flush(ioslave)
         endif
+c
+c-----------------------------------------------------------------------
+c  initialise transfer of diagnostic, restart and snapshot data
+c-----------------------------------------------------------------------
 c
         if (diagts) call pdiag
         if (archts) then
@@ -552,10 +579,15 @@ c
           lsnapp = .true.
         endif
 c
+c-----------------------------------------------------------------------
+c  test tsi, archive, snapshot and met flags until it is safe 
+c  to continue to the next timestep
+c-----------------------------------------------------------------------
+c
  25     continue
         call s_recv(MSG_ANY)
         call flush(ioslave)
-        if(prntsn .and. ltsiw)then
+        if((prntsn .and. ltsiw).or.(mettn.and.lmetp))then
 #ifndef cray-t3d
           call sleep(1)
 #endif

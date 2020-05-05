@@ -1,7 +1,7 @@
       subroutine step 
 c
-c @(#) SCCS module: step.F  version: 1.8
-c      Creation date: 08/23/95
+c @(#) SCCS module: step.F  version: 1.9
+c      Creation date: 12/18/95
 c
 c=======================================================================
 c
@@ -251,6 +251,7 @@ c
               v0(it,jc,np0) = v0(   2,jc,np0)
 500         continue
           endif
+c
 c-----------------------------------------------------------------------
 c     reset pointers at end of first pass of the free surface model
 c-----------------------------------------------------------------------
