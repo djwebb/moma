@@ -1,7 +1,7 @@
 #ifdef hcomments
 c
-c @(#) SCCS module: def_master.h  version: 1.3
-c     Creation date: 03/17/95
+c @(#) SCCS module: def_master.h  version: 1.4
+c     Creation date: 03/23/95
 c
 #endif
 #ifdef Slave

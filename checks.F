@@ -1,7 +1,7 @@
       subroutine checks
 c
-c @(#) SCCS module: checks.F  version: 1.3
-c     Creation date: 03/17/95
+c @(#) SCCS module: checks.F  version: 1.4
+c     Creation date: 03/23/95
 c
 c==================================================================
 c     do consistency checks

@@ -1,7 +1,7 @@
       subroutine matrix (array, irdim, istrt, im, jstrt, jm, scale)
 c
-c @(#) SCCS module: matrix.F  version: 1.3
-c     Creation date: 03/17/95
+c @(#) SCCS module: matrix.F  version: 1.4
+c     Creation date: 03/23/95
 c
 c==================================================================
 c

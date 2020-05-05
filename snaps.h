@@ -1,8 +1,8 @@
 c====================== include file "snaps.h" =========================
 #ifdef hcomments
 c
-c @(#) SCCS module: snaps.h  version: 1.3
-c     Creation date: 03/17/95
+c @(#) SCCS module: snaps.h  version: 1.4
+c     Creation date: 03/23/95
 c
 c-----------------------------------------------------------------------
 c Temporary storage for snapshot data. Each slave

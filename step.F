@@ -1,6 +1,6 @@
       subroutine step 
 c
-c @(#) SCCS module: step.F  version: 1.3
+c @(#) SCCS module: step.F  version: 1.4
 c     Creation date: 03/23/95
 c
 c=======================================================================

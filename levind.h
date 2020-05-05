@@ -1,8 +1,8 @@
 c====================== include file "levind.h" ========================
 #ifdef hcomments
 c
-c @(#) SCCS module: levind.h  version: 1.3
-c     Creation date: 03/17/95
+c @(#) SCCS module: levind.h  version: 1.4
+c     Creation date: 03/23/95
 c
 c-----------------------------------------------------------------------
 c     Vertical level indicators which define model geometry & 

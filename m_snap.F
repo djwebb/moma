@@ -1,7 +1,7 @@
       subroutine snapreq
 c
-c @(#) SCCS module: m_snap.F  version: 1.3
-c     Creation date: 03/17/95
+c @(#) SCCS module: m_snap.F  version: 1.4
+c     Creation date: 03/23/95
 c
 c==================================================================
 c subroutine to prepare for the next snapshot request
@@ -94,8 +94,8 @@ c
 
       subroutine snapwr
 c
-c @(#) SCCS module: m_snap.F  version: 1.3
-c     Creation date: 03/17/95
+c @(#) SCCS module: m_snap.F  version: 1.4
+c     Creation date: 03/23/95
 c
 c------------------------------------------------------------------
 c  subroutine to write out the next snapshot field

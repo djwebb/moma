@@ -1,7 +1,7 @@
       subroutine initmess
 c
-c @(#) SCCS module: s_msg.F  version: 1.3
-c     Creation date: 03/17/95
+c @(#) SCCS module: s_msg.F  version: 1.4
+c     Creation date: 03/23/95
 c
 c=======================================================================
 c  slave subroutine to initialise message passsing logic
@@ -505,7 +505,7 @@ c
    20  continue
        if(idebug.gt.4)then
          write(ioslave,*)' Slave - message MSG_BOUND1 sent.',
-     &                   ' iposn=',iposn
+     &          ' iposn=',iposn,' itt = ',itt3,' ittp = ',ittp3
        endif
 c
 c=======================================================================
@@ -571,7 +571,7 @@ c
    40 continue
       if(idebug.gt.4)then
         write(ioslave,*)' Slave - message MSG_BOUND2 sent. iposn=',
-     &                    iposn
+     &       iposn,' itt = ',itt2,' itbt = ',itbt2,' itbtp = ',itbtp2
       endif
 c
 c=======================================================================
@@ -1065,7 +1065,7 @@ c
 c
         if(idebug.gt.4)then
           write(ioslave,*)' Slave - message MSG_BOUND1 received.',
-     &                    ' iposn=',iposn
+     &         ' iposn=',iposn,' itt = ',itts,' ittp = ',ittps
         endif
         return
 c
@@ -1199,7 +1199,8 @@ c
 c
         if(idebug.gt.4)then
           write(ioslave,*)' Slave - message MSG_BOUND2 received.',
-     &                    ' iposn=',iposn
+     &         ' iposn=',iposn,' itt = ',itts,' ittbt = ',itbts,
+     &         ' itbtp = ',itbtps
         endif
         return
 c

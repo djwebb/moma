@@ -1,8 +1,16 @@
 #
-# @(#) SCCS module: makefile.sgi  version: 1.3
-#      Creation date: 03/17/95
+# @(#) SCCS module: makefile.sgi  version: 1.4
+#      Creation date: 03/24/95
 #
 #     Moma.pvm make file for SGI
+#
+#   Needs the following environment variables to be set and
+#   the PVM and HDF include files and libraries to be installed
+#   in the corresponding locations:
+#
+#     PVM_ROOT - Root directory for PVM
+#     PVM_ARCH - PVM architecture type (set using pvmgetarch program)
+#     HDF_ROOT - Root directory for HDF
 #
 #   When using new precompiler options first change DOPTNS below,
 #   then using this makefile, type commands 'make cleaner' to remove
@@ -33,30 +41,26 @@ DOPTNS=	-Dpvm_buffer \
 	-Dde_checkbd \
         -Dpresetp -Dncsa_hdf
 
-HDFROOT = /users/occam/hdf/sunos2
-# FC =	env TARGET=cray-t3d /mpp/bin/cf77  -Wf"-o aggress" 
 FC =	f77   
-INCLUDE= -I$(PVM_ROOT)/include  -I$(HDFROOT)/include
+INCLUDE= -I$(PVM_ROOT)/include  -I$(HDF_ROOT)/include/$(PVM_ARCH)
 PVMLIBS = $(PVM_ROOT)/lib/$(PVM_ARCH)/libfpvm3.a $(PVM_ROOT)/lib/$(PVM_ARCH)/libpvm3.a
-HDFLIBS = $(HDFROOT)/lib/libnetcdf.a $(HDFROOT)/lib/libdf.a
-#LDR = /mpp/bin/mppldr -L. -lsma -X8 
+HDFLIBS = $(HDF_ROOT)/lib/$(PVM_ARCH)/libnetcdf.a $(HDF_ROOT)/lib/$(PVM_ARCH)/libdf.a
 LDR = f77
 
 # define '.F' suffix for the SGI system
 
-.SUFFIXES: .F
+.SUFFIXES:
+.SUFFIXES: .o .F .h
 
-.F.o:   $(HFILES) 
-	$(FC) $(DOPTNS) -c $(INCLUDE) $<
-
+.F.o:   $(HFILES)
+	$(FC) $(DOPTNS) -c $(INCLUDE)  $*.F
+	
 masterslave: masterslave.o $(MOFILES) $(SOFILES) $(BOFILES)	
 	$(LDR) masterslave.o  $(MOFILES) $(SOFILES) $(BOFILES) -o masterslave $(PVMLIBS) $(HDFLIBS)
-	cp masterslave ../expt01
 	cp masterslave $(PVM_ROOT)/bin/$(PVM_ARCH)
 
 master:	$(MOFILES) $(BOFILES)	
-	$(LDR) $(MOFILES) $(BOFILES) -o master $(PVMLIBS) $(HDFLIBS)
-	cp master ../expt01
+	$(LDR) $(MOFILES) $(BOFILES) -o master $(PVMLIBS) $(HDFLIBS) 
 
 slave : $(SOFILES) $(BOFILES)	
 	$(LDR) $(SOFILES) $(BOFILES) -o slave $(PVMLIBS)
@@ -69,7 +73,9 @@ make_kpn :
 	$(FC) -o make_kpn make_kpn.F
 
 clean :	
-	rm *%
+	rm *% 
 
 cleaner : 
-	rm -f *.o *% master slave masterslave
+	rm -f *.o *% master slave masterslave   \
+	$(PVM_ROOT)/bin/$(PVM_ARCH)/slave       \
+	$(PVM_ROOT)/bin/$(PVM_ARCH)/masterslave

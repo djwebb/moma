@@ -4,7 +4,7 @@
       subroutine slave
 #endif
 c
-c @(#) SCCS module: slave.F  version: 1.3
+c @(#) SCCS module: slave.F  version: 1.4
 c     Creation date: 03/23/95
 c
 c======================================================================

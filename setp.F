@@ -1,8 +1,8 @@
       subroutine setp (ic, jc)
 #ifdef presetp
 c
-c @(#) SCCS module: setp.F  version: 1.3
-c     Creation date: 03/17/95
+c @(#) SCCS module: setp.F  version: 1.4
+c     Creation date: 03/23/95
 c
 c==================================================================
 c

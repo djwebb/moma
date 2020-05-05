@@ -1,7 +1,7 @@
       subroutine initmet
 # ifdef hcomments
 c
-c @(#) SCCS module: m_flx.F  version: 1.3
+c @(#) SCCS module: m_flx.F  version: 1.4
 c     Creation date: 12/18/95
 c
 c=======================================================================

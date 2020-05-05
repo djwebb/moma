@@ -1,7 +1,7 @@
             subroutine docmnt (nunit, wrdoc, wrc0, wrc1, wrc2)
 c
-c @(#) SCCS module: docmnt.F  version: 1.3
-c     Creation date: 03/17/95
+c @(#) SCCS module: docmnt.F  version: 1.4
+c     Creation date: 03/23/95
 c
 c=======================================================================
 c
