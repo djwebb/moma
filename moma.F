@@ -1,7 +1,7 @@
       program moma
 c
 c==================================================================
-c  Program MOMA,     Version 1.10
+c  Program MOMA,     Version 1.11
 c
 c  Free surface ocean model for use with array processors.
 c
@@ -10,7 +10,7 @@ c                   Institute of Oceanographic Sciences,
 c                   Godalming, Surrey GU8 5UB, U.K..
 c  
 c @(#) SCCS information - module:  moma.F     
-c @(#)                    version: 1.10    date: 08/05/93
+c @(#)                    version: 1.11    date: 08/26/93
 c
 c
 c  This code is a free surface version of the Bryan-Cox-Semtner
@@ -55,9 +55,21 @@ c      Webb and Patterson (1989).  For efficiency, the mean horizontal
 c      velocity is now used instead of horizontal transport and
 c      the viscous terms are calculated in routine clinic.
 c  6.  In the baroclinic momentum equation, a revised horizontal
-c      advection scheme option is included.
+c      advection scheme option is included.  The old scheme can still be 
+c      used by specifying the flag 'oldadv'
 c  7.  Near topography, in the baroclinic momentum equation, a revised
 c      vertical advection scheme option is included.
+c  8.  An option to precalculate the baroclinic part of the 
+c      pressure filed is included using flag 'presetp'.
+c
+c
+c  cpp precompiler options:
+c
+c     'oldadv'   - use the origonal scheme for the horizontal
+c                  advection velocity at velocity points.
+c     'presetp'  - precalculate the baroclinic pressure field
+c                  before calling clinic
+c     'hcomments'- include comments from '*.h' files
 c
 c  References:
 c
@@ -65,7 +77,7 @@ c  Bryan, K., 1969:  A numerical method for the circulation of the
 c  World Ocean.  Journal of Computational Physics, 4, 347-  .
 c
 c  Semtner, A.J., 1974:  A general circulation model for the 
-c  World Ocean.  UCLA Department of meteorology Technical Report
+c  World Ocean.  UCLA Department of Meteorology Technical Report
 c  No. 8, 99pp.
 c
 c  Cox, M.D., 1984:  A primitive equation, 3-dimensional model of
@@ -74,17 +86,17 @@ c  Fluid Dynamics Laboratory/NOAA, Princeton University,
 c  Princeton N.J., U.S.A..
 c
 c  Killworth, P.D., Stainforth, D., Webb, D.J. and Paterson, P.M.,
-c  1989:  A free surface Bryan-Cox-Semtner model.  Institute of
-c  Oceanographic Sciences, Report No. 270.
+c  1989:  A free surface Bryan-Cox-Semtner model.  Report No. 270,  
+c  Institute of Oceanographic Sciences, Wormley, U.K..
 c
 c  Pacanowski, R.C., Dixon, K., Rosati, A., 1990:  The GFDL Modular
 c  Ocean Model 1.0.  Geophysical Fluid Dynamics Laboratory/NOAA, 
-c  Princeton University, Princeton N.J., U.S.A.
-c  (Unpublished manuscript).
+c  Princeton University, Princeton, N.J., U.S.A..  (Unpublished 
+c  manuscript).
 c
 c  Webb, D.J., 1993:  An ocean model code for array processor
-c  computers.  Institute of Oceanographic Sciences, Deacon
-c  Laboratoy, Internal Document No.###.
+c  computers.  Internal Document No.324, Institute of Oceanographic 
+c  Sciences, Wormley, U.K..
 c
 c==================================================================
 c
@@ -123,8 +135,8 @@ c
 c     constants usually initialised in block data
 c
       model(1) =' Stripped down MOM code for array processor.'
-      model(2) =' Module: moma.F.  Version: 1.10. '//
-     &          ' Date: 08/05/93'
+      model(2) =' Module: moma.F.  Version: 1.11. '//
+     &          ' Date: 08/26/93'
       stlon = -4.0
       stlat = -72.0
       dxdeg = 4.0
@@ -403,7 +415,7 @@ c
 9499  format (/' error => lseg too small for',a15,' indices'
      &        /'          j =',i5,'  lseg + 1 =',i8)
 9602  format (1x,'ts=',i7, 1x, a32, ', ke=', 1pe13.6,
-     &        ' dtemp=',1pe13.6,' dsalt=',1pe13.6,' times=',2f10.2)
+     &        ' dtemp=',1pe13.6,' dsalt=',1pe13.6,' times=',0p2f10.2)
 9603  format(1x,' ==> END of model run.',//)
       end
 
@@ -463,17 +475,18 @@ c       return here for second pass of euler backward timestep
 c------------------------------------------------------------------
 c
  100  continue
-#ifdef precalcden
+#ifdef presetp
 c
 c-----------------------------------------------------------------
 c  
-c     precalculate the density field for use by subroutine clinic
+c     precalculate the baroclinic part of the pressure field 
+c     for use by subroutine clinic
 c
 c-----------------------------------------------------------------
 c  
       do 150 jc=1,jmt
       do 150 ic=1,imt
-        call setden (ic,jc)
+        call setp (ic,jc)
  150  continue 
 #endif
 c
@@ -662,10 +675,15 @@ c
       ip = ic+1
       im = ic-1
 c
-c  NOTE for the new advection scheme this should be the max
-c  of all the neighbouring points.
+c  find max of all the neighbouring points.
 c
+#ifdef oldadv
       kmd  = max(kmu(ip,jc),kmu(im,jc),kmu(ic,jp),kmu(ic,jm),kmc)
+#else
+      kmd  = max(kmu(im,jm),kmu(ic,jm),kmu(ip,jm),
+     &           kmu(im,jc),kmc       ,kmu(ip,jc),
+     &           kmu(im,jp),kmu(ic,jp),kmu(ip,jp))
+#endif
       boxa = dx*csu(jc)*dy
       boxar = c1/boxa
 c
@@ -676,7 +694,7 @@ c
       dxp5 = p5*dx
       dyp5 = p5*dy
       do 100 k=1,kmd
-#ifdef oldhorizuadv
+#ifdef oldadv
 c
 c  original horizontall advection scheme
 c
@@ -702,30 +720,11 @@ c
       fuw(k) = dz(k)*dy*p125*( fuic +
      &         (u(k,im,jp,nc)+2.0*u(k,im,jc,nc)+u(k,im,jm,nc)))
 #endif
-#ifdef oldvertwbc
-c
-c  original vertical boundary condition on w at u points.
-c
-      fw(k)  = (fue(k)-fuw(k)+fvn(k)-fvs(k))
-#else
 c
 c  new vertical boundary conditions on w at u points
 c
       fw(k-1)  = (fuw(k)-fue(k)+fvs(k)-fvn(k))
-#endif
  100  continue
-#ifdef oldvertwbc
-c
-c=============================================================
-c    integrate down from the top level
-c=============================================================
-c
-      fw(0) = c0
-      do 210 k=1,kmc-1
-      fw(k)=fw(k)+fw(k-1)
- 210  continue
-      fw(kmc)=c0
-#else
 c
 c=============================================================
 c    integrate up from the bottom level
@@ -735,8 +734,21 @@ c
       do 210 k=kmd,1,-1
       fw(k-1)=fw(k-1)+fw(k)
  210  continue
-#endif
-#ifndef precalcden
+#ifdef presetp
+c
+c-----------------------------------------------------------------
+c         compute hydrostatic pressure gradient (baroclinic part)
+c-----------------------------------------------------------------
+c
+      fxa = dx2r*csur(jc)
+      fxb = dy2r
+      do 300 k=1,kmc
+        temp1  = p(k,ip,jp) - p(k,ic,jc)
+        temp2  = p(k,ic,jp) - p(k,ip,jc)
+        dpdx(k) = (temp1-temp2)*fxa
+        dpdy(k) = (temp1+temp2)*fxb
+ 300  continue
+#else
 c
 c-----------------------------------------------------------------
 c     compute density on surrounding 't' points
@@ -750,41 +762,28 @@ c
      &            kmt(ip,jp) ,0)
       call state (t(1,ic,jp,1,nc), t(1,ic,jp,2,nc), rhop, 
      &            kmt(ic,jp) ,0)
-#endif
 c
 c-----------------------------------------------------------------
-c         compute hydrostatic pressure gradient
+c         compute hydrostatic pressure gradient (baroclinic part)
 c-----------------------------------------------------------------
 c
 c    1. compute it at the first level
 c
-      fxa = grav*dzw(0)*csur(jc)
+      fxa = grav*dzw(0)*dx2r*csur(jc)
       fxb = grav*dzw(0)*dy2r
-#ifdef precalcden
-      temp1 = rho(1,ip,jp) - rho(1,ic,jc)
-      temp2 = rho(1,ic,jp) - rho(1,ip,jc)
-#else
       temp1  = rhpp(1) - rhoo(1)
       temp2  = rhop(1) - rhpo(1)
-#endif
-      dpdx(1) = (temp1-temp2)*fxa*dx2r
+      dpdx(1) = (temp1-temp2)*fxa
       dpdy(1) = (temp1+temp2)*fxb
 c
 c    2. compute the change in pressure gradient between levels
 c
-      fxa = grav*csur(jc)*p5
+      fxa = grav*dx4r*csur(jc)
       fxb = grav*dy4r
       do 300 k=2,kmc
-#ifdef precalcden
-        temp1 = rho(k,ip,jp) + rho(k-1,ip,jp) 
-     &        - rho(k,ic,jc) - rho(k-1,ic,jc)
-        temp2 = rho(k,ic,jp) + rho(k-1,ic,jp) 
-     &        - rho(k,ip,jc) - rho(k-1,ip,jc)
-#else
         temp1 = rhpp(k)+rhpp(k-1)- rhoo(k)-rhoo(k-1)
         temp2 = rhop(k)+rhop(k-1)- rhpo(k)-rhpo(k-1)
-#endif
-        dpdx(k) = (temp1-temp2)*fxa*dzw(k-1)*dx2r
+        dpdx(k) = (temp1-temp2)*fxa*dzw(k-1)
         dpdy(k) = (temp1+temp2)*fxb*dzw(k-1)
  300  continue
 c
@@ -796,6 +795,7 @@ c
         dpdx(k) = dpdx(k-1) + dpdx(k)
         dpdy(k) = dpdy(k-1) + dpdy(k)
  400  continue
+#endif
 c
 c-----------------------------------------------------------------
 c         calculate quantities for the computation of
@@ -1343,23 +1343,41 @@ c
       end
 
 
-#ifdef precalcden
-      subroutine setden (ic, jc)
+#ifdef presetp
+      subroutine setp (ic, jc)
 c
 c==================================================================
 c
-c     precalculate the density field for use by subroutine clinic
+c     precalculate the baroclinic part of the pressure field 
+c     for use by subroutine clinic
+c
+c     p(1,...) statement moved within loop 100 to overcome bug
+c     with Silicon Graphics at level 3 optimisation
 c
 c==================================================================
 c
 #include "param.h"
+#include "grdvar.h"
+#include "scalar.h"
 #include "slabs.h"
 #include "timelv.h"
 #include "levind.h"
 c
-      if(kmt(ic,jc).ne.0)then
+      dimension temp(km)
+c
+      kmc = kmt(ic,jc)
+      if(kmc.gt.0)then        
         call state (t(1,ic,jc,1,nc), t(1,ic,jc,2,nc),  
-     &              rho(1,ic,jc), kmt(ic,jc) ,0)
+     &              temp, kmt(ic,jc) ,0)
+        fxa = p5*grav
+        do 100 k=1,kmc
+          if(k.eq.1)then
+            p(1,ic,jc) = temp(1)*grav*dzw(0)
+          else
+            p(k,ic,jc) = p(k-1,ic,jc) 
+     &                       + dzw(k-1)*fxa*(temp(k)+temp(k-1))
+          endif
+ 100    continue
       endif
       return
       end

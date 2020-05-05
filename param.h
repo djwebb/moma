@@ -1,7 +1,7 @@
 c====================== include file "param.h" =========================
 #ifdef hcomments
 c
-c     @(#) SCCS module: param.h, version 1.10
+c     @(#) SCCS module: param.h, version 1.11
 c
 c     main parameter file which sets ocean characteristics:
 c
