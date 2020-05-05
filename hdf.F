@@ -1,8 +1,8 @@
 #ifdef ncsa_hdf
       subroutine archrd_hdf(ncntl)
 c
-c @(#) SCCS module: hdf.F  version: 1.1
-c     Creation date: 03/16/95
+c @(#) SCCS module: hdf.F  version: 1.2
+c     Creation date: 03/17/95
 c
 c=======================================================================
 c  subroutine to read hdf version of the restart file

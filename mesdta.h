@@ -1,8 +1,8 @@
 c======================include file: mesdta.h==========================
 #ifdef hcomments
 c
-c @(#) SCCS module: mesdta.h  version: 1.1
-c     Creation date: 03/16/95
+c @(#) SCCS module: mesdta.h  version: 1.2
+c     Creation date: 03/17/95
 c
 c-----------------------------------------------------------------------
 c Common storage for miscellaneous message handling data

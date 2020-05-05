@@ -1,7 +1,7 @@
       program make_kpn
 c
-c @(#) SCCS module: make_kpn.F  version: 1.1
-c     Creation date: 03/16/95
+c @(#) SCCS module: make_kpn.F  version: 1.2
+c     Creation date: 03/17/95
 c
 c==================================================================
 c

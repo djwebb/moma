@@ -1,6 +1,6 @@
 #
-# @(#) SCCS module: makefile.sun  version: 1.1
-#     Creation date: 03/16/95
+# @(#) SCCS module: makefile.sun  version: 1.2
+#      Creation date: 03/17/95
 #
 #     Moma.pvm make file for Sun4
 #
@@ -62,6 +62,14 @@ PVMLIBS = $(PVM_ROOT)/lib/$(PVM_ARCH)/libfpvm3.a $(PVM_ROOT)/lib/$(PVM_ARCH)/lib
 #LDR = /mpp/bin/mppldr -L. -lsma -X8 
 LDR = f77
 
+#suppress SCCS retrieval
+
+.SCCS_GET:
+
+#  Add masterslave option when making masterslave
+#  (this does not work with all unix systems)
+
+masterslave := MSOPT = -DMasterslave
 
 .F.o :  $(HFILES)
 	$(FC) $(DOPTNS) -c $(INCLUDE) $<

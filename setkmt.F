@@ -1,8 +1,8 @@
       subroutine setkmt (alat1, slon1, elon1,
      &                   alat2, slon2, elon2, num)
 c
-c @(#) SCCS module: setkmt.F  version: 1.1
-c     Creation date: 03/16/95
+c @(#) SCCS module: setkmt.F  version: 1.2
+c     Creation date: 03/17/95
 c
 c------------------------------------------------------------------
 c     set the topography mask "kmt(i,j)" = "num" within the area of 

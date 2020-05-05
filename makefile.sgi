@@ -1,13 +1,13 @@
 #
-# @(#) SCCS module: makefile.sgi  version: 1.1
-#     Creation date: 03/16/95
+# @(#) SCCS module: makefile.sgi  version: 1.2
+#      Creation date: 03/17/95
 #
 #     Moma.pvm make file for SGI
 #
-#   I have not found a good way to allow for changes to the options
-#   -Dncsa_hdf etc.  The simplest I know of is is to use 'make cleaner'
-#   to remove all the .o files before making master, slave or
-#   masterslave for the new options.
+#   When using new precompiler options first change DOPTNS below,
+#   then using this makefile, type commands 'make cleaner' to remove
+#   old '.o' files followed by 'make master' and 'make slave', or
+#   'make masterslave'.
 #
 
 MOFILES=master.o   checks.o   docmnt.o   hdf.o      \
@@ -42,12 +42,7 @@ HDFLIBS = $(HDFROOT)/lib/libnetcdf.a $(HDFROOT)/lib/libdf.a
 #LDR = /mpp/bin/mppldr -L. -lsma -X8 
 LDR = f77
 
-#suppress SCCS retrieval
-
-#.SCCS_GET:
-
-# use -DMasterslave with masterslave (does not work with SGI)
-# masterslave := MSOPT = -DMasterslave
+# define '.F' suffix for the SGI system
 
 .SUFFIXES: .F
 

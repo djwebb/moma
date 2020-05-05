@@ -1,8 +1,8 @@
       subroutine m_initmess
 c
 c=======================================================================
-c @(#) SCCS module: m_msg.F  version: 1.1
-c     Creation date: 03/16/95
+c @(#) SCCS module: m_msg.F  version: 1.2
+c     Creation date: 03/17/95
 c=======================================================================
 c
 c
@@ -394,8 +394,6 @@ c
      &    ' Master:  Message MSG_CONTROL sent to all slaves.'
         endif
 c
-      elseif(msgtype.eq.MSG_TOPOG) then
-c
 c=======================================================================
 c pack and send kmt and grid information
 c=======================================================================
@@ -417,13 +415,13 @@ c
  10    continue
        do 15 j=jt_s(n),jt_e(n)
        do 15 i=it_s(n),it_e(n)
-        ii = mod(i-1,IMT_M) + 1
-        call pvmfpack(INTEGER_PVM , kmu(ii,j),  1, 1, info )
+         ii = mod(i-1,IMT_M) + 1
+         call pvmfpack(INTEGER_PVM , kmu(ii,j),  1, 1, info )
  15    continue
        do 18 j=jt_s(n),jt_e(n)
        do 18 i=it_s(n),it_e(n)
-        ii = mod(i-1,IMT_M) + 1
-        call pvmfpack(INTEGER_PVM , kpn(ii,j),  1, 1, info )
+         ii = mod(i-1,IMT_M) + 1
+         call pvmfpack(INTEGER_PVM , kpn(ii,j),  1, 1, info )
  18    continue
 c
         call pvmfsend( itida(n), msgtype, info )
