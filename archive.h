@@ -1,8 +1,8 @@
 c-------------------------archive.h------------------------------
 #ifdef hcomments
 c
-c @(#) SCCS module: archive.h  version: 1.5
-c     Creation date: 03/24/95
+c @(#) SCCS module: archive.h  version: 1.6
+c     Creation date: 04/13/95
 c
 c-----------------------------------------------------------------------
 c Temporary storage for restart or archive data. Each slave

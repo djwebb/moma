@@ -1,7 +1,7 @@
       subroutine step 
 c
-c @(#) SCCS module: step.F  version: 1.5
-c     Creation date: 03/24/95
+c @(#) SCCS module: step.F  version: 1.6
+c     Creation date: 04/13/95
 c
 c=======================================================================
 c
@@ -108,8 +108,8 @@ c
           do 250 ll=1,nouter
             call setp(iout(ll),jout(ll))
  250      continue
-        endif
 # endif
+        endif
 c
 c-----------------------------------------------------------------------
 c  call baroclinic subroutines

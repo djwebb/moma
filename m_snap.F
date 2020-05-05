@@ -1,7 +1,7 @@
       subroutine snapreq
 c
-c @(#) SCCS module: m_snap.F  version: 1.5
-c     Creation date: 03/24/95
+c @(#) SCCS module: m_snap.F  version: 1.6
+c     Creation date: 04/13/95
 c
 c==================================================================
 c subroutine to prepare for the next snapshot request
@@ -94,13 +94,14 @@ c
 
       subroutine snapwr
 c
-c @(#) SCCS module: m_snap.F  version: 1.5
-c     Creation date: 03/24/95
+c @(#) SCCS module: m_snap.F  version: 1.6
+c     Creation date: 04/13/95
 c
 c------------------------------------------------------------------
 c  subroutine to write out the next snapshot field
 c------------------------------------------------------------------
 c
+#include "pconst.h"
 #include "iounit.h"
 c
       if(ftsnap.eq.'asc')then

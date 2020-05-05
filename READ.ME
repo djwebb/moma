@@ -1,7 +1,7 @@
 
 =======================================================================
-   @(#) SCCS module: READ.ME  version: 1.5
-        Creation date: 03/24/95
+   @(#) SCCS module: READ.ME  version: 1.6
+        Creation date: 04/13/95
 =======================================================================
 
 README file for moma.pvm 
@@ -522,3 +522,13 @@ using the Fortran free format read option.
                                             D.J.Webb,   March 17, 1995.
 =======================================================================
 
+
+Version information
+
+v1.6  Minor corrections suggested by Hugo Embrechets (Hugo.Embrechts@
+      cc.kuleuven.ac.be), affect i/o and compilation without presetp
+      but otherwise not affecting results.
+
+      On an IBM RS6000 system, calls to system routines dtime, flush,
+      and lnblnk may have to be replaced with calls to dtime_, flush_ 
+      and lnblnk_. 

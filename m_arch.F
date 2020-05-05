@@ -1,12 +1,13 @@
       subroutine archrd(ncntl)
 c
-c @(#) SCCS module: m_arch.F  version: 1.5
-c     Creation date: 03/24/95
+c @(#) SCCS module: m_arch.F  version: 1.6
+c     Creation date: 04/13/95
 c
 c=======================================================================
 c subroutine to read restart data and send to slaves
 c=======================================================================
 c
+#include "pconst.h"
 #include "iounit.h"
 c
       if(ftrest.eq.'ufm')then
@@ -311,6 +312,7 @@ c=======================================================================
 c subroutine to write out the next partial archive
 c=======================================================================
 c
+#include "pconst.h"
 #include "iounit.h"
 c
       if(ftarch.eq.'ufm')then

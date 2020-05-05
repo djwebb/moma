@@ -1,7 +1,7 @@
      	program masterslave
 c
-c @(#) SCCS module: masterslave.F  version: 1.5
-c     Creation date: 03/24/95
+c @(#) SCCS module: masterslave.F  version: 1.6
+c     Creation date: 04/13/95
 c
 c==================================================================
 c     top level routine for running moma.pvm on a multiprocessor
@@ -9,7 +9,6 @@ c     where the master and slave components have to be combined
 c     into a single program.
 c==================================================================
 c
-#include "fpvm3.h"
 #include "def_master.h"
 #include "param.h"
 #include "mesdta.h"

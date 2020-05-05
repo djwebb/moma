@@ -1,7 +1,7 @@
       subroutine diag( ic, jc)
 c
-c @(#) SCCS module: diag.F  version: 1.5
-c     Creation date: 03/24/95
+c @(#) SCCS module: diag.F  version: 1.6
+c     Creation date: 04/13/95
 c
 c=============================================================
 c  collect timestep statistics and (if diagts is set) statistics

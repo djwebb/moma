@@ -1,7 +1,7 @@
       subroutine initmess
 c
-c @(#) SCCS module: s_msg.F  version: 1.5
-c     Creation date: 03/24/95
+c @(#) SCCS module: s_msg.F  version: 1.6
+c     Creation date: 04/13/95
 c
 c=======================================================================
 c  slave subroutine to initialise message passsing logic
@@ -111,6 +111,7 @@ c
 #include "param.h"
 #include "ctmngr.h"
 #include "mesdta.h"
+#include "switch.h"
 #include "timelv.h"
 c
       do 10 j = 1, JMT_S
