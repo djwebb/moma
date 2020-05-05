@@ -1,11 +1,12 @@
       subroutine archwr_hdf
 c
 c @(#) SCCS information - module:  hdf.F     
-c @(#)                    version: 1.16    date: 03/21/95
+c @(#)                    version: 1.17    date: 09 Aug 1996
 c
 c=======================================================================
-c  subroutine to save hdf version of the restart file
-c  useing multi-file HDF3.3r3 routines
+c  Subroutine to save hdf version of the restart file
+c  using multi-file HDF3.3r3 routines.
+c  Copyright D.J. Webb, 1993, 1994, 1995, 1996
 c=======================================================================
 c
 #include "param.h"
@@ -173,10 +174,18 @@ c
       call hdf_error( ret, ' setting dimension string 1', 0)
       ret = sfsdmstr(dimid2,labels2(2),units2(2),fmats2(2))
       call hdf_error( ret, ' setting dimension string 2', 0)
+#ifndef REAL_8
+c
+c---------------------------------------------------------------------
+c  skip writing scales when REAL_8 defined.  This is a fix to overcome 
+c  an error in pvm when lengths of scale and main variable (kmt) differ
+c---------------------------------------------------------------------
+c
       ret = sfsdscale(dimid1, dims2(1),REAL_HDF, xt(i1))
       call hdf_error( ret, 'cannot set scales xt', dimid1)
       ret = sfsdscale(dimid2, dims2(2),REAL_HDF, yt)
       call hdf_error( ret, 'cannot set scales yt', dimid2)
+#endif
 #ifdef cyclic
       do 110 j=1,jmt
         start(2) = j-1
@@ -214,10 +223,18 @@ c
       call hdf_error( ret, 'setting dimension string 1', 0)
       ret = sfsdmstr(dimid2,labels2(2),units2(2),fmats2(2))
       call hdf_error( ret, 'setting dimension string 2', 0)
+#ifndef REAL_8
+c
+c---------------------------------------------------------------------
+c  skip writing scales when REAL_8 defined.  This is a fix to overcome 
+c  an error in pvm when lengths of scale and main variable (kmu) differ
+c---------------------------------------------------------------------
+c
       ret = sfsdscale(dimid1, dims2(1),REAL_HDF,xu(i1))
       call hdf_error( ret,'cannot set scales xu', dimid1)
       ret = sfsdscale(dimid2, dims2(2),REAL_HDF,yu)
       call hdf_error( ret,'cannot set scales yu', dimid2)
+#endif
 #ifdef cyclic
       do 120 j=1,jmt
         start(2) = j-1
@@ -587,10 +604,18 @@ c
       call hdf_error( ret, ' setting dimension string', 1)
       ret = sfsdmstr(dimid2,labels2(2),units2(2),fmats2(2))
       call hdf_error( ret, ' setting dimension string', 2)
+#ifndef REAL_8
+c
+c---------------------------------------------------------------------
+c  skip writing scales when REAL_8 defined.  This is a fix to overcome 
+c  an error in pvm when lengths of scale and main variable (kmt) differ
+c---------------------------------------------------------------------
+c
       ret = sfsdscale(dimid1, dims2(1),REAL_HDF, xt(i1))
       call hdf_error( ret, 'cannot set scales 1', dimid1)
       ret = sfsdscale(dimid2, dims2(2),REAL_HDF, yt)
       call hdf_error( ret, 'cannot set scales 2', dimid2)
+#endif
 #ifdef cyclic
       do 110 j=1,jmt
         start(2) = j-1
@@ -628,10 +653,18 @@ c
       call hdf_error( ret, 'setting dimension string', 1)
       ret = sfsdmstr(dimid2,labels2(2),units2(2),fmats2(2))
       call hdf_error( ret, 'setting dimension string', 2)
+#ifndef REAL_8
+c
+c---------------------------------------------------------------------
+c  skip writing scales when REAL_8 defined.  This is a fix to overcome 
+c  an error in pvm when lengths of scale and main variable (kmt) differ
+c---------------------------------------------------------------------
+c
       ret = sfsdscale(dimid1, dims2(1),REAL_HDF,xu(i1))
       call hdf_error( ret,'cannot set scales 1', dimid1)
       ret = sfsdscale(dimid2, dims2(2),REAL_HDF,yu)
       call hdf_error( ret,'cannot set scales 2', dimid2)
+#endif
 #ifdef cyclic
       do 120 j=1,jmt
         start(2) = j-1
@@ -790,9 +823,6 @@ c
       logical*4 around
       integer*4 file_id,sds_id,ret,
      &          start(MAXDIMS),stride(MAXDIMS),edge(MAXDIMS)
-c  DEBUG
-      integer*4 rank9,dimsizes9(4),numbertype9,nattrs9 
-      character*20,sds_name9
 c
 c  open file
 c
@@ -808,7 +838,7 @@ c
         write(stdout,*)' Program stopping ...'
         stop
       endif
-      file_id = sfstart(fnrest, DFACC_RDONLY)
+      file_id = sfstart(fnrest, DFACC_READ)
       call hdf_error( file_id,'cannot open restart dataset', 0)
 c
 c  read dataset information
@@ -878,26 +908,12 @@ c
       call hdf_error( index,'cannot find id for KMT', 0)
       sds_id = sfselect(file_id,index)
       call hdf_error(sds_id,'error getting index for KMT', 0)
-c  DEBUG
-      ret = sfginfo(sds_id,sds_name9,rank9,dimsizes9,numbertype9,
-     &      nattrs9)
-      print *,'sfginfo - sds_id, rank9, dimsizes9, numbertype9,',
-     &        ' nattrs9, sds_name9: ',
-     &  sds_id, rank9, dimsizes9, numbertype9, nattrs9, sds_name9
-      print *,' sfginfo - ret = ',ret  
-      print *,'sfrdata - sds_id, start, stride, edge: ',
-     &         sds_id, start, stride, edge
-      print *,' itt, totsec =', itt, totsec
 #ifdef cyclic
       do 210 j=1,jmt
         start(2) = j-1
-        write(stdout,211)i1,j,start(1),start(2),stride(1),stride(2),
-     &                     edge(1),edge(2)
         ret = sfrdata(sds_id,start,stride,edge,kmt(i1,j))
         call hdf_error(ret,'error reading KMT', 0)
-        write(stdout,*) j,(kmt(i,j),i=1,10)
  210  continue
- 211  format(' kmt: ', i5, 2x, 10i5)
 #else
       ret = sfrdata(sds_id,start,stride,edge,kmt)
       call hdf_error(ret,'error reading KMT', 0)

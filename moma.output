@@ -1,24 +1,44 @@
 
                           Stripped down MOM code for array processor.                                    
-                          Module: moma.output.  Version: 1.16.  Date: 03/21/95                                         
+                          Module: moma.output.  Version: 1.17.  Date: 09 Aug 1996                                         
 
 
- &contrl  init=  T, fnrest=
- 'd0002.ufm                                                                       '
- , fnkmt=
- '                                                                                '
- , days=    3.00000, restrt=  F, nmix=  24, eb=  T, ncon=  1, tsi=    8.33333E-02
- , dgnstc=   10.00000, snapd=    1.00000, archd=    2.00000, acor=   0.600000
- , dchkbd=    1.00000E-01, ftrest='ufm ', ftsnap='hdf ', ftarch='hdf '
- &end
- &eddy  am=    1.00000E+09, ah=    2.00000E+07, fkpm=    1.00000, fkph=    20.0000
- , cdbot=    1.00000E-03
- &end
- &tsteps  dtts=    7200.00, dtuv=    7200.00, dtbt=   100.0000
- &end
+ $contrl
+ init	=   T
+ fnrest	=  
+       	   'd0002.hdf                                                                       '
+ fnkmt	=  
+      	   'ocean.kmt                                                                       '
+ days	=  5.000000000000000
+ restrt	=   F
+ nmix	=            24
+ eb	=   T
+ ncon	=             1
+ tsi	=  8.3333299999999999E-02
+ dgnstc	=  10.00000000000000
+ snapd	=  1.000000000000000
+ archd	=  2.000000000000000
+ acor	=  0.6000000000000000
+ dchkbd	=  0.1000000000000000
+ ftrest	=  'hdf '
+ ftsnap	=  'hdf '
+ ftarch	=  'hdf '
+ $end
+ $eddy
+ am	=  1000000000.000000
+ ah	=  20000000.00000000
+ fkpm	=  1.000000000000000
+ fkph	=  20.00000000000000
+ cdbot	=  1.0000000000000000E-03
+ $end
+ $tsteps
+ dtts	=  7200.000000000000
+ dtuv	=  7200.000000000000
+ dtbt	=  100.0000000000000
+ $end
 
  The following "ifdef" options are in effect:
-   cyclic         simple_world   de_checkbd     ncsa_hdf    
+   cyclic         simple_world   de_checkbd     ncsa_hdf       REAL_8      
  end of options list.
 
 
@@ -28,14 +48,14 @@
 
  "w" grid box thickness (cm): "dzw(k) k=0..km"
     1500.0       3807.5       5754.0       8443.0       12028.       16637.       22344.       29136.       36888.       45346.    
-    54124.       62722.       70575.       77103.       81788.       41805.    
+    54124.       62723.       70575.       77103.       81788.       41805.    
 
  depth to "t" box bottom (cm): "zw(k) k=1..km"
     3000.0       7615.0       14508.       24501.       38564.       57775.       83251.      0.11605E+06  0.15703E+06  0.20674E+06
    0.26527E+06  0.33218E+06  0.40642E+06  0.48639E+06  0.57000E+06
 
  depth to "t" & "u,v" grid points (cm): "zt(k) k=1..kmp1"
-    1500.0       5307.5       11062.       19504.       31532.       48170.       70513.       99648.      0.13654E+06  0.18188E+06
+    1500.0       5307.5       11062.       19505.       31533.       48170.       70513.       99649.      0.13654E+06  0.18188E+06
    0.23601E+06  0.29873E+06  0.36930E+06  0.44641E+06  0.52819E+06  0.57000E+06
 
  latitude of t,s points (deg): "yt(j) j=1,jmt"
@@ -46,7 +66,7 @@
 
  latitude of u,v points (deg): "yu(j) j=1,jmt"
    -68.000      -64.000      -60.000      -56.000      -52.000      -48.000      -44.000      -40.000      -36.000      -32.000    
-   -28.000      -24.000      -20.000      -16.000      -12.000      -8.0000      -4.0000           0.       4.0000       8.0000    
+   -28.000      -24.000      -20.000      -16.000      -12.000      -8.0000      -4.0000      0.00000E+00   4.0000       8.0000    
     12.000       16.000       20.000       24.000       28.000       32.000       36.000       40.000       44.000       48.000    
     52.000       56.000       60.000       64.000       68.000       72.000    
 
@@ -63,7 +83,7 @@
     358.00       362.00    
 
  longitude of u,v points (deg): "xu(i) i=1,imt"
-        0.       4.0000       8.0000       12.000       16.000       20.000       24.000       28.000       32.000       36.000    
+   0.00000E+00   4.0000       8.0000       12.000       16.000       20.000       24.000       28.000       32.000       36.000    
     40.000       44.000       48.000       52.000       56.000       60.000       64.000       68.000       72.000       76.000    
     80.000       84.000       88.000       92.000       96.000       100.00       104.00       108.00       112.00       116.00    
     120.00       124.00       128.00       132.00       136.00       140.00       144.00       148.00       152.00       156.00    
@@ -76,8 +96,8 @@
 
 
   Regional & Global ocean statistics:
-  the total ocean surface area (t grid) = 3.28416564E+18cm**2
-  the total ocean volume (t grid)       = 1.75626579E+24cm**3
+  the total ocean surface area (t grid) = 3.28410846E+18cm**2
+  the total ocean volume (t grid)       = 1.75627689E+24cm**3
 
                                                  number of levels on "t,s" grid
 
@@ -195,50 +215,80 @@
    2 15 15 15 15 15 15 15 15 15 15 15  0
    1  0  0  0  0  0  0  0  0  0  0  0  0
 
- ts=      1 totday =    0.08,years =   0.000, ke= 2.683428E-01 dtemp= 4.458622E-08 dsalt= 6.674990E-13 times=     62.56     64.02
- ts=      2 totday =    0.17,years =   0.000, ke= 2.683503E-01 dtemp= 4.458899E-08 dsalt= 6.675029E-13 times=     43.69    108.30
- ts=      3 totday =    0.25,years =   0.001, ke= 5.015661E-01 dtemp= 5.144925E-08 dsalt= 6.664711E-13 times=     43.20    151.78
- ts=      4 totday =    0.33,years =   0.001, ke= 5.357590E-01 dtemp= 4.534906E-08 dsalt= 6.655628E-13 times=     43.60    196.04
- ts=      5 totday =    0.42,years =   0.001, ke= 5.179467E-01 dtemp= 3.708389E-08 dsalt= 6.634990E-13 times=     42.81    238.97
- ts=      6 totday =    0.50,years =   0.001, ke= 5.331104E-01 dtemp= 3.713489E-08 dsalt= 6.606485E-13 times=     42.21    281.22
- ts=      7 totday =    0.58,years =   0.002, ke= 5.223183E-01 dtemp= 3.713106E-08 dsalt= 6.579943E-13 times=     42.54    323.80
- ts=      8 totday =    0.67,years =   0.002, ke= 4.859989E-01 dtemp= 3.706947E-08 dsalt= 6.564055E-13 times=     41.74    365.54
- ts=      9 totday =    0.75,years =   0.002, ke= 4.398326E-01 dtemp= 3.649877E-08 dsalt= 6.561457E-13 times=     42.98    408.73
- ts=     10 totday =    0.83,years =   0.002, ke= 4.019201E-01 dtemp= 3.512661E-08 dsalt= 6.566126E-13 times=     42.72    451.57
- ts=     11 totday =    0.92,years =   0.003, ke= 3.957144E-01 dtemp= 3.379807E-08 dsalt= 6.571658E-13 times=     42.37    494.05
- ts=     12 totday =    1.00,years =   0.003, ke= 4.202141E-01 dtemp= 3.362121E-08 dsalt= 6.572889E-13 times=     42.80    537.12
-  Writing hdf file for itt =      12
+ ts=      1 totday =    0.08,years =   0.000, ke= 2.683426E-01 dtemp= 4.458627E-08 dsalt= 6.674937E-13 times=      5.03      5.18
+ ts=      2 totday =    0.17,years =   0.000, ke= 2.683501E-01 dtemp= 4.458887E-08 dsalt= 6.674996E-13 times=      3.41      8.61
+ ts=      3 totday =    0.25,years =   0.001, ke= 5.188757E-01 dtemp= 5.221322E-08 dsalt= 6.665447E-13 times=      3.42     12.03
+ ts=      4 totday =    0.33,years =   0.001, ke= 5.646513E-01 dtemp= 4.653959E-08 dsalt= 6.656755E-13 times=      3.45     15.49
+ ts=      5 totday =    0.42,years =   0.001, ke= 5.406090E-01 dtemp= 3.782358E-08 dsalt= 6.638481E-13 times=      3.40     18.90
+ ts=      6 totday =    0.50,years =   0.001, ke= 5.484993E-01 dtemp= 3.692159E-08 dsalt= 6.613687E-13 times=      3.43     22.33
+ ts=      7 totday =    0.58,years =   0.002, ke= 5.363256E-01 dtemp= 3.626248E-08 dsalt= 6.589553E-13 times=      3.39     25.73
+ ts=      8 totday =    0.67,years =   0.002, ke= 5.105389E-01 dtemp= 3.609044E-08 dsalt= 6.570461E-13 times=      3.42     29.15
+ ts=      9 totday =    0.75,years =   0.002, ke= 4.831568E-01 dtemp= 3.701068E-08 dsalt= 6.558696E-13 times=      3.43     32.60
+ ts=     10 totday =    0.83,years =   0.002, ke= 4.487058E-01 dtemp= 3.637073E-08 dsalt= 6.553120E-13 times=      3.42     36.02
+ ts=     11 totday =    0.92,years =   0.003, ke= 4.120796E-01 dtemp= 3.461560E-08 dsalt= 6.552124E-13 times=      3.42     39.45
+ ts=     12 totday =    1.00,years =   0.003, ke= 3.998521E-01 dtemp= 3.300446E-08 dsalt= 6.553732E-13 times=      3.40     42.86
+  Writing hdf snapshot file for itt =      12
   hdf filename = s0001.hdf                               
- ts=     13 totday =    1.08,years =   0.003, ke= 4.420819E-01 dtemp= 3.320199E-08 dsalt= 6.567856E-13 times=     42.69    581.86
- ts=     14 totday =    1.17,years =   0.003, ke= 4.533066E-01 dtemp= 3.194159E-08 dsalt= 6.554929E-13 times=     42.45    624.39
- ts=     15 totday =    1.25,years =   0.003, ke= 4.594284E-01 dtemp= 3.172783E-08 dsalt= 6.535860E-13 times=     41.53    665.95
- ts=     16 totday =    1.33,years =   0.004, ke= 4.718423E-01 dtemp= 3.258878E-08 dsalt= 6.512921E-13 times=     40.79    706.75
- ts=     17 totday =    1.42,years =   0.004, ke= 4.733684E-01 dtemp= 3.288164E-08 dsalt= 6.491714E-13 times=     40.79    747.57
- ts=     18 totday =    1.50,years =   0.004, ke= 4.570721E-01 dtemp= 3.256898E-08 dsalt= 6.475575E-13 times=     40.78    788.36
- ts=     19 totday =    1.58,years =   0.004, ke= 4.350838E-01 dtemp= 3.218575E-08 dsalt= 6.467411E-13 times=     40.81    829.20
- ts=     20 totday =    1.67,years =   0.005, ke= 4.259023E-01 dtemp= 3.241687E-08 dsalt= 6.465577E-13 times=     40.81    870.02
- ts=     21 totday =    1.75,years =   0.005, ke= 4.313555E-01 dtemp= 3.296453E-08 dsalt= 6.467847E-13 times=     40.78    910.82
- ts=     22 totday =    1.83,years =   0.005, ke= 4.390129E-01 dtemp= 3.357018E-08 dsalt= 6.469918E-13 times=     40.75    951.58
- ts=     23 totday =    1.92,years =   0.005, ke= 4.371293E-01 dtemp= 3.342858E-08 dsalt= 6.469061E-13 times=     40.82    992.42
- ts=     24 totday =    2.00,years =   0.005, ke= 4.322686E-01 dtemp= 3.286322E-08 dsalt= 6.461986E-13 times=     40.80   1033.25
-  Writing hdf file for itt =      24
+ ts=     13 totday =    1.08,years =   0.003, ke= 4.183739E-01 dtemp= 3.284112E-08 dsalt= 6.556695E-13 times=      3.46     46.38
+ ts=     14 totday =    1.17,years =   0.003, ke= 4.533150E-01 dtemp= 3.315684E-08 dsalt= 6.557523E-13 times=      3.42     49.81
+ ts=     15 totday =    1.25,years =   0.003, ke= 4.752142E-01 dtemp= 3.281381E-08 dsalt= 6.552512E-13 times=      3.40     53.22
+ ts=     16 totday =    1.33,years =   0.004, ke= 4.861751E-01 dtemp= 3.259790E-08 dsalt= 6.538326E-13 times=      3.42     56.65
+ ts=     17 totday =    1.42,years =   0.004, ke= 4.868729E-01 dtemp= 3.269809E-08 dsalt= 6.516536E-13 times=      3.39     60.04
+ ts=     18 totday =    1.50,years =   0.004, ke= 4.816575E-01 dtemp= 3.277782E-08 dsalt= 6.491256E-13 times=      3.43     63.48
+ ts=     19 totday =    1.58,years =   0.004, ke= 4.706272E-01 dtemp= 3.252245E-08 dsalt= 6.468923E-13 times=      3.39     66.87
+ ts=     20 totday =    1.67,years =   0.005, ke= 4.577427E-01 dtemp= 3.239341E-08 dsalt= 6.453297E-13 times=      3.40     70.28
+ ts=     21 totday =    1.75,years =   0.005, ke= 4.485518E-01 dtemp= 3.246947E-08 dsalt= 6.446180E-13 times=      3.43     73.72
+ ts=     22 totday =    1.83,years =   0.005, ke= 4.474408E-01 dtemp= 3.293386E-08 dsalt= 6.445564E-13 times=      3.39     77.12
+ ts=     23 totday =    1.92,years =   0.005, ke= 4.483888E-01 dtemp= 3.331319E-08 dsalt= 6.448782E-13 times=      3.41     80.54
+ ts=     24 totday =    2.00,years =   0.005, ke= 4.476339E-01 dtemp= 3.341615E-08 dsalt= 6.451653E-13 times=      3.42     83.97
+  Writing hdf snapshot file for itt =      24
   hdf filename = s0002.hdf                               
-  Writing hdf file for itt =      24
+  Writing hdf archive file for itt =      24
   hdf filename = d0002.hdf                               
- ts=     25 totday =    2.08,years =   0.006, ke= 4.315991E-01 dtemp= 3.228688E-08 dsalt= 6.428942E-13 times=     56.80   1097.27
- ts=     26 totday =    2.17,years =   0.006, ke= 4.314778E-01 dtemp= 3.222195E-08 dsalt= 6.428944E-13 times=     40.77   1138.05
- ts=     27 totday =    2.25,years =   0.006, ke= 4.314996E-01 dtemp= 3.186896E-08 dsalt= 6.407149E-13 times=     40.78   1178.85
- ts=     28 totday =    2.33,years =   0.006, ke= 4.296688E-01 dtemp= 3.135665E-08 dsalt= 6.387113E-13 times=     40.79   1219.65
- ts=     29 totday =    2.42,years =   0.007, ke= 4.271774E-01 dtemp= 3.098848E-08 dsalt= 6.373782E-13 times=     40.75   1260.41
- ts=     30 totday =    2.50,years =   0.007, ke= 4.253587E-01 dtemp= 3.090382E-08 dsalt= 6.369284E-13 times=     40.75   1301.17
- ts=     31 totday =    2.58,years =   0.007, ke= 4.225475E-01 dtemp= 3.067987E-08 dsalt= 6.372613E-13 times=     40.72   1341.97
- ts=     32 totday =    2.67,years =   0.007, ke= 4.202517E-01 dtemp= 3.063625E-08 dsalt= 6.379505E-13 times=     41.14   1383.19
- ts=     33 totday =    2.75,years =   0.008, ke= 4.184871E-01 dtemp= 3.082545E-08 dsalt= 6.384466E-13 times=     43.29   1426.95
- ts=     34 totday =    2.83,years =   0.008, ke= 4.179772E-01 dtemp= 3.099452E-08 dsalt= 6.382697E-13 times=     42.44   1469.46
- ts=     35 totday =    2.92,years =   0.008, ke= 4.164455E-01 dtemp= 3.070238E-08 dsalt= 6.372555E-13 times=     43.15   1512.88
- ts=     36 totday =    3.00,years =   0.008, ke= 4.140678E-01 dtemp= 3.008626E-08 dsalt= 6.355258E-13 times=     42.04   1554.94
-  Writing hdf file for itt =      36
+ ts=     25 totday =    2.08,years =   0.006, ke= 4.346994E-01 dtemp= 3.261249E-08 dsalt= 6.445445E-13 times=      4.81     89.10
+ ts=     26 totday =    2.17,years =   0.006, ke= 4.345597E-01 dtemp= 3.254948E-08 dsalt= 6.445444E-13 times=      3.40     92.50
+ ts=     27 totday =    2.25,years =   0.006, ke= 4.319102E-01 dtemp= 3.211433E-08 dsalt= 6.433225E-13 times=      3.42     95.93
+ ts=     28 totday =    2.33,years =   0.006, ke= 4.335320E-01 dtemp= 3.173741E-08 dsalt= 6.415162E-13 times=      3.40     99.33
+ ts=     29 totday =    2.42,years =   0.007, ke= 4.350902E-01 dtemp= 3.134408E-08 dsalt= 6.394104E-13 times=      3.41    102.74
+ ts=     30 totday =    2.50,years =   0.007, ke= 4.349907E-01 dtemp= 3.085447E-08 dsalt= 6.373751E-13 times=      3.39    106.14
+ ts=     31 totday =    2.58,years =   0.007, ke= 4.328643E-01 dtemp= 3.031446E-08 dsalt= 6.358117E-13 times=      3.38    109.52
+ ts=     32 totday =    2.67,years =   0.007, ke= 4.308681E-01 dtemp= 3.037347E-08 dsalt= 6.349626E-13 times=      3.41    112.94
+ ts=     33 totday =    2.75,years =   0.008, ke= 4.277428E-01 dtemp= 3.070248E-08 dsalt= 6.348581E-13 times=      3.37    116.31
+ ts=     34 totday =    2.83,years =   0.008, ke= 4.239905E-01 dtemp= 3.098443E-08 dsalt= 6.352633E-13 times=      3.43    119.75
+ ts=     35 totday =    2.92,years =   0.008, ke= 4.193543E-01 dtemp= 3.081197E-08 dsalt= 6.358192E-13 times=      3.38    123.14
+ ts=     36 totday =    3.00,years =   0.008, ke= 4.159426E-01 dtemp= 3.035010E-08 dsalt= 6.361167E-13 times=      3.39    126.53
+  Writing hdf snapshot file for itt =      36
   hdf filename = s0003.hdf                               
+ ts=     37 totday =    3.08,years =   0.008, ke= 4.137536E-01 dtemp= 2.968475E-08 dsalt= 6.358944E-13 times=      3.45    130.03
+ ts=     38 totday =    3.17,years =   0.009, ke= 4.125578E-01 dtemp= 2.923559E-08 dsalt= 6.350286E-13 times=      3.39    133.43
+ ts=     39 totday =    3.25,years =   0.009, ke= 4.105358E-01 dtemp= 2.875243E-08 dsalt= 6.336225E-13 times=      3.41    136.84
+ ts=     40 totday =    3.33,years =   0.009, ke= 4.076242E-01 dtemp= 2.814124E-08 dsalt= 6.318782E-13 times=      3.40    140.25
+ ts=     41 totday =    3.42,years =   0.009, ke= 4.034726E-01 dtemp= 2.735321E-08 dsalt= 6.300989E-13 times=      3.40    143.66
+ ts=     42 totday =    3.50,years =   0.010, ke= 3.991795E-01 dtemp= 2.683961E-08 dsalt= 6.285429E-13 times=      3.41    147.07
+ ts=     43 totday =    3.58,years =   0.010, ke= 3.948474E-01 dtemp= 2.684637E-08 dsalt= 6.274205E-13 times=      3.40    150.47
+ ts=     44 totday =    3.67,years =   0.010, ke= 3.912855E-01 dtemp= 2.703492E-08 dsalt= 6.267985E-13 times=      3.41    153.89
+ ts=     45 totday =    3.75,years =   0.010, ke= 3.884672E-01 dtemp= 2.731186E-08 dsalt= 6.266467E-13 times=      3.38    157.27
+ ts=     46 totday =    3.83,years =   0.010, ke= 3.864559E-01 dtemp= 2.789547E-08 dsalt= 6.268034E-13 times=      3.41    160.69
+ ts=     47 totday =    3.92,years =   0.011, ke= 3.846257E-01 dtemp= 2.860911E-08 dsalt= 6.270777E-13 times=      3.41    164.11
+ ts=     48 totday =    4.00,years =   0.011, ke= 3.825945E-01 dtemp= 2.936746E-08 dsalt= 6.272407E-13 times=      3.39    167.50
+  Writing hdf snapshot file for itt =      48
+  hdf filename = s0004.hdf                               
+  Writing hdf archive file for itt =      48
+  hdf filename = d0004.hdf                               
+ ts=     49 totday =    4.08,years =   0.011, ke= 3.778122E-01 dtemp= 3.033756E-08 dsalt= 6.266698E-13 times=      4.80    172.63
+ ts=     50 totday =    4.17,years =   0.011, ke= 3.776799E-01 dtemp= 3.027489E-08 dsalt= 6.266699E-13 times=      3.38    176.01
+ ts=     51 totday =    4.25,years =   0.012, ke= 3.756072E-01 dtemp= 3.022109E-08 dsalt= 6.258513E-13 times=      3.42    179.44
+ ts=     52 totday =    4.33,years =   0.012, ke= 3.743084E-01 dtemp= 2.982412E-08 dsalt= 6.247583E-13 times=      3.46    182.91
+ ts=     53 totday =    4.42,years =   0.012, ke= 3.736371E-01 dtemp= 2.917300E-08 dsalt= 6.235455E-13 times=      3.44    186.36
+ ts=     54 totday =    4.50,years =   0.012, ke= 3.732606E-01 dtemp= 2.842633E-08 dsalt= 6.223656E-13 times=      3.42    189.79
+ ts=     55 totday =    4.58,years =   0.013, ke= 3.726465E-01 dtemp= 2.773838E-08 dsalt= 6.213620E-13 times=      3.40    193.20
+ ts=     56 totday =    4.67,years =   0.013, ke= 3.716793E-01 dtemp= 2.715748E-08 dsalt= 6.206033E-13 times=      3.42    196.62
+ ts=     57 totday =    4.75,years =   0.013, ke= 3.704767E-01 dtemp= 2.669668E-08 dsalt= 6.200994E-13 times=      3.38    200.00
+ ts=     58 totday =    4.83,years =   0.013, ke= 3.695628E-01 dtemp= 2.627798E-08 dsalt= 6.197715E-13 times=      3.40    203.41
+ ts=     59 totday =    4.92,years =   0.013, ke= 3.691823E-01 dtemp= 2.579069E-08 dsalt= 6.195138E-13 times=      3.37    206.79
+ ts=     60 totday =    5.00,years =   0.014, ke= 3.693998E-01 dtemp= 2.528326E-08 dsalt= 6.191907E-13 times=      3.38    210.18
+  Writing hdf snapshot file for itt =      60
+  hdf filename = s0005.hdf                               
   ==> END of model run.
 
 

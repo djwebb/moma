@@ -1,0 +1,44 @@
+#
+# %Z% SCCS module: %M%  version: %I%
+#      Creation date: %G%
+#
+#     Moma make file for SGI
+#
+#  If HDF is used, environment variable HDF_ROOT needs to  
+#  point to the HDF root directory
+#
+
+DOPTNS= -Dcyclic -Dsimple_world -Dde_checkbd -Dncsa_hdf -DREAL_8
+ 
+FC =	f77   
+INCLUDE= -I$(HDF_ROOT)/include/SGI
+LDR = f77
+HDFLIBS = $(HDF_ROOT)/lib/SGI/libnetcdf.a $(HDF_ROOT)/lib/SGI/libdf.a
+
+#suppress SCCS retrieval
+
+.SCCS_GET:
+
+# define '.F' suffix for the SGI system
+
+.SUFFIXES:
+.SUFFIXES: .o .F .h
+
+.F.o:   $(HFILES)
+#	$(FC) $(DOPTNS) -c $(INCLUDE)  $*.F
+# Changes needed for new compiler
+	cc -P -oldcpp $(DOPTNS) $(INCLUDE) $*.F 
+	mv $*.i $*.f
+	$(FC) $(DOPTNS) -c -col120 -r8 $(INCLUDE) $*.f
+	
+moma : moma.o hdf.o	
+	$(LDR) moma.o hdf.o -o moma $(HDFLIBS)
+
+clean :	
+	rm -f *% *.l *.f
+
+cleaner : 
+	rm -f *.o *.f *.l *% 
+
+cleanest : 
+	rm -f *.o *.f *.l *% moma

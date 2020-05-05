@@ -1,0 +1,256 @@
+
+=======================================================================
+  %Z% SCCS module: %M%  version: %I%
+       Creation date: %G%
+=======================================================================
+
+README file for moma
+====================
+
+Introduction
+============
+
+This code is a version of the Bryan-Cox-Semtner code reorganised for 
+efficient running on array processor computers.  
+
+The basic finite difference scheme used in the model is described in Bryan 
+(1969), Semtner (1974) and Cox (1984), the main difference being that the 
+present code uses a 'free surface' scheme to solve the barotropic 
+equations.  In other respects the present code follows most closely the 
+format of the GFDL Modular Ocean Model (Pacanowski et al, 1990).  It makes 
+use of many of the subroutines and include files of that model.  
+
+More detailed information about the  present code is given in Webb (1993)
+and Webb (1996).  An ASCII version of Webb(1993) is enclosed with the 
+moma distribution.
+
+     Copyright 1993, 1994, 1995, 1996
+     D.J. Webb,  
+     Southampton Oceanography Centre
+     Empress Dock, Southampton SO14 3ZH, U.K..
+
+     e-mail  David.Webb@soc.soton.ac.uk 
+
+The code may be freely adapted and used without charge for non-commercial 
+purposes.  Publications that report on work that has made use of the code 
+should reference one or more of the relevant publications by the code's 
+author.
+
+
+
+Differences from the GFDL MOM code
+===================================
+
+The main differences from the modular ocean model code are:
+
+  1.  Collection of all 'array processor' loops (i.e. loops over the 
+      horizontal indices ic and jc) in subroutine step.  When an array 
+      processor is used, code should be added to this subroutine to  
+      partition the horizontal index (ic, jc) ranges between the different 
+      processors so that they each have a similar workload.
+
+  2.  Revised common block structures.  All variables are stored in core.
+
+  3.  The arrays u and v now contain the full velocity, not just the 
+      baroclinic part of the velocity.
+
+  4.  Removal of all 'slab' optimisation code in the program and the 
+      introduction of code designed to optimise inner loop calculations 
+      using the vertical index k.
+
+  5.  To simplify the development and testing of the array processor code 
+      the following features of the moma code were removed:
+         (a) Diagnostic calculations in routines clinic and tracer.
+         (b) Mom pre-processor code options. 
+      It should now be straightforward (but possibly time consuming) to add 
+      the features back into the present code if they are  required.
+
+  6.  The stream function code has been removed and replaced by a free-
+      surface scheme.  This is based on Killworth, Stainforth, Webb and 
+      Patterson (1989) but there are a number of important changes.
+
+      The Matsuno timestepping scheme (Mesinger and Arakawa, 1976), also 
+      known in the ocean modelling literature as the Euler backward
+      scheme, is replaced  by a leapfrog scheme.  This is done because
+      leapfrog is computationally more efficient than Matsuno.  It
+      also does not damp out high frequency waves.  However near the
+      equator it can produce an aliasing instability.  The latter
+      leads to the growth of waves which travel their own wavelength
+      in a baroclinic timestep.
+
+      Such waves can be filtered out by using the time-averging
+      pre-compiler option free_av.  The alternative is to use the
+      original Matsuno timestepping scheme.  This is still available
+      as pre-compiler option free_eb.
+      
+      Two other changes have been made to improved model efficiency.
+      First the barotropic horizontal velocity used instead of
+      horizontal transport.  Secondly all viscous terms are now 
+      calculated in routine clinic.
+      
+  7.  A compiler pre-processor option, 'de_checkbd', has been added.  This 
+      uses a method suggested by Deleersnijder to reduce the 
+      checkerboarding found with the free surface model. 
+      
+  8.  In the baroclinic momentum equation, a revised vertical and 
+      horizontal advection scheme option is included.  The old scheme can 
+      still be used by specifying the compiler pre-processor flag 'oldadv'
+      
+  9.  An option to precalculate the baroclinic part of the  pressure field 
+      is included using compiler pre-processor flag 'presetp'.
+      
+ 10.  The model can now produce both snapshot and archive files.  The 
+      snapshot files are designed to contain a few key model fields.  These 
+      can be used to keep track of the model behaviour.
+      
+      The archive files contain all the model data from one timestep.  They 
+      are used to restart the model and for model analysis.  
+      
+      Note that because only one timestep is saved, restarts of the model 
+      can only be made when this is an integer multiple of 'nmix'.  This 
+      ensures that the next baroclinic timestep is an Euler-backward one.  
+      (This only requires data from the current timestep, unlike the 
+      leapfrog scheme which requires data from two timesteps).
+      
+ 11.  An option of using NCSA HDF archive files has been added.  This needs 
+      the model to be compiled with the pre-processor option 'ncsa_hdf'.  
+      
+      The standard code assumes that both real and integer variables  are 
+      32 bits long.  Pre-processor option 'REAL8' should be used if the 
+      real variables are 64 bits long.
+      
+ 12.  For sites where HDF is not available, the program can also read and 
+      write unformatted Fortran archive files.  File type 'rst' reads and 
+      writes files compatible with those produced by moma version 1.14 and 
+      earlier.  Filetype 'ufm' generates and reads files compatible with 
+      'moma.pvm', the array processor version of the code.
+      
+  13.  Some modifications have been made to the flags and variables  
+      defining the restart, archive and snapshot files.  These are 
+      specified in namelist 'control'.  The variables involved for 
+      archiving and snapshots are now:
+      
+              init   = .true. when starting from rest,
+                      .false. when restarting from an archived data set.
+              fnrest = name of the restart data set.
+              ftrest = file type of restart data set.  Can be:
+                       'rst': unformatted data file compatible with the
+                              restart files from moma 1.14 and earlier.
+                       'ufm': unformatted data file compatible with the
+                              restart files from moma.pvm.
+                       'hdf': hdf file
+      
+              snapd  = number of days between snapshots. (0.0 = none).
+              ftsnap = file type of snapshot data set.  At present only the
+                      'hdf' file type is supported.
+      
+              archd  = number of days between archives. (0.0 = none).
+              ftarch = file type of archive data set.  Options same as ftrest.
+              restrt = .true. if an archive data set is wanted at the end of
+                        the run.
+      
+      
+      
+      7.  The full list of pre-processor options is:
+      
+              hcomments   -  to turn listing of '.h' files comments on. 
+              cyclic      -  ocean is cyclic in the east-west direction. 
+              presetp     -  precalculate pressure field each baroclinic
+                             timestep.
+              oldav       -  use the old numerical scheme for the vertical
+                             advection of momentum.
+              simple_world - use the MOM routine to set up the model depths.
+              free_eb     - use the euler backward timestepping scheme without
+                            averaging for the free surface equations.
+                            NOTE: The default is now to use a leapfrog scheme
+                            with time averaging.
+              de_checkbd  - use the de-checkerboarding scheme for the free
+                            surface height field.
+              ncsa_hdf    - include the NCSA hdf subroutines.
+              REAL8       - if the real variables are 64 bits long.   
+
+Compilation
+===========
+
+Without 'ncsa_hdf' the program can be compiled with a command of the form
+
+        f77 -o moma moma.F 
+
+This assumes that the Fortran compiler also calls the pre-processor.  With 
+'ncsa_hdf' the hdf include files and subroutines are also needed.  These 
+require commands like:
+
+         set HDFROOT = /users/occam/hdf/sunos2
+         f77 -Dncsa_hdf -I$HDFROOT/include -o moma moma.F       \
+                $HDFROOT/lib/libnetcdf.a $HDFROOT/lib/libdf.a
+
+where the third line is a continuation of the f77 command line and HDFROOT 
+is set to point to the hdf root directory.
+
+For convenience a simple make file, makefile.sun is included.
+
+
+
+Depth array
+===========
+
+If the cpp option 'simple_world' is not given the program needs the kmt 
+array to be stored in a file defined by the variable fnkmt in the input 
+file 'ocean.in'.  The specification for this file is  given in subroutine 
+read_kmt. 
+
+Program make_kmt is provided to generate kmt files for the simple cases of 
+a box ocean, a channel ocean or for the MOM simplified global ocean 
+(corresponding to simple_world). 
+
+
+
+References:
+===========
+
+Bryan, K., 1969:  A numerical method for the circulation of the World 
+Ocean.  Journal of Computational Physics, 4, 347-  .
+
+Semtner, A.J., 1974:  A general circulation model for the  World Ocean.  
+UCLA Department of Meteorology Technical Report No. 8, 99pp.
+
+Cox, M.D., 1984:  A primitive equation, 3-dimensional model of the ocean.  
+GFDL Ocean Technical Report No.1, Geophysical Fluid Dynamics 
+Laboratory/NOAA, Princeton University,  Princeton N.J., U.S.A..
+
+Killworth, P.D., Stainforth, D., Webb, D.J. and Paterson, P.M., 1989:  A 
+free surface Bryan-Cox-Semtner model.  Report No. 270,   Institute of 
+Oceanographic Sciences, Wormley, U.K..
+
+Pacanowski, R.C., Dixon, K., Rosati, A., 1990:  The GFDL Modular Ocean 
+Model Users Guide, Version 1.0.  GFDL Ocean Technical Report No.2.  
+Geophysical Fluid Dynamics Laboratory/NOAA,  Princeton University, 
+Princeton, N.J. 08542, U.S.A., 21 pp.
+
+Webb, D.J., 1993:  An ocean model code for array processor computers.  
+Internal Document No.324, Institute of Oceanographic  Sciences, Wormley, 
+U.K..
+
+Webb, D.J., 1996:  An ocean model code for array processor computers.  
+Computers and Geosciences, 22(5), 569-578.
+
+
+
+=======================================================================
+                                             D.J.Webb,   June 12, 1996.
+=======================================================================
+
+
+
+
+Modification log
+================
+
+v1.17   Aug 1996
+
+        1.  A number of minor bugs corrected including one in the free-surface
+        time filtering code. 
+        2.  Option REAL8 changed to REAL_8 to prevent name conflict with
+        the PVM routines used by moma.pvm.
+ 
+

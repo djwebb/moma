@@ -1,7 +1,7 @@
 #ifdef hcomments 
 c
-c @(#) SCCS module: hdf.h  version: 1.16
-c     Creation date: 03/21/95
+c @(#) SCCS module: hdf.h  version: 1.17
+c     Creation date: 09 Aug 1996
 c
 c-----------------------------------------------------------------------
 c    Include file for hdf routines
@@ -56,7 +56,7 @@ c
 c  define hdf word lengths
 c
 # define INTEGER_HDF    DFNT_INT32
-# ifdef REAL8
+# ifdef REAL_8
 #  define REAL_HDF      DFNT_FLOAT64
 # else
 #  define REAL_HDF      DFNT_FLOAT32

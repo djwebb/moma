@@ -1,7 +1,7 @@
 c====================== include file "coord.h" =========================
 #ifdef hcomments
 c
-c     @(#) SCCS module: coord.h, version 1.16
+c     @(#) SCCS module: coord.h, version 1.17
 c
 c                    model grid point coordinates
 c

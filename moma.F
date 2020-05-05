@@ -1,7 +1,7 @@
       program moma
 c
 c==================================================================
-c  Program MOMA,     Version 1.16
+c  Program MOMA,     Version 1.17
 c
 c  Free surface ocean model for use with array processors.
 c
@@ -10,7 +10,7 @@ c                   Institute of Oceanographic Sciences,
 c                   Godalming, Surrey GU8 5UB, U.K..
 c  
 c @(#) SCCS information - module:  moma.F     
-c @(#)                    version: 1.16    date: 03/21/95
+c @(#)                    version: 1.17    date: 09 Aug 1996
 c
 c
 c  This code is a free surface version of the Bryan-Cox-Semtner
@@ -21,14 +21,19 @@ c  Cox (1984).  The present code follows most closely
 c  the format of the GFDL Modular Ocean Model (Pacanowski et al,
 c  1990), and makes use of many of the subroutines and include
 c  files of that model.  More detailed information about the 
-c  present code is given in Webb (1993).
+c  present code is given in Webb (1993, 1996).
 c
-c  The code may be freely adapted and used without charge.
+c  The code may be freely adapted and used without charge.  For 
+c  further information on the model contact the author.
 c
-c  For further information on the model contact the author.
-c  e-mail:   djw@ios.ac.uk
+c     Copyright 1993, 1994, 1995, 1996
+c     D.J. Webb,  
+c     Southampton Oceanography Centre
+c     Empress Dock, Southampton SO14 3ZH, U.K..
+c
+c     e-mail  David.Webb@soc.soton.ac.uk 
 c  
-c  The main differences from the modular ocean model code code are:
+c  The main differences from the modular ocean model code are:
 c
 c  1.  Collection of all 'array processor' loops (i.e. loops over the
 c      horizontal indices ic and jc) in subroutine step.  When an array
@@ -53,7 +58,7 @@ c      Webb and Patterson (1989).  For efficiency, the mean horizontal
 c      velocity is now used instead of horizontal transport and
 c      the viscous terms are calculated in routine clinic.  
 c      A leapfrog timestepping scheme is used with averaging over each
-c      baroclinic timestep to prevent aliasing problems
+c      baroclinic timestep to prevent aliasing problems in the tropics.
 c  6.  In the baroclinic momentum equation, a revised horizontal
 c      advection scheme option is included.  The old scheme can still be 
 c      used by specifying the flag 'oldadv'
@@ -75,10 +80,12 @@ c     'cyclic'    - invoke cyclic boundary conditions
 c     'simple_world' - use routine topog to construct kmt, this generates
 c                   a simplified version of the global ocean.
 c     'free_eb'   - use the euler backward timestepping scheme without
-c                   averaging for the free surface euqations.
+c                   averaging for the free surface equations.
+c                   NOTE: The default is to use a leapfrog scheme
+c                   with time averaging.
 c     'de_checkbd'- use filter to remove checkerboarding in free
 c                   surface height field.
-c     'ncsa_hdf' - produce additional hdf versions of archive files.
+c     'ncsa_hdf'  - produce hdf versions of archive files.
 c
 c  Compilation:
 c
@@ -123,6 +130,9 @@ c  Webb, D.J., 1993:  An ocean model code for array processor
 c  computers.  Internal Document No.324, Institute of Oceanographic 
 c  Sciences, Wormley, U.K..
 c
+c  Webb, D.J., 1993:  An ocean model code for array processor
+c  computers.  Computers and Geosciences, 22(5), 569-578. 
+c
 c==================================================================
 c
 #include "param.h"
@@ -145,7 +155,7 @@ c
 #include "versno.h"
 c==================================================================
 c
-      dimension utime(3)
+      real*4 utime(3)
 c
       namelist /contrl/ init, fnrest, fnkmt, days, restrt, nmix, eb 
      &,                 ncon, tsi, dgnstc, snapd, archd, acor
@@ -164,8 +174,8 @@ c
 c     constants usually initialised in block data
 c
       model(1) =' Stripped down MOM code for array processor.'
-      model(2) =' Module: moma.F.  Version: 1.16. '//
-     &          ' Date: 03/21/95'
+      model(2) =' Module: moma.F.  Version: 1.17. '//
+     &          ' Date: 09 Aug 1996'
       stlon = -4.0
       stlat = -72.0
       dxdeg = 4.0
@@ -200,7 +210,7 @@ c
       archd = 2.0
       restrt = .false.
       fnrest = ' '
-      fnkmt  = ' '
+      fnkmt  = 'ocean.kmt'
       ftrest = 'hdf'
       ftsnap = 'hdf'
       ftarch = 'hdf'
@@ -250,19 +260,14 @@ c------------------------------------------------------------------
 c     calculate free surface model (barotropic) timestep
 c------------------------------------------------------------------
 c
-      ntbt = max(1.0,dtuv/dtbt)
-      if(dtbt.ne.dtuv/ntbt)then
-        dtbt = dtuv/ntbt
+      ntbt = max(1,nint(dtuv/dtbt))
+      if(dtuv.ne.dtbt*ntbt)then
         write(stdout,'(a)') ' dtuv not integer multiple of dtbt.'
-        write(stdout,'(a,i5)') ' dtbt now set to set to:',dtbt
+        write(stdout,*) ' dtuv is  ',dtuv
+        write(stdout,*) ' dtbt was ',dtbt
+        dtbt = dtuv/ntbt
+        write(stdout,*) ' dtbt now set to set to:',dtbt
       endif
-#ifdef de_checkbd
-c
-c scale the checkerboard filter weighting factor
-c
-      dchkbd = dchkbd*grav*dtbt*zw(KM)
-c
-#endif
 c
 c------------------------------------------------------------------
 c     list code options chosen by user for this model run
@@ -275,6 +280,15 @@ c     set up model grids in x, y, & z
 c------------------------------------------------------------------
 c
       call grids
+#ifdef de_checkbd
+c
+c------------------------------------------------------------------
+c scale the checkerboard filter weighting factor (zw from grids)
+c------------------------------------------------------------------
+c
+      dchkbd = dchkbd*grav*dtbt*zw(KM)
+c
+#endif
 c
 c==================================================================
 c     end introductory section
@@ -333,14 +347,13 @@ c
       area   = c0
       volume = c0
       ocnp   = 0
-c
       do 300 j=2,jmtm1
       do 300 i=2,imtm1
-      if (kmt(i,j) .gt. 0) then
-        area   = area + cst(j)*dx*dy
-        volume = volume + cst(j)*dx*dy*zw(kmt(i,j))
-        ocnp   = ocnp + float(kmt(i,j))
-      endif
+        if (kmt(i,j) .gt. 0) then
+          area   = area + cst(j)*dx*dy
+          volume = volume + cst(j)*dx*dy*zw(kmt(i,j))
+          ocnp   = ocnp + float(kmt(i,j))
+        endif
 300   continue
       write (stdout,301) area, volume
 c
@@ -351,14 +364,14 @@ c
 c
       write (stdout,401)
       do 410 ibk=1,imt,40
-      isp  = ibk
-      iept = ibk + 40 - 1
-      if(iept.gt.imt) iept=imt
-      write (stdout,'(/, 4x, 40i3)') (ii, ii=isp,iept)
-      do 400 jrev=1,jmt
-      j=jmt-jrev+1
-      write (stdout,'(1x,i3, 40i3)')j,(kmt(i,j),i=isp,iept)
- 400  continue
+        isp  = ibk
+        iept = ibk + 40 - 1
+        if(iept.gt.imt) iept=imt
+        write (stdout,'(/, 4x, 40i3)') (ii, ii=isp,iept)
+        do 400 jrev=1,jmt
+          j=jmt-jrev+1
+          write (stdout,'(1x,i3, 40i3)')j,(kmt(i,j),i=isp,iept)
+ 400    continue
  410  continue
       write(stdout,*)
 c
@@ -383,28 +396,28 @@ c------------------------------------------------------------------
 c
       do 2600 j=1,jmt
       do 2590 i=1,imt
-      zu(i,j)  = c0
-      zv(i,j)  = c0
+        zu(i,j)  = c0
+        zv(i,j)  = c0
 2590  continue
 2600  continue
 c
 c     initialize the coriolis factor
 c
       do 2660 j=1,jmt
-      fcor(j) = c2*omega*sine(j)
+        fcor(j) = c2*omega*sine(j)
 2660  continue
 c
 c     initialize the diffusion factors
 c
       do 2670 j=2,jmtm1
-      bbt(j) = ah*dxr*cstr(j)*dy
-      cct(j) = ah*dyr*dx*csu(j  )
-      ddt(j) = ah*dyr*dx*csu(j-1)
-      bbu(j) = am*dxr*csur(j)*dy
-      ccu(j) = am*dyr*dx*cst(j+1)
-      ddu(j) = am*dyr*dx*cst(j  )
-      ggu(j) = am*(c1-tng(j)*tng(j))/(radius*radius)
-      hhu(j) = am*c2*sine(j)/(radius*csu(j)*csu(j))
+        bbt(j) = ah*dxr*cstr(j)*dy
+        cct(j) = ah*dyr*dx*csu(j  )
+        ddt(j) = ah*dyr*dx*csu(j-1)
+        bbu(j) = am*dxr*csur(j)*dy
+        ccu(j) = am*dyr*dx*cst(j+1)
+        ddu(j) = am*dyr*dx*cst(j  )
+        ggu(j) = am*(c1-tng(j)*tng(j))/(radius*radius)
+        hhu(j) = am*c2*sine(j)/(radius*csu(j)*csu(j))
 2670  continue
 c
 c------------------------------------------------------------------
@@ -418,7 +431,7 @@ c     start the time step loop
 c------------------------------------------------------------------
 c
       do 3400 loop=1,9999999
-      first= loop .eq. 1
+        first= loop .eq. 1
 c
 c------------------------------------------------------------------
 c       update timestep, set time dependent logical switches
@@ -427,21 +440,24 @@ c       note: timestep itt and time refer to the time of the new
 c       fields being calculated!
 c------------------------------------------------------------------
 c
-      call tmngr (dtts)
-      call step 
+        call tmngr (dtts)
+        call step 
 c
 c-----------------------------------------------------------------
 c      print time step information, print diagnostics and archive 
 c      as required
 c-----------------------------------------------------------------
 c
-      call dtime(utime)
-      utime(3)=utime(1)+utime(2)+utime(3)
-      if (prntsi) write (stdout,9602) itt, stamp, ektot,
+        call dtime(utime)
+        utime(3)=utime(1)+utime(2)+utime(3)
+        if (prntsi) then
+          write (stdout,9602) itt, stamp, ektot,
      &                      dtabs(1), dtabs(2),utime(1),utime(3)
-      if (diagts) call pdiag
-      if (snapts) call snap
-      if (archts) call archwr
+          call flush(stdout)
+        endif
+        if (diagts) call pdiag
+        if (snapts) call snap
+        if (archts) call archwr
 c
 c------------------------------------------------------------------
 c       end timestepping loop
@@ -1470,6 +1486,21 @@ c
 # endif
 c
         h0(ic,jc,np0) = h0(ic,jc,nm0) + c2dtbt*dhdt
+#ifndef free_eb
+c
+c---------------------------------------------------------------------
+c  Calculate time averages (except for first pass of first timestep
+c                           when itbtp equals zero)
+c---------------------------------------------------------------------
+c
+        if(itbtp.ne.0)then
+          freeav(1,ic,jc) = freeav(1,ic,jc) + h0(ic,jc,np0)
+          if(itbt.eq.ntbt2)then
+            fx = 0.5/ntbt
+            h0(ic,jc,np0) = freeav(1,ic,jc)*fx
+          endif
+        endif
+#endif
       endif
 c
 c---------------------------------------------------------------------
@@ -1492,7 +1523,7 @@ c
 #ifdef free_eb
 c
 c---------------------------------------------------------------------
-c  initial euler backward scheme treats coriolis term implicitly
+c  euler backward scheme treats coriolis term implicitly
 c---------------------------------------------------------------------
 c
         fac1=fcor(jc)*c2dtbt*p5
@@ -1506,7 +1537,8 @@ c
 #else
 c
 c---------------------------------------------------------------------
-c  leapfrog scheme (explicit euler-backward on mixing timestep)
+c  leapfrog scheme (explicit matsuno/euler-backward
+c                   on first mixing timestep)
 c---------------------------------------------------------------------
 c
         u0(ic,jc,np0) = u0(ic,jc,nm0) + c2dtbt*(zu(ic,jc) - dpdx
@@ -1515,16 +1547,15 @@ c
      &                        - fcor(jc)*u0(ic,jc,nc0) )
 c
 c---------------------------------------------------------------------
-c  Calculate time averages (except for first pass of euler-backward)
+c  Calculate time averages (except for first pass of matsuno/
+c                           euler-backward when itbtp equals zero)
 c---------------------------------------------------------------------
 c
         if(itbtp.ne.0)then
-          freeav(1,ic,jc) = freeav(1,ic,jc) + h0(ic,jc,np0)
           freeav(2,ic,jc) = freeav(2,ic,jc) + u0(ic,jc,np0)
           freeav(3,ic,jc) = freeav(3,ic,jc) + v0(ic,jc,np0)
           if(itbt.eq.ntbt2)then
             fx = 0.5/ntbt
-            h0(ic,jc,np0) = freeav(1,ic,jc)*fx
             u0(ic,jc,np0) = freeav(2,ic,jc)*fx
             v0(ic,jc,np0) = freeav(3,ic,jc)*fx
           endif
@@ -1886,18 +1917,14 @@ c------------------------------------------------------------------
 c     set latitudes & longitudes of "t" & "u,v" grid points (in degrees)
 c------------------------------------------------------------------
 c
-      xt(1) = stlon + p5*dxdeg
-      xu(1) = stlon + dxdeg
-      do 100 i=2,imt
-        xt(i) = xt(i-1) +  dxdeg
-        xu(i) = xu(i-1) +  dxdeg
+      do 100 i=1,imt
+        xt(i) = stlon + (i-p5)*dxdeg
+        xu(i) = stlon + i*dxdeg
 100   continue
 c
-      yt(1) = stlat + p5*dydeg
-      yu(1) = stlat + dydeg
-      do 200 j=2,jmt
-        yt(j) = yt(j-1) +  dydeg
-        yu(j) = yu(j-1) +  dydeg
+      do 200 j=1,jmt
+        yt(j) = stlat + (j-p5)*dydeg
+        yu(j) = stlat + j*dydeg
 200   continue
 c
 c     convert to centimeters
@@ -2570,6 +2597,7 @@ c     not currently implemented except for hdf option
 c==================================================================
 c
 #include "iounit.h"
+#include "pconst.h"
 c
       if(ftsnap.eq.'asc ')then
         write(stdout,*) 'Snapshot write: file type "',
@@ -2592,6 +2620,7 @@ c     read archive file
 c==================================================================
 c
 #include "iounit.h"
+#include "pconst.h"
 c
       if(ftrest.eq.'rst'.or.ftrest.eq.'ufm')then
         call archrd_std
@@ -2614,6 +2643,7 @@ c     write archive file
 c==================================================================
 c
 #include "iounit.h"
+#include "pconst.h"
 c
       if(ftarch.eq.'rst'.or.ftarch.eq.'ufm')then
         call archwr_std
@@ -2651,7 +2681,7 @@ c
 c
       dimension prlat(nlatpr), prslon(nlatpr), prelon(nlatpr)
      &,         prsdpt(nlatpr), predpt(nlatpr)
-     &,         slatxy, elatxy, slonxy, elonxy
+      real      slatxy, elatxy, slonxy, elonxy
 c
 c     default starting & ending coordinates for matrix prints during
 c     diagnostic time steps (lats & lons in degrees, depths in cm)
@@ -2800,6 +2830,7 @@ c
       character*60 expnam
       character*12 cifdef(ifdmax), blnk12
       logical wrdoc, wrc0, wrc1, wrc2
+      data    blnk12 /'            '/
       namelist /conrl0/ itt,years
       namelist /cntrl1/ expnam
 c
@@ -2844,6 +2875,10 @@ c
 #ifdef ncsa_hdf
         nifdef = nifdef + 1
         cifdef(nifdef) = 'ncsa_hdf    '
+#endif
+#ifdef REAL_8
+        nifdef = nifdef + 1
+        cifdef(nifdef) = 'REAL_8      '
 #endif
         write (stdout,'(/,a45)')
      $   ' The following "ifdef" options are in effect:'

@@ -4,7 +4,7 @@
 
  &contrl
      init=.true.,        fnrest='d0002.hdf', 
-     days = 3.0,         restrt=.false.,     
+     days = 5.0,         restrt=.false.,     
      nmix=  24,          eb=.true.,      ncon=1,         acor = 0.6,
      tsi=0.0833333,      snapd=1.0,      archd= 2.0, 
      ftrest = 'hdf',     ftsnap = 'hdf', ftarch = 'hdf', 

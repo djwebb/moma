@@ -1,7 +1,7 @@
 c====================== include file "cdiag.h" =========================
 #ifdef hcomments
 c
-c     @(#) SCCS module: cdiag.h, version 1.16
+c     @(#) SCCS module: cdiag.h, version 1.17
 c
 c     variables used for computing diagnostics:
 c
