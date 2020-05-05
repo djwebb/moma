@@ -1,6 +1,6 @@
       function tmnset (days, totday, dt)
 c
-c @(#) SCCS module: tmnset.F  version: 1.2
+c @(#) SCCS module: tmnset.F  version: 1.3
 c     Creation date: 03/17/95
 c
 c==================================================================

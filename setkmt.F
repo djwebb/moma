@@ -1,7 +1,7 @@
       subroutine setkmt (alat1, slon1, elon1,
      &                   alat2, slon2, elon2, num)
 c
-c @(#) SCCS module: setkmt.F  version: 1.2
+c @(#) SCCS module: setkmt.F  version: 1.3
 c     Creation date: 03/17/95
 c
 c------------------------------------------------------------------

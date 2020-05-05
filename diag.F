@@ -1,6 +1,6 @@
       subroutine diag( ic, jc)
 c
-c @(#) SCCS module: diag.F  version: 1.2
+c @(#) SCCS module: diag.F  version: 1.3
 c     Creation date: 03/17/95
 c
 c=============================================================

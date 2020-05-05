@@ -1,7 +1,7 @@
 c====================== include file "frees.h" =========================
 #ifdef hcomments
 c
-c @(#) SCCS module: frees.h  version: 1.2
+c @(#) SCCS module: frees.h  version: 1.3
 c     Creation date: 03/17/95
 c
 c-----------------------------------------------------------------------

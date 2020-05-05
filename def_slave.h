@@ -1,6 +1,6 @@
 #ifdef hcomments 
 c
-c @(#) SCCS module: def_slave.h  version: 1.2
+c @(#) SCCS module: def_slave.h  version: 1.3
 c     Creation date: 03/17/95
 c
 #endif

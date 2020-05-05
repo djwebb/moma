@@ -1,7 +1,7 @@
       subroutine m_initmess
 c
 c=======================================================================
-c @(#) SCCS module: m_msg.F  version: 1.2
+c @(#) SCCS module: m_msg.F  version: 1.3
 c     Creation date: 03/17/95
 c=======================================================================
 c
@@ -255,10 +255,11 @@ c=======================================================================
 #include "param.h"
 #include "mesdta.h"
 c
-      integer time
+      integer time,lapse
+      data lapse /30/
 c
       now = time()
-      if(now-iotime.gt.30 .or. iforce.eq.1)then
+      if(now-iotime.gt.lapse .or. iforce.eq.1)then
         iotime = now
         now = mod(now-intime,100000)
         print 33, now

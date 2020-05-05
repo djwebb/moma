@@ -4,8 +4,8 @@
       subroutine slave
 #endif
 c
-c @(#) SCCS module: slave.F  version: 1.2
-c     Creation date: 03/17/95
+c @(#) SCCS module: slave.F  version: 1.3
+c     Creation date: 03/23/95
 c
 c======================================================================
 c
@@ -28,22 +28,26 @@ c
 c  The master and slave programs have been developed by members of 
 c  the OCCAM core team including:
 c
-c           David J. Webb       djw@ios.ac.uk 
-c           Beverly de Cuevas   bac@ios.ac.uk 
-c           Andrew C. Coward    acc@ios.ac.uk 
-c           Catherine Gwilliam  cgw@ios.ac.uk 
+c           David J. Webb          djw@ios.ac.uk 
+c           Beverly A. de Cuevas   bac@ios.ac.uk 
+c           Andrew C. Coward       acc@ios.ac.uk 
+c           Catherine S. Gwilliam  cgw@ios.ac.uk 
 c 
 c  Advice on CRAY T3D specifics has also been received from:
 c
 c           Mike O'Neill        meon@cray.com
+c           Bob Carruthers      Bob.Carruthers@cray.com
 c
 c
-c  Copyright 1993, 1994, 1995.  D.J. Webb.  
+c  Copyright 1993, 1994, 1995.  D.J. Webb., B.A. de Cuevas, A.C. Coward
+c                   and C.S. Gwillam,  
 c                   Institute of Oceanographic Sciences,
 c                   Godalming, Surrey GU8 5UB, U.K..
 c
-c  The code may be freely adapted and used without charge
-c  for non-commercial purposes.
+c  The code may be freely adapted and used without charge for
+c  non-commercial purposes.  Publications which report on work that
+c  has made use of the code should reference one or more of the
+c  relevant papers produced by the OCCAM core team.
 c  
 c======================================================================
 c
@@ -241,8 +245,6 @@ c
       model(1) =' Stripped down MOM code for array processor.'
       model(2) =' Module: slave.F.  Version: ????. '//
      &          ' Date:       16:10'
-      print *, model
-      print *,ioslave, stdout
       write(ioslave,*)model
       write(ioslave,*)'  me, mtid, mytid = ',me,mtid,mytid
       write(ioslave,*)'  itida =',(itida(n),n=1,nproc)

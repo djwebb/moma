@@ -1,6 +1,6 @@
       subroutine snap
 c
-c @(#) SCCS module: s_snap.F  version: 1.2
+c @(#) SCCS module: s_snap.F  version: 1.3
 c     Creation date: 03/17/95
 c
 c==================================================================

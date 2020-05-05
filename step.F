@@ -1,7 +1,7 @@
       subroutine step 
 c
-c @(#) SCCS module: step.F  version: 1.2
-c     Creation date: 03/17/95
+c @(#) SCCS module: step.F  version: 1.3
+c     Creation date: 03/23/95
 c
 c=======================================================================
 c
@@ -17,6 +17,7 @@ c
 #include "scalar.h"
 #include "switch.h"
 #include "ctmngr.h"
+#include "iounit.h"
 #include "mesdta.h"
 #include "timelv.h"
 #include "slabs.h"
@@ -95,7 +96,7 @@ c-----------------------------------------------------------------------
 c  check all boundary data has arrived
 c-----------------------------------------------------------------------
 c
-        if(l.eq.inner+1.and.nproc.gt.1)then
+        if(l.eq.ninner+1.and.nproc.gt.1)then
  240      continue
           if(nfalse(1).gt.0)then
             call s_recv(MSG_BOUND1)

@@ -1,7 +1,7 @@
 c-------------------------archive.h------------------------------
 #ifdef hcomments
 c
-c @(#) SCCS module: archive.h  version: 1.2
+c @(#) SCCS module: archive.h  version: 1.3
 c     Creation date: 03/17/95
 c
 c-----------------------------------------------------------------------

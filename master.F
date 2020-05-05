@@ -4,10 +4,10 @@
       subroutine master
 #endif
 c
-c==================================================================
-c @(#) SCCS module: master.F  version: 1.2
+c=======================================================================
+c @(#) SCCS module: master.F  version: 1.3
 c      Creation date: 03/17/95
-c==================================================================
+c=======================================================================
 c
 c  This program and the corresponding master program make up  
 c  'moma.pvm', the pvm message passing versions of David Webb's 
@@ -28,23 +28,27 @@ c
 c  The master and slave programs have been developed by members of 
 c  the OCCAM core team including:
 c
-c           David J. Webb       djw@ios.ac.uk 
-c           Beverly de Cuevas   bac@ios.ac.uk 
-c           Andrew C. Coward    acc@ios.ac.uk 
-c           Catherine Gwilliam  cgw@ios.ac.uk 
+c           David J. Webb          djw@ios.ac.uk 
+c           Beverly A. de Cuevas   bac@ios.ac.uk 
+c           Andrew C. Coward       acc@ios.ac.uk 
+c           Catherine S. Gwilliam  cgw@ios.ac.uk 
 c 
 c  Advice on CRAY T3D specifics has also been received from:
 c
 c           Mike O'Neill        meon@cray.com
+c           Bob Carruthers      Bob.Curruthers@cray.com
 c
-c  Copyright 1993, 1994, 1995.  D.J. Webb.  
+c  Copyright 1993, 1994, 1995.  D.J. Webb., B.A. de Cuevas, A.C. Coward
+c                   and C.S. Gwillam,  
 c                   Institute of Oceanographic Sciences,
 c                   Godalming, Surrey GU8 5UB, U.K..
 c
-c  The code may be freely adapted and used without charge
-c  for non-commercial purposes.
+c  The code may be freely adapted and used without charge for
+c  non-commercial purposes.  Publications which report on work that
+c  has made use of the code should reference one or more of the
+c  relevant papers produced by the OCCAM core team.
 c  
-c==================================================================
+c=======================================================================
 c
 #include "def_master.h"
 #include "param.h"
@@ -95,10 +99,10 @@ c
       model(2) =' Module: master.F.  Version: 1.00. '//
      &          ' Date:        16:10'
 c
-c==================================================================
+c=======================================================================
 c     begin introductory section
 c     open input file and write version information
-c==================================================================
+c=======================================================================
 c
 c
 c
@@ -178,51 +182,59 @@ c     read in run parameters
 c------------------------------------------------------------------
 c
 #ifdef no_namelist
-      read (stdin,'(//)')
+      read (stdin,'(////)')
       read (stdin,*) invar	
-      read (stdin,*) init,fnrest
+      read (stdin,*) init, fnrest
 c
       read (stdin,'( )')
       read (stdin,*) invar
-      read (stdin,*) days,restrt,ftype
+      read (stdin,*) days, restrt
 c
       read (stdin,'( )') 
       read (stdin,*) invar
-      read (stdin,*) nmix,eb,ncon,acor
+      read (stdin,*) nmix, eb, ncon, acor
 c
       read (stdin,'( )')
       read (stdin,*) invar
-      read (stdin,*) tsi,snapd,archd,idebug
+      read (stdin,*) tsi, snapd, archd, idebug
 c
       read (stdin,'( )')
       read (stdin,*) invar
-      read (stdin,*) dgnsts,dchkbd
+      read (stdin,*) ftrest, ftsnap, ftarch
 c
       read (stdin,'( )')
       read (stdin,*) invar
-      read (stdin,*) am,ah,fkpm,fkph,cdbot
+      read (stdin,*) dgnsts, dchkbd
 c
       read (stdin,'( )')
       read (stdin,*) invar
-      read (stdin,*) dtts,dtuv,dtbt
+      read (stdin,*) am, ah, fkpm, fkph, cdbot
 c
-      write(stdout,1452) init,fnrest,days,restrt,nmix,eb,ncon,
-     &                   tsi,dgnstc,snapd,archd,acor,idebug
-      write(stdout,1451) dtts,dtuv,dtbt
-      write(stdout,1450) am,ah,fkpm,fkph,cdbot
-#ifdef de_checkbd
-      write(stdout,1448) dchkbd
-1448  format(' dchkbd = ',g10.4 )
-#endif
+      read (stdin,'( )')
+      read (stdin,*) invar
+      read (stdin,*) dtts, dtuv, dtbt
 c
-1450  format(' am    = ',g10.4,' ah    = ',g10.4 / ' fkpm  = ',g10.4,
-     &       ' fkph  = ',g10.4 / ' cdbot = ',g10.4)
-1451  format(' dtts  = ',g10.4,' dtuv  = ',g10.4,' dtbt  = ',g10.4)
-1452  format(' init  = ',l1,' fnrest= ',a / ' days  = ',g10.4,
-     &       ' restrt= ',l1,' nmix  = ',i4,' eb    = ',l1,' ncon  = ',i4
-     &     / ' tsi   = ',g10.4,' dgnstc= ',g10.4,' snapd = ',g10.4
-     &     / ' archd = ',g10.4,' acor  = ',g10.4,' idebug= ',i10)
-1453  format(10x,a)
+      write(stdout,1450) init,fnrest,days,restrt,nmix,eb,ncon,acor,
+     &                   tsi,snapd,archd,idebug,ftrest,ftsnap,ftarch,
+     &                   dgnstc,dchkbd
+      write(stdout,1451) am,ah,fkpm,fkph,cdbot
+      write(stdout,1452) dtts,dtuv,dtbt
+# ifdef de_checkbd
+      write(stdout,1453) dchkbd
+1453  format(' dchkbd = ',g10.4 )
+# endif
+c
+1450  format(' init  = ',l1,' fnrest= ',a,/,
+     &       ' days  = ',g10.4,' restrt= ',l1,/,
+     &       ' nmix  = ',i4,' eb    = ',l1,' ncon  = ',i4,
+     &       ' acor  = ',g10.4,/,
+     &       ' tsi   = ',g10.4,' snapd = ',g10.4,' archd = ',g10.4,
+     &       ' idebug= ',i10,/,
+     &       ' ftrest = ',a,' ftsnap = ',a,' ftarch = ',a,/,
+     &       ' dgnstc= ',g10.4,' dchkbd = ',g10.4)
+1451  format(' am    = ',g10.4,' ah    = ',g10.4,/,' fkpm  = ',g10.4,
+     &       ' fkph  = ',g10.4,/,' cdbot = ',g10.4)
+1452  format(' dtts  = ',g10.4,' dtuv  = ',g10.4,' dtbt  = ',g10.4)
 #else
       read  (stdin, contrl)
       write (stdout,contrl)

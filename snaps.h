@@ -1,7 +1,7 @@
 c====================== include file "snaps.h" =========================
 #ifdef hcomments
 c
-c @(#) SCCS module: snaps.h  version: 1.2
+c @(#) SCCS module: snaps.h  version: 1.3
 c     Creation date: 03/17/95
 c
 c-----------------------------------------------------------------------

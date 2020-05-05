@@ -1,6 +1,6 @@
       subroutine archrd(ncntl)
 c
-c @(#) SCCS module: m_arch.F  version: 1.2
+c @(#) SCCS module: m_arch.F  version: 1.3
 c     Creation date: 03/17/95
 c
 c=======================================================================

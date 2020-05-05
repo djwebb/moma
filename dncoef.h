@@ -1,6 +1,6 @@
 c====================== include file "dncoef.h" ========================
 c
-c @(#) SCCS module: dncoef.h  version: 1.2
+c @(#) SCCS module: dncoef.h  version: 1.3
 c     Creation date: 03/17/95
 c
 c-----------------------------------------------------------------------

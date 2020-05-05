@@ -1,7 +1,7 @@
 #ifdef ncsa_hdf
       subroutine archrd_hdf(ncntl)
 c
-c @(#) SCCS module: hdf.F  version: 1.2
+c @(#) SCCS module: hdf.F  version: 1.3
 c     Creation date: 03/17/95
 c
 c=======================================================================
