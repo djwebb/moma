@@ -1,20 +1,23 @@
 c======================include file: mesdta.h==========================
 #ifdef hcomments
 c
-c @(#) SCCS module: mesdta.h  version: 1.10
-c      Creation date: 08/09/96
+c @(#) SCCS module: mesdta.h  version: 1.1
+c      Creation date: 10/13/97
 c
-c-----------------------------------------------------------------------
+c----------------------------------------------------------------------
 c Common storage for miscellaneous message handling data
 c
 c  itida     -  array of process id's
 c  nproc     -  number of processes in use
-c  mytid     -  tid of this pricess
-c  mtid      -  tid of master process
+cc  mytid     -  tid of this process    (Not used by MPI)
+cc  mtid      -  tid of master process  (Not used by MPI)
 c  me        -  number of this process (0 = master)
 c  icycl     -  (1 or 0) indicating (whether or not) slave is 
 c               self-cyclic
 c  infoa     -  array of progress information for each slave
+c  lsend     - true when normal messages can be sent.  Set false
+c              during abort or when message system needs to be 
+c              cleared (i.e. during MPI).
 c
 c  tsi:
 c
@@ -90,9 +93,8 @@ c
 c  others:
 c
 c  utime     - array holding elasped execution time (master and slave)
-c              1 = process, 2 = system, 3 = sum 
-c  intime    - time (in seconds since Jan 1st 1970) when master or 
-c              slave started
+c              1 = process, 2 = system, 3 = sum   [NOT USED for MPI]
+c  start_time- time from MPI_WTIME 
 c  iposn     - in slave last reporting position 
 c  lbrkpt    - in slave true when permission received to proceed 
 c              from breakpoint (slave)
@@ -183,42 +185,34 @@ c  itbtp2    = itbtp value when 2-D data sent, used as a check
 c  np02      = pointer to np0 value into which 2-D data to be received
 c
 #endif
-#include "fpvm3.h"
-#ifdef REAL_PVM
-# undef REAL_PVM
-#endif
-#ifdef REAL_8 || defined cray-t3d
-# define REAL_PVM REAL8
-# define NBYTER 8
-#else 
-# define REAL_PVM REAL4 
-# define NBYTER 4
-#endif 
-#ifdef cray-t3d
-# define INTEGER_PVM INTEGER8
-#else
-# define INTEGER_PVM INTEGER4
-#endif
+      double precision start_time
       character*80    outstr
       character*32    timetsi
       logical         ltsia(MXSLAVE), lsnapa(MXSLAVE), lmeta(MXSLAVE),
      &                ltsip, ltsiw,  lsnapp, lsnapq, lbrkpt, lmetp,
-     &                lmetq, larchp, larchq, lidvra(NARCHV)
+     &                lmetq, larchp, larchq, lidvra(NARCHV), lsend
       common /mesdti/ itida(MXSLAVE),nproc,mtid,mytid,me,iposn,
-     &                infoa(3,MXSLAVE),iotime,intime,nmeta,
+     &                infoa(3,MXSLAVE),iotime,nmeta,
      &                itttsi,ittsnap,ittarch,nstsi,nssnap,nsarch,
      &                nseat,nseau,idvar,idsnp,jarchl,jarchu
-      common /mesdta/ outstr,timetsi
+      common /mesdta/ outstr, timetsi
       common /mesdtl/ ltsia,  lsnapa, lmeta,  ltsip, ltsiw, 
      &                lsnapp, lsnapq, lbrkpt, lmetp, lmetq,
-     &                larchp, larchq, lidvra
-      common /mesdtr/ utime(3),time_start
-#ifdef pvm_buffer
-      common /pvmbuf/ bufout(LENBUF)
-#endif
+     &                larchp, larchq, lidvra, lsend
+      common /mesdtr/ start_time,utime(3)
+c
+c  MPI define bufout for constructing messages
+c      define bufmpi for the MPI circular buffer (used with MPI_BSEND)
+c                    to hold at least NUMBUF messages.
+c
+#include "mpif.h"
+      common /mpibuf/ bufmpi(LENBUF,NUMBUF),bufout(LENBUF),
+     &                istat(MPI_STATUS_SIZE)
+      dimension       ibufout(LENBUF)
+      equivalence (ibufout(1),bufout(1))
 #ifdef Master
 c
-      character*30    messtr(0:12)
+      character*30    messtr(0:13)
       logical         lregra(IMT_M,JMT_M)
       common /masdtal/lregra
       common /masdtai/it_s(MXSLAVE), jt_s(MXSLAVE),

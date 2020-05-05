@@ -5,8 +5,8 @@
 #endif
 c
 c=======================================================================
-c @(#) SCCS module: master.F  version: 1.10
-c      Creation date: 08/09/96
+c @(#) SCCS module: master.F  version: 1.1
+c      Creation date: 10/13/97
 c=======================================================================
 c
 c  This program and the corresponding master program make up  
@@ -25,8 +25,9 @@ c  Each slave is responsible for its own communications with
 c  its neighbours and responds to the masters's requests for 
 c  snapshot and archive data.
 c 
-c  The master and slave programs have been developed by members of the OCCAM 
-c  core team including:
+c  The master and slave programs have been developed by members of
+c  the OCCAM core team including:
+c
 c           David J. Webb          djw@soc.soton.ac.uk
 c           Beverly A. de Cuevas   bac@soc.soton.ac.uk
 c           Andrew C. Coward       acc@soc.soton.ac.uk
@@ -37,10 +38,11 @@ c
 c           Mike O'Neill        meon@cray.com
 c           Bob Carruthers      Bob.Carruthers@cray.com
 c
-c  Copyright 1993, 1994, 1995, 1996.  D.J. Webb, B.A. de Cuevas, A.C. Coward, 
-c                                     A.C. Coward and C.S. Gwilliam,
-c                                     Southampton Oceanography Centre,
-c                                     Empress Dock, Southampton SO14 3ZH, U.K..
+c  Copyright 1993, 1994, 1995, 1996 and 1997.  
+c                     D.J. Webb, B.A. de Cuevas, A.C. Coward, 
+c                     A.C. Coward and C.S. Richmond,
+c                     Southampton Oceanography Centre,
+c                     Empress Dock, Southampton SO14 3ZH, U.K..
 c
 c  The code may be freely adapted and used without charge for
 c  non-commercial purposes.  Publications which report on work that
@@ -67,8 +69,13 @@ c
 #include "varinfo.h"
 #include "snaps.h"
 #include "versno.h"
+#ifndef Masterslave
 c
-      integer time
+c  use MPI timing routines
+c
+      double precision total_time
+#endif
+c
       logical log1
       character*12 nodename
       character*8 archit
@@ -88,19 +95,25 @@ c
       namelist /tsteps/ dtts, dtuv, dtbt
       namelist /eddy/   am, ah, fkpm, fkph, cdbot
 #endif
+
 c
 c=======================================================================
-c     begin introductory section
+c     begin
+c     if necessary initialise MPI, start timing  
+c      and initialise message passing logic
 c     open input file and write version information
 c=======================================================================
 c
-#ifndef masterslave
-      intime   = time()
+#ifndef Masterslave
+      call MPI_INIT(ierr)
+      start_time = MPI_WTIME()
+      call MPI_BUFFER_ATTACH(bufmpi,LENBUF*NUMBUF*8,ierr)
+      call MPI_COMM_RANK(MPI_COMM_WORLD,me,ierr)
 #endif
 c
       model(1) =' Stripped down MOM code for array processor.'
       model(2) =' Module: master.F.  Version: 1 '//
-     &          ' Date: 08/09/96'
+     &          ' Date: 10/13/97'
 #ifdef no_namelist
       open (stdin,file='ocean.in2')
 #else
@@ -215,8 +228,9 @@ c
       read (stdin,*) invar
       read (stdin,*) dtts, dtuv, dtbt
 c
-      write(stdout,1450) init,fnrest,days,restrt,nmix,eb,ncon,acor,
-     &                   tsi,snapd,archd,idebug,ftrest,ftsnap,ftarch,
+      write(stdout,1450) init,fnrest(1:lnblnk(ftrest)),days,restrt,
+     &                   nmix,eb,ncon,acor,tsi,snapd,archd,idebug,
+     &                   ftrest,ftsnap,ftarch,
      &                   dgnstc,dchkbd,statms,statis
       write(stdout,1451) am,ah,fkpm,fkph,cdbot
       write(stdout,1452) dtts,dtuv,dtbt
@@ -275,7 +289,7 @@ c
 c-----------------------------------------------------------------------
 c    initialise grid arrays
 c    initialise depths, kmt, and associated arrays
-c    initialise processor map, kpn, and associated arrays
+c    initialise processor map, kpn, associated arrays and nproc
 c-----------------------------------------------------------------------
 c
       call m_grids
@@ -289,49 +303,24 @@ c
 #endif
 c
 c-----------------------------------------------------------------------
-c    start up slave processes
+c    Check MPI environment
 c-----------------------------------------------------------------------
 c
-      write(stdout,101)nproc
-      call getmyid( mytid )
+      call MPI_COMM_GROUP(MPI_COMM_WORLD,mpigroup,ierr)
+      call MPI_GROUP_SIZE(mpigroup,iproc,ierr)
+      if(iproc.ge.nproc+1)then
+        write(stdout,101)nproc
+      else
+        write(stdout,102)nproc+1,iproc
+        call MPI_ABORT(MPI_COMM_WORLD,-1)
+      endif
 c
-c-----------------------------------------------------------------------
-c     Initiate nproc instances of slave program 
-c
-c     If archit is set to '*' then any configured machine is acceptable
-c     otherwise archit should be set to architecture type you wish to
-c     use.
-c-----------------------------------------------------------------------
-c
-#ifdef Masterslave
-      nodename = 'masterslave'
-#else
-      nodename = 'slave'
-#endif
-      archit = '*'
-      write(stdout,102)nodename,archit
-#ifndef cray-t3d
-# ifdef DEBUG
-      call spawn( nodename, PVMDEBUG  , archit, nproc, itida, info )
-# else
-      call spawn( nodename, PVMDEFAULT, archit, nproc, itida, info )
-# endif
-      log1 = info.lt.0
-      write(stdout,103)info
-      do 100 i=1, nproc
-         write(stdout,104) i,itida(i)
-         log1 = log1.or.itida(i).lt.0
- 100  continue
-      if(log1)write(stdout,105)
-      write(stdout,106)
+      write(stdout,103)
  101  format(' Starting ocean model on ',i4,' processors')
- 102  format(' Starting program: ',a,/,'  on architecture: ',a,/)
- 103  format(' Number of PVM slave tasks reported started = ',i5)
- 104  format(' Slave: ',i4,',   PVM task identifier = ',i8) 
- 105  format(' (negative numbers indicate an error ',
-     &       '- see the PVM manual)')
- 106  format(' ')
-#endif
+ 102  format(' Number processors required     = ',i5,/,
+     &       ' Number of processors available = ',i5,/,
+     &       ' Program stopping ... ',/,)
+ 103  format(' ')
 c
 c-----------------------------------------------------------------------
 c  initialise message info arrays and broadcast salve ids.
@@ -339,20 +328,6 @@ c-----------------------------------------------------------------------
 c
       call m_initmess
       call m_send(MSG_IDS)
-#ifdef cray-t3d
-c
-c-----------------------------------------------------------------------
-c  close down if insufficient processors
-c-----------------------------------------------------------------------
-c
-      if(nproc .gt. n$pes-1) then
-        write(stdout,*)'nproc is larger than the number of PEs ',
-     &                'available'
-        write(stdout,*)'master stopping ...'
-        call closedown(info)
-        return
-      endif
-#endif
 c
 c-----------------------------------------------------------------------
 c broadcast the control/namelist and grid information
@@ -415,6 +390,8 @@ c
       lmetq = .true.
       nmeta = nproc
       call m_send(MSG_MET3)
+c
+      call mchkpnt(7)
 c
 c-----------------------------------------------------------------------
 c  broadcast the Levitus data sets
@@ -499,8 +476,8 @@ c |
         call prininfo(2)
 c |
 c-|----------------------------------------------------------------
-c | if an archive is in progress and if previous, partial archive request 
-c | has been fulfilled, then send off the next part:
+c | if an archive is in progress and if previous, partial archive 
+c | request has been fulfilled, then send off the next part:
 c-|----------------------------------------------------------------
 c |
         if(larchp.and..not.larchq) call archreq
@@ -539,16 +516,22 @@ c
       call docmnt (stdout, .true., .true., .true., .true.)
 c
 c-----------------------------------------------------------------------
-c     leave PVM before exiting 
+c     leave MPI before exiting 
 c-----------------------------------------------------------------------
 c
-      call closedown(info) 
-      write (stdout,9603)
 #ifdef Masterslave
       return
 #else 
+c
+c  write out total time and stop
+c
+      total_time = MPI_WTIME() - start_time
+      write( stdout,9603)total_time
+      write (stdout,9604)
+      call MPI_FINALIZE(ierr)
       stop
+9603  format('Total elapsed time for master is ',f10.4)
+9604  format(1x,' ==> END of model run.',//)
 #endif
-9603  format(1x,' ==> END of model run.',//)
       end
 

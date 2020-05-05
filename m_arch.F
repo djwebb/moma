@@ -1,7 +1,7 @@
       subroutine archrd(ncntl)
 c
-c @(#) SCCS module: m_arch.F  version: 1.10
-c     Creation date: 08/09/96
+c @(#) SCCS module: m_arch.F  version: 1.1
+c     Creation date: 10/13/97
 c
 c=======================================================================
 c subroutine to read restart data and send to slaves
@@ -64,7 +64,7 @@ c   read 2-D archive data arrays and send to slaves
 c------------------------------------------------------------------
 c
       do 50 n=1,nproc
-        iarcha(n)=itida(n)
+        iarcha(n)=n
         narcha(n)=n
   50  continue
       jarchl = 1
@@ -91,7 +91,7 @@ c
         do 200 n=1,nproc
           if(jarchu.gt.jt_s(n).and.jarchl.le.jt_e(n))then
             nsarch=nsarch+1
-            iarcha(nsarch) = itida(n)
+            iarcha(nsarch) = n
             narcha(nsarch) = n
           endif
  200    continue
@@ -146,7 +146,7 @@ c
         if(.not.vartgrd(idvar)) nseachk = nseau
         nseapt = 0
         do 50 n=1,nproc
-         iarcha(n)=itida(n)
+         iarcha(n)=n
   50    continue
         nsarch=nproc
         jarchl = 1
@@ -207,7 +207,7 @@ c
         do 100 n=1,nproc
           if(jarchu.ge.jt_s(n).and.jarchl.le.jt_e(n)) then
             nsarch=nsarch+1
-            iarcha(nsarch) = itida(n)
+            iarcha(nsarch) = n
           endif
  100    continue
       endif

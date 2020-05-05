@@ -1,8 +1,8 @@
 c====================== include file "moddata.h" =======================
 #ifdef hcomments
 c
-c @(#) SCCS module: moddata.h  version: 1.10
-c     Creation date: 08/09/96
+c @(#) SCCS module: moddata.h  version: 1.1
+c     Creation date: 10/13/97
 c
 c-----------------------------------------------------------------------
 c This module contains various data statements for inline inclusion
@@ -15,7 +15,7 @@ c
 c
 c Position descriptions and indexing
 c
-      data mesind/ 0, 8, 9, 9,10,11, 0, 0, 0, 0, 1,
+      data mesind/ 0, 8, 9, 9,10,11, 0,13, 0, 0, 1,
      &                2, 0, 0, 3, 0, 0, 0, 0, 0, 4,
      &                5, 0, 0, 0, 0, 0, 0, 0, 0, 0,
      &                0, 6, 0, 0, 7, 0, 0, 0, 0,12/
@@ -33,10 +33,11 @@ c
      &             'preparing timestep info'       ,
      &             'processing master requests'    ,
      &             'aborting slave processes'      ,
-     &             'receiving restart data'          ,
+     &             'receiving restart data'        ,
      &             'waiting for restart data'      ,
      &             'receiving free surface data'   ,
-     &             'closing down'                  /
+     &             'closing down'                  ,
+     &             'receiving meteorological data' /
 c
 c snapshot variable identifiers and levels (see snaps.h)
 c

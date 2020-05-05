@@ -4,8 +4,8 @@
       subroutine slave
 #endif
 c
-c @(#) SCCS module: slave.F  version: 1.10
-c     Creation date: 08/09/96
+c @(#) SCCS module: slave.F  version: 1.1
+c     Creation date: 10/13/97
 c
 c======================================================================
 c
@@ -25,8 +25,9 @@ c  Each slave is responsible for its own communications with
 c  its neighbours and responds to the masters's requests for 
 c  snapshot and archive data.
 c 
-c  The master and slave programs have been developed by members of the OCCAM 
-c  core team including:
+c  The master and slave programs have been developed by members of
+c  the OCCAM core team including:
+c
 c           David J. Webb          djw@soc.soton.ac.uk
 c           Beverly A. de Cuevas   bac@soc.soton.ac.uk
 c           Andrew C. Coward       acc@soc.soton.ac.uk
@@ -37,10 +38,11 @@ c
 c           Mike O'Neill        meon@cray.com
 c           Bob Carruthers      Bob.Carruthers@cray.com
 c
-c  Copyright 1993, 1994, 1995, 1996.  D.J. Webb, B.A. de Cuevas, A.C. Coward, 
-c                                     A.C. Coward and C.S. Gwilliam,
-c                                     Southampton Oceanography Centre,
-c                                     Empress Dock, Southampton SO14 3ZH, U.K..
+c  Copyright 1993, 1994, 1995, 1996 and 1997.  
+c                     D.J. Webb, B.A. de Cuevas, A.C. Coward, 
+c                     A.C. Coward and C.S. Richmond,
+c                     Southampton Oceanography Centre,
+c                     Empress Dock, Southampton SO14 3ZH, U.K..
 c
 c  The code may be freely adapted and used without charge for
 c  non-commercial purposes.  Publications which report on work that
@@ -161,7 +163,14 @@ c
 #ifndef Masterslave
 # include "moddata.h"
 #endif 
+#ifndef Masterslave
 c
+c  use MPI timing routines
+c
+      double precision total_time
+#endif
+c
+
       character fnnum*3,fnslave*80
 c
 #ifndef no_namelist
@@ -177,48 +186,32 @@ c
 c
 c=======================================================================
 c
-c  start timing and initialise message passing logic
+c     if necessary initialise MPI, start timing  
+c      and initialise message passing logic
 c 
 c=======================================================================
 c
 #ifndef Masterslave
-      intime=time()
+      call MPI_INIT(ierr)
+      start_time = MPI_WTIME()
+      call MPI_BUFFER_ATTACH(bufmpi,LENBUF*NUMBUF*8,ierr)
+      call MPI_COMM_RANK(MPI_COMM_WORLD,me,ierr)
 #endif
+      idebug = 6
       call initmess
 c
-c     constants usually initialised in block data
-c
-#ifndef Masterslave
-      call getmyid(mytid)
-      call getmasterid(mtid)
-#endif
-c
-c receive tid array from master and decide which slave we are
+c receive tid array from master
 c
       call s_recv(MSG_IDS)
 c
-c     Determine which slave I am (1 -- nproc)
+c close down if not required
 c
-#ifdef cray-t3d
-      if(nproc .gt. n$pes-1) then
-        write(stdout,*)'nproc is larger than the number of PEs ',
-     &                'available'
-        write(stdout,*)'slave ', me,' stopping ...'
-        call closedown(info)
-        return
-      endif
-#endif
-      do 57 i=1, nproc
-         if( itida(i) .eq. mytid ) me = i
- 57   continue
-#ifdef cray-t3d
       if(me .gt. nproc) then
         write(stdout,*)'PE no ',me,' closing down - not needed.',
      &                 ' nproc = ',nproc
         call closedown(info,me)
         return
       endif
-#endif
 c
 c=======================================================================
 c     begin introductory section
@@ -249,8 +242,9 @@ c
       model(2) =' Module: slave.F.  Version: ????. '//
      &          ' Date:       16:10'
       write(ioslave,*)model
-      write(ioslave,*)'  me, mtid, mytid = ',me,mtid,mytid
-      write(ioslave,*)'  itida =',(itida(n),n=1,nproc)
+      write(ioslave,*)'  me = ',me
+c      write(ioslave,*)'  me, mtid, mytid = ',me,mtid,mytid
+c      write(ioslave,*)'  itida =',(itida(n),n=1,nproc)
 c
 c=======================================================================
 c   constants
@@ -268,8 +262,9 @@ c=======================================================================
 c
       call s_recv(MSG_CONTROL)
 #ifdef no_namelist
-      write(ioslave,1452) init,fnrest,days,restrt,nmix,eb,ncon,
-     &                   tsi,dgnstc,snapd,archd,acor,idebug
+      write(ioslave,1452) init,fnrest(1:lnblnk(ftrest)),days,restrt,
+     &                    nmix,eb,ncon,
+     &                    tsi,dgnstc,snapd,archd,acor,idebug
       write(ioslave,1451) dtts,dtuv,dtbt
       write(ioslave,1450) am,ah,fkpm,fkph,cdbot
 #ifdef de_checkbd
@@ -289,7 +284,6 @@ c
       write (ioslave, eddy)
       write (ioslave,tsteps)
 #endif
-c
 c
 c=======================================================================
 c     end introductory section
@@ -402,9 +396,7 @@ c     initialise the flux flags
 c-----------------------------------------------------------------------
 c
       lmetq = .false.
-      call s_recv(MSG_MET1)
-      call s_recv(MSG_MET2)
-      call s_recv(MSG_MET3)
+      call schkpnt(7)
 c
 c-----------------------------------------------------------------------
 c     compute maximum number of vertical levels on the "u" grid
@@ -502,7 +494,9 @@ c
 c
 c  report to master and wait
 c
+      call flush(ioslave)
       call schkpnt(10)
+      call flush(ioslave)
 c
 c-----------------------------------------------------------------------
 c     start the time step loop
@@ -552,7 +546,7 @@ c-----------------------------------------------------------------------
 c
         if (prntsi)then
 #ifdef cray-t3d
-          utime(3) =rtc()*6.6e-9-time_start
+          utime(3) =rtc()*6.6e-9-start_time
           write (ioslave,9602) itt, stamp, ektot/volume,
      &          dtabs(1)/volume, dtabs(2)/volume,utime(3)
 #else
@@ -561,8 +555,10 @@ c-----------------------------------------------------------------------
 c  get total elapsed time and user time since last call
 c-----------------------------------------------------------------------
 c
-          utime(3) = etime(utime)
-          tempzz   = dtime(utime)
+c          utime(3) = etime(utime)
+c          tempzz   = dtime(utime)
+          utime(3) = MPI_WTIME()
+          tempzz = MPI_WTIME()
           write (ioslave,9602) itt, stamp, ektot/volume,
      &          dtabs(1)/volume, dtabs(2)/volume,tempzz,utime(3)
 #endif
@@ -628,7 +624,7 @@ c The checkpoint routine will spin receiving and acting upon
 c messages until told to proceed by caesar. Additionally, s_recv
 c (called by schkpnt) will send out timestep, archive and snapshot
 c data still awaiting collection by caesar.
-c-----------------------------------------------------------------
+c------------------------------------------------------------------
       call schkpnt(40)
 c
 c------------------------------------------------------------------
@@ -636,13 +632,21 @@ c     close all units  (stderr is not closed because it is set equal
 c     to ioslave in pconst.h).
 c------------------------------------------------------------------
 c
-      write (ioslave,9603) 
-      close (unit=ioslave,status='keep')
+      total_time = MPI_WTIME() - start_time
       if(ioslave.ne.stdout)then
-        close (unit=stdout,status='keep')
+        write( ioslave,9603)me,total_time
+        write (ioslave,9604)
+        close (unit=ioslave,status='keep')
       endif
-      call closedown(info)
+#ifdef Masterslave
+      return
+#else 
+      call MPI_FINALIZE(ierr)
+      write( stdout,9603)me,total_time
+      write (stdout,9604)
+      close (unit=stdout,status='keep')
       stop
+#endif
 c
 9341  format (//,'  Regional & Global ocean statistics:'
      &,/,'  the total ocean surface area (t grid) =',1pe15.8,'cm**2'
@@ -655,6 +659,7 @@ c
 9602  format (1x,'ts=',i7, 1x, a32, ', ke=', 1pe13.6,
 c     &        ' dtemp=',1pe13.6,' dsalt=',1pe13.6)
      &        ' dtemp=',1pe13.6,' dsalt=',1pe13.6,' times=',0p2f10.2)
-9603  format(1x,' ==> END of model run.',//)
+9603  format('Total elapsed time for slave ',i3,' is ',f10.4)
+9604  format(1x,' ==> END of model run.',//)
       end
 

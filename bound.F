@@ -1,7 +1,7 @@
       subroutine bound
 c
-c @(#) SCCS module: bound.F  version: 1.10
-c     Creation date: 08/09/96
+c @(#) SCCS module: bound.F  version: 1.1
+c     Creation date: 10/13/97
 c
 c===================================================================
 c
@@ -153,7 +153,8 @@ c
        if(nsend(n).gt.0) then
         nactive=nactive+1
         nactme(nactive)=n
-        nactid(nactive)=itida(n)
+        nactid(nactive)=n
+c        nactid(nactive)=itida(n)
        endif
   135 continue
 c

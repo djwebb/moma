@@ -1,8 +1,8 @@
       subroutine m_initmess
 c
 c=======================================================================
-c @(#) SCCS module: m_msg.F  version: 1.10
-c     Creation date: 08/09/96
+c @(#) SCCS module: m_msg.F  version: 1.1
+c     Creation date: 10/13/97
 c=======================================================================
 c
 c
@@ -38,6 +38,7 @@ c
         lsnapa(i) = .false.
         lmeta(i)  = .true.
   20  continue
+      lsend  = .true.
       ltsip  = .false.
       lsnapp = .false.
       lsnapq = .false.
@@ -52,7 +53,7 @@ c
       subroutine m_abort
 c
 c=======================================================================
-c  subroutine to abort master after slaves have been spawned
+c  subroutine to send abort message to slaves
 c=======================================================================
 c
 #include "param.h"
@@ -166,8 +167,8 @@ c
       subroutine nextmet
 #ifdef hcomments
 c
-c @(#) SCCS module: m_msg.F  version: 1.10
-c    Creation date: 08/09/96
+c @(#) SCCS module: m_msg.F  version: 1.1
+c    Creation date: 10/13/97
 c
 c=======================================================================
 c  subroutine to read in the next set of meteorological data and
@@ -304,9 +305,9 @@ c
 c  find the current time
 c
 #ifdef cray-t3d
-      tnow = rtc()*6.6e-9-time_start
+      tnow = rtc()*6.6e-9-start_time
 #else
-      tnow = time()-intime
+      tnow = MPI_WTIME()-start_time
 #endif
 c
 c  entry points to reset clocks
@@ -406,12 +407,21 @@ c=======================================================================
 c pack and send command to abort (message MSG_ABORT)
 c=======================================================================
 c
+      MPII = MPI_INTEGER
+      MPIR = MPI_REAL
+      MPIL = LENBUF*4
+      MPIC = MPI_COMM_WORLD
+c
       if(msgtype.eq.MSG_ABORT) then
-        call pvmfinitsend( PVMDEFAULT, info )
-        call pvmfmcast( nproc, itida, MSG_ABORT, info )
+        do iproc=1,nproc
+ 100      call MPI_BSEND(bufout,1,MPII,iproc,msgtype,MPIC,ierr)
+          call M_BERR(ierr,*100)
+        enddo
         if(idebug.gt.2)then
-         print *,' Master:  Message MSG_ABORT sent to all slaves.'
+          write(stderr,*)
+     &         ' Master:  Message MSG_ABORT sent to all slaves.'
         endif
+        lsend = .false.
         call mchkpnt(1)
         call closedown(info)
         stop
@@ -422,10 +432,13 @@ c      command to continue
 c=======================================================================
 c
       elseif(msgtype.eq.MSG_CONT) then
-        call pvmfinitsend( PVMDEFAULT, info )
-        call pvmfmcast( nproc, itida, MSG_CONT, info )
+        do iproc=1,nproc
+ 101      call MPI_BSEND(bufout,1,MPII,iproc,msgtype,MPIC,ierr)
+          call M_BERR(ierr,*101)
+        enddo
         if(idebug.gt.2)then
-         print *,' Master:  Message MSG_CONT sent to all slaves.'
+          write(stderr,'(a)')
+     &         ' Master:  Message MSG_CONT sent to all slaves.'
         endif
 c
 c=======================================================================
@@ -434,16 +447,13 @@ c     pack and send tid information to the slaves
 c=======================================================================
 c
       elseif(msgtype.eq.MSG_IDS) then
-        call pvmfinitsend( PVMDEFAULT, info )
-        call pvmfpack( INTEGER_PVM, nproc, 1, 1, info )
-        call pvmfpack( INTEGER_PVM, itida, nproc, 1, info )
-#ifdef cray-t3d
-        call pvmfmcast( n$pes-1, itida, MSG_IDS, info )
-#else
-        call pvmfmcast( nproc, itida, MSG_IDS, info )
-#endif
+        do iproc=1,nproc
+ 102      call MPI_BSEND(nproc,1,MPII,iproc,msgtype,MPIC,ierr)
+          call M_BERR(ierr,*102)
+        enddo
         if(idebug.gt.2)then
-          write(stderr,*)' Master:  Message MSG_IDS sent to all slaves.'
+          write(stderr,'(a)')
+     &         ' Master:  Message MSG_IDS sent to all slaves.'
         endif
 c
 c=======================================================================
@@ -452,42 +462,47 @@ c      pack and send control information to the slaves
 c=======================================================================
 c
       elseif(msgtype.eq.MSG_CONTROL) then
-        call pvmfinitsend( PVMDEFAULT, info )
-        call pvmfpack( INTEGER_PVM,  init, 1, 1, info )
-        call pvmfpack( INTEGER_PVM,restrt, 1, 1, info )
-        call pvmfpack( INTEGER_PVM,    eb, 1, 1, info )
-        call pvmfpack( REAL_PVM,     days, 1, 1, info )
-        call pvmfpack( REAL_PVM,      tsi, 1, 1, info )
-        call pvmfpack( REAL_PVM,     acor, 1, 1, info )
-        call pvmfpack( REAL_PVM,   dgnstc, 1, 1, info )
-        call pvmfpack( REAL_PVM,    snapd, 1, 1, info )
-        call pvmfpack( REAL_PVM,    archd, 1, 1, info )
-        call pvmfpack( REAL_PVM,     dtts, 1, 1, info )
-        call pvmfpack( REAL_PVM,     dtuv, 1, 1, info )
-        call pvmfpack( REAL_PVM,     dtbt, 1, 1, info )
-        call pvmfpack( REAL_PVM,       am, 1, 1, info )
-        call pvmfpack( REAL_PVM,       ah, 1, 1, info )
-        call pvmfpack( REAL_PVM,     fkpm, 1, 1, info )
-        call pvmfpack( REAL_PVM,     fkph, 1, 1, info )
-        call pvmfpack( REAL_PVM,    cdbot, 1, 1, info )
-        call pvmfpack( REAL_PVM,    dxdeg,    1, 1, info )
-        call pvmfpack( REAL_PVM,    dydeg,    1, 1, info )
-        call pvmfpack( REAL_PVM,       dz,   KM, 1, info )
+        ib = 0
+        call MPI_PACK(init  ,1,MPII,bufout,MPIL,ib,MPIC,ierr)
+        call MPI_PACK(restrt,1,MPII,bufout,MPIL,ib,MPIC,ierr)
+        call MPI_PACK(eb    ,1,MPII,bufout,MPIL,ib,MPIC,ierr)
+        call MPI_PACK(days  ,1,MPIR,bufout,MPIL,ib,MPIC,ierr)
+        call MPI_PACK(tsi   ,1,MPIR,bufout,MPIL,ib,MPIC,ierr)
+        call MPI_PACK(acor  ,1,MPIR,bufout,MPIL,ib,MPIC,ierr)
+        call MPI_PACK(dgnsts,1,MPIR,bufout,MPIL,ib,MPIC,ierr)
+        call MPI_PACK(snapd ,1,MPIR,bufout,MPIL,ib,MPIC,ierr)
+        call MPI_PACK(archd ,1,MPIR,bufout,MPIL,ib,MPIC,ierr)
+        call MPI_PACK(dtts  ,1,MPIR,bufout,MPIL,ib,MPIC,ierr)
+        call MPI_PACK(dtuv  ,1,MPIR,bufout,MPIL,ib,MPIC,ierr)
+        call MPI_PACK(dtbt  ,1,MPIR,bufout,MPIL,ib,MPIC,ierr)
+        call MPI_PACK(am    ,1,MPIR,bufout,MPIL,ib,MPIC,ierr)
+        call MPI_PACK(ah    ,1,MPIR,bufout,MPIL,ib,MPIC,ierr)
+        call MPI_PACK(fkpm  ,1,MPIR,bufout,MPIL,ib,MPIC,ierr)
+        call MPI_PACK(fkph  ,1,MPIR,bufout,MPIL,ib,MPIC,ierr)
+        call MPI_PACK(cdbot ,1,MPIR,bufout,MPIL,ib,MPIC,ierr)
+        call MPI_PACK(dxdeg ,1,MPIR,bufout,MPIL,ib,MPIC,ierr)
+        call MPI_PACK(dydeg ,1,MPIR,bufout,MPIL,ib,MPIC,ierr)
+        call MPI_PACK(dz    ,KM,MPIR,bufout,MPIL,ib,MPIC,ierr)
 #ifdef de_checkbd
-        call pvmfpack( REAL_PVM,   dchkbd, 1, 1, info )
+        call MPI_PACK(dchkbd,1,MPIR,bufout,MPIL,ib,MPIC,ierr)
 #endif
-        call pvmfpack( INTEGER_PVM,  nmix, 1, 1, info )
-        call pvmfpack( INTEGER_PVM,  ncon, 1, 1, info )
-        call pvmfpack( INTEGER_PVM,  ntbt, 1, 1, info )
-        call pvmfpack( INTEGER_PVM,idebug, 1, 1, info )
-        call pvmfpack( INTEGER_PVM,iorest, 1, 1, info )
-        call pvmfpack( INTEGER_PVM,ispvar, NSNAPS, 1, info )
-        call pvmfpack( INTEGER_PVM,isplev, NSNAPS, 1, info )
-        call pvmfpack( STRING, fnrest,80, 1, info )
+        call MPI_PACK(nmix  ,1,MPII,bufout,MPIL,ib,MPIC,ierr)
+        call MPI_PACK(ncon  ,1,MPII,bufout,MPIL,ib,MPIC,ierr)
+        call MPI_PACK(ntbt  ,1,MPII,bufout,MPIL,ib,MPIC,ierr)
+        call MPI_PACK(idebug  ,1,MPII,bufout,MPIL,ib,MPIC,ierr)
+        call MPI_PACK(iorest  ,1,MPII,bufout,MPIL,ib,MPIC,ierr)
+        call MPI_PACK(ispvar  ,NSNAPS,MPII,bufout,MPIL,ib,MPIC,ierr)
+        call MPI_PACK(isplev  ,NSNAPS,MPII,bufout,MPIL,ib,MPIC,ierr)
+        call MPI_PACK(fnrest  ,80,MPI_CHARACTER,bufout,
+     &                                            MPIL,ib,MPIC,ierr)
 c
-        call pvmfmcast( nproc, itida, MSG_CONTROL, info )
+        do iproc=1,nproc
+ 103      call MPI_BSEND(bufout,ib,MPI_PACKED,iproc,msgtype,MPIC,ierr)
+          call M_BERR(ierr,*103)
+        end do
         if(idebug.gt.2)then
-          print *,' Master:  Message MSG_CONTROL sent to all slaves.'
+          write(stderr,'(a)')
+     &         ' Master:  Message MSG_CONTROL sent to all slaves.'
         endif
 c
 c=======================================================================
@@ -500,8 +515,6 @@ c
          if(idebug.gt.5)then
            print *,' Master:  Sending MSG_TOPOG to slave:',n
          endif
-         call pvmfinitsend( PVMDEFAULT, info )
-#ifdef pvm_buffer
          bufout(2) = it_l(n)
          bufout(3) = jt_l(n)
          bufout(4) = icycl_M(n)
@@ -510,72 +523,51 @@ c
          bufout(7) = swlo(n)
          bufout(8) = swla(n)
          lbuff = 8
-#else
-         call pvmfpack( INTEGER_PVM,  it_l(n),      1, 1, info )
-         call pvmfpack( INTEGER_PVM,  jt_l(n),      1, 1, info )
-         call pvmfpack( INTEGER_PVM,  icycl_M(n),   1, 1, info )
-         call pvmfpack( INTEGER_PVM,  iswm1_M(n),   1, 1, info )
-         call pvmfpack( INTEGER_PVM,  jswm1_M(n),   1, 1, info )
-         call pvmfpack( REAL_PVM,     swlo(n),      1, 1, info )
-         call pvmfpack( REAL_PVM,     swla(n),      1, 1, info )
-#endif
          do 10 j=jt_s(n),jt_e(n)
          do 10 i=it_s(n),it_e(n)
-          ii = mod(i-1,IMT_M) + 1
-#ifdef pvm_buffer
-             lbuff = lbuff+1
-             if(lbuff+1.gt.LENBUF)then
-               print *, ' error T1 in m_send while packing',
-     &             ' MSG_TOPOG for slave: ',n,itida(n)
-               print *, ' buffer overflow: lbuff =',lbuff,
+           ii = mod(i-1,IMT_M) + 1
+           lbuff = lbuff+1
+           if(lbuff+1.gt.LENBUF)then
+             print *, ' error T1 in m_send while packing',
+     &             ' MSG_TOPOG for slave: ',n
+             print *, ' buffer overflow: lbuff =',lbuff,
      &                    ' ii = ',ii,' j = ',j
-             endif
-             bufout(lbuff) = kmt(ii,j)
-#else
-           call pvmfpack(INTEGER_PVM , kmt(ii,j),  1, 1, info )
-#endif
+           endif
+           bufout(lbuff) = kmt(ii,j)
  10      continue
          do 15 j=jt_s(n),jt_e(n)
          do 15 i=it_s(n),it_e(n)
            ii = mod(i-1,IMT_M) + 1
-#ifdef pvm_buffer
-             lbuff = lbuff+1
-             if(lbuff+1.gt.LENBUF)then
+           lbuff = lbuff+1
+           if(lbuff+1.gt.LENBUF)then
                print *, ' error T2 in m_send while packing',
-     &             ' MSG_TOPOG for slave: ',n,itida(n)
+     &             ' MSG_TOPOG for slave: ',n
                print *, ' buffer overflow:  lbuff =',lbuff,
      &                    ' ii = ',ii,' j = ',j
-             endif
-             bufout(lbuff) = kmu(ii,j)
-#else
-           call pvmfpack(INTEGER_PVM , kmu(ii,j),  1, 1, info )
-#endif
+           endif
+           bufout(lbuff) = kmu(ii,j)
  15      continue
          do 18 j=jt_s(n),jt_e(n)
          do 18 i=it_s(n),it_e(n)
            ii = mod(i-1,IMT_M) + 1
-#ifdef pvm_buffer
              lbuff = lbuff+1
              if(lbuff+1.gt.LENBUF)then
                print *, ' error T3 in m_send while packing',
-     &             ' MSG_TOPOG for slave: ',n,itida(n)
+     &             ' MSG_TOPOG for slave: ',n
                print *, ' buffer overflow: lbuff =',lbuff,
      &                    ' ii = ',ii,' j = ',j
              endif
              bufout(lbuff) = kpn(ii,j)
-#else
-           call pvmfpack(INTEGER_PVM , kpn(ii,j),  1, 1, info )
-#endif
  18        continue
-#ifdef pvm_buffer
          bufout(1) = lbuff
-         call pvmfpack(REAL_PVM, bufout, lbuff, 1, info)
-#endif
 c
-         call pvmfsend( itida(n), msgtype, info )
+ 104     call MPI_BSEND(bufout,lbuff,MPI_REAL,
+     &                          n,MSG_TOPOG,MPIC,ierr)
+         call M_BERR(ierr,*104)
  20    continue
        if(idebug.gt.2)then
-         print *,' Master:  Message MSG_TOPOG sent to all slaves.'
+          write(stderr,'(a)')
+     &    ' Master:  Message MSG_TOPOG sent to all slaves.'
        endif
 c
 c=======================================================================
@@ -583,15 +575,18 @@ c  entry point to send restart time variables to all slaves
 c=======================================================================
 c
       elseif(msgtype.eq.MSG_TIMEVAR) then
-        call pvmfinitsend( PVMDEFAULT, info )
-        call pvmfpack( INTEGER_PVM, itt   , 1, 1, info )
-        call pvmfpack( REAL_PVM  , totsec, 1, 1, info )
-        call pvmfpack( REAL_PVM  , totday, 1, 1, info )
-        call pvmfpack( REAL_PVM  , years , 1, 1, info )
-        call pvmfmcast(nproc, itida, MSG_TIMEVAR, info )
+        bufout(1) = itt
+        bufout(2) = totsec
+        bufout(3) = totday
+        bufout(4) = years
+        do iproc=1,nproc
+ 105      call MPI_BSEND(bufout,4,MPI_REAL,
+     &                          iproc,MSG_TIMEVAR,MPIC,ierr)
+          call M_BERR(ierr,*105)
+        enddo
         if(idebug.gt.2)then
-          print *,
-     &    ' Master:  Message MSG_TIMEVAR sent to all slaves.'
+          write(stderr,'(a)')
+     &         ' Master:  Message MSG_TIMEVAR sent to all slaves.'
         endif
 c
 c=======================================================================
@@ -600,95 +595,77 @@ c=======================================================================
 c
       elseif(msgtype.eq.MSG_RESTART) then
         do 50 nn=1,nsarch
-         n=narcha(nn)
-         jlow=max(jarchl,jt_s(n))
-         jupp=min(jarchu,jt_e(n))
-         call pvmfinitsend( PVMDEFAULT, info )
-#ifdef pvm_buffer
-           bufout(2) = idvar
-           bufout(3) = jlow
-           bufout(4) = jupp
-           lbuff = 4
-#else
-         call pvmfpack( INTEGER_PVM, idvar, 1, 1, info )
-         call pvmfpack( INTEGER_PVM, jlow , 1, 1, info )
-         call pvmfpack( INTEGER_PVM, jupp , 1, 1, info )
-#endif
+          n=narcha(nn)
+          jlow=max(jarchl,jt_s(n))
+          jupp=min(jarchu,jt_e(n))
+          bufout(2) = idvar
+          bufout(3) = jlow
+          bufout(4) = jupp
+          lbuff = 4
 c
-         if(idvar.le.NUM2D) then
-          do 60 j=jlow,jupp
-          do 60 i=it_s(n),it_e(n)
-           ii = mod(i-1,IMT_M) + 1
-#ifdef pvm_buffer
-           lbuff = lbuff+1
-           if(lbuff+1.gt.LENBUF)then
-               print *, ' error in m_send while packing',
-     &             ' MSG_RESTART for slave: ',n,itida(n)
-               print *, ' buffer overflow:  lbuff =',lbuff
-           endif
-           bufout(lbuff) = rest2d(ii,j)
-#else
-           call pvmfpack(REAL_PVM, rest2d(ii,j), 1, 1, info)
-#endif
-60        continue
+          if(idvar.le.NUM2D) then
+            do 60 j=jlow,jupp
+            do 60 i=it_s(n),it_e(n)
+              ii = mod(i-1,IMT_M) + 1
+              lbuff = lbuff+1
+              if(lbuff+1.gt.LENBUF)then
+                print *, ' error in m_send while packing',
+     &              ' MSG_RESTART for slave: ',n
+                print *, ' buffer overflow:  lbuff =',lbuff
+              endif
+              bufout(lbuff) = rest2d(ii,j)
+60          continue
 c
-         elseif(vartgrd(idvar)) then
-          joff=((jarchu-1)/JSUB_M)*JSUB_M
-          do 70 j=jlow,jupp 
-           jj=j-joff
-          do 70 i=it_s(n),it_e(n)
-           ii = mod(i-1,IMT_M) + 1
-           if(kmt(ii,j).ne.0) then
-#ifdef pvm_buffer
-             if(lbuff+kmt(ii,j)+1.gt.LENBUF)then
-               print *, ' error in m_send while packing',
-     &             ' MSG_RESTART for slave: ',n,itida(n)
-               print *, ' buffer overflow:  lbuff =',lbuff
-             endif
-             do 61 k=1,kmt(ii,j)
-               lbuff = lbuff+1
-               bufout(lbuff) = rest3d(k,ii,jj)
-  61         continue
-#else
-             call pvmfpack(REAL_PVM,  
-     &                        rest3d(1,ii,jj),kmt(ii,j), 1, info)
-#endif
-           endif 
-70        continue
-         else
+          elseif(vartgrd(idvar)) then
+            joff=((jarchu-1)/JSUB_M)*JSUB_M
+            do 70 j=jlow,jupp 
+            jj=j-joff
+            do 70 i=it_s(n),it_e(n)
+              ii = mod(i-1,IMT_M) + 1
+              if(kmt(ii,j).ne.0) then
+                if(lbuff+kmt(ii,j)+1.gt.LENBUF)then
+                  print *, ' error in m_send while packing',
+     &              ' MSG_RESTART for slave: ',n
+                  print *, ' buffer overflow:  lbuff =',lbuff
+                endif
+                do 61 k=1,kmt(ii,j)
+                  lbuff = lbuff+1
+                  bufout(lbuff) = rest3d(k,ii,jj)
+  61            continue
+              endif 
+70          continue
 c
-          joff=((jarchu-1)/JSUB_M)*JSUB_M
-          do 80 j=jlow,jupp 
-           jj=j-joff
-          do 80 i=it_s(n),it_e(n)
-           ii = mod(i-1,IMT_M) + 1
-           if(kmu(ii,j).ne.0) then
-#ifdef pvm_buffer
-             if(lbuff+kmu(ii,j)+1.gt.LENBUF)then
-               print *, ' error in m_send while packing',
-     &             ' MSG_RESTART for slave: ',n,itida(n)
-               print *, ' buffer overflow:  lbuff =',lbuff
-             endif
-             do 62 k=1,kmu(ii,j)
-               lbuff = lbuff+1
-               bufout(lbuff) = rest3d(k,ii,jj)
-  62         continue
-#else
-             call pvmfpack(REAL_PVM,  
-     &                        rest3d(1,ii,jj),kmu(ii,j), 1, info)
-#endif
-            endif 
-80        continue
-         endif
-#ifdef pvm_buffer
-         bufout(1) = lbuff
-         call pvmfpack(REAL_PVM, bufout, lbuff, 1, info)
-#endif
-         call pvmfsend(iarcha(nn), MSG_RESTART, info )
+          else
+            joff=((jarchu-1)/JSUB_M)*JSUB_M
+            do 80 j=jlow,jupp 
+            jj=j-joff
+            do 80 i=it_s(n),it_e(n)
+              ii = mod(i-1,IMT_M) + 1
+              if(kmu(ii,j).ne.0) then
+                if(lbuff+kmu(ii,j)+1.gt.LENBUF)then
+                  print *, ' error in m_send while packing',
+     &               ' MSG_RESTART for slave: ',n
+                  print *, ' buffer overflow:  lbuff =',lbuff
+                endif
+                do 62 k=1,kmu(ii,j)
+                  lbuff = lbuff+1
+                  bufout(lbuff) = rest3d(k,ii,jj)
+  62            continue
+              endif 
+80          continue
+          endif
+          bufout(1) = lbuff
+c
+c send data
+c
+ 106      call MPI_BSEND(bufout,lbuff,MPI_REAL,iarcha(nn),
+     &                          MSG_RESTART,MPIC,ierr)
+          call M_BERR(ierr,*106)
 50      continue
         if(idebug.gt.2)then
-          print *,' Master:  Message MSG_RESTART sent to',
-     &           ' selected slaves. idvar = ',idvar
+          write(stderr,'(a,a,i5)')
+     &      ' Master:  Message MSG_RESTART sent to selected slaves.',
+     &      ' idvar = ',idvar
         endif
 c
 c=======================================================================
@@ -701,43 +678,46 @@ c  loop over slaves, clearing the input buffers on the way
           do 130 n=1,nproc
             call m_recv(MSG_ANY)
 c
-            call pvmfinitsend( PVMDEFAULT, info )
-            call pvmfpack( INTEGER_PVM, mlast    , 1, 1, info )
-            call pvmfpack( INTEGER_PVM, iw_l(n)  , 1, 1, info )
-            call pvmfpack( INTEGER_PVM, jw_l(n)  , 1, 1, info )
-            call pvmfpack( INTEGER_PVM, i_w      , 1, 1, info )
-            call pvmfpack(    REAL_PVM, swlo_w(n), 1, 1, info )
-            call pvmfpack(    REAL_PVM, swla_w(n), 1, 1, info )
-            call pvmfpack(    REAL_PVM, dx_w     , 1, 1, info )
-            call pvmfpack(    REAL_PVM, dy_w     , 1, 1, info )
+            ib = 0
+            call MPI_PACK(mlast    ,1,MPII,bufout,MPIL,ib,MPIC,ierr)
+            call MPI_PACK(iw_l(n)  ,1,MPII,bufout,MPIL,ib,MPIC,ierr)
+            call MPI_PACK(jw_l(n)  ,1,MPII,bufout,MPIL,ib,MPIC,ierr)
+            call MPI_PACK(i_w      ,1,MPII,bufout,MPIL,ib,MPIC,ierr)
+            call MPI_PACK(swlo_w(n),1,MPIR,bufout,MPIL,ib,MPIC,ierr)
+            call MPI_PACK(swla_w(n),1,MPIR,bufout,MPIL,ib,MPIC,ierr)
+            call MPI_PACK(dx_w     ,1,MPIR,bufout,MPIL,ib,MPIC,ierr)
+            call MPI_PACK(dy_w     ,1,MPIR,bufout,MPIL,ib,MPIC,ierr)
 c
-            do 110 j=jw_s(n),jw_e(n)
-            do 110 i=iw_s(n),iw_e(n)
+            do 120 j=jw_s(n),jw_e(n)
+            do 120 i=iw_s(n),iw_e(n)
               ii=mod(i-1,NWX_M) + 1
-              call pvmfpack( REAL_PVM, wstx(ii,j), 1, 1, info )
-              call pvmfpack( REAL_PVM, wsty(ii,j), 1, 1, info )
- 110        continue
-c
-            call pvmfpack( INTEGER_PVM, is_l(n)  , 1, 1, info )
-            call pvmfpack( INTEGER_PVM, js_l(n)  , 1, 1, info )
-            call pvmfpack( INTEGER_PVM, i_s      , 1, 1, info )
-            call pvmfpack(    REAL_PVM, swlo_s(n), 1, 1, info )
-            call pvmfpack(    REAL_PVM, swla_s(n), 1, 1, info )
-            call pvmfpack(    REAL_PVM, dx_s     , 1, 1, info )
-            call pvmfpack(    REAL_PVM, dy_s     , 1, 1, info )
-c
-            do 120 j=js_s(n),js_e(n)
-            do 120 i=is_s(n),is_e(n)
-              ii=mod(i-1,NSX_M) + 1
-              call pvmfpack( REAL_PVM, ssta(ii,j), 1, 1, info )
-              call pvmfpack( REAL_PVM, sssa(ii,j), 1, 1, info )
+              call MPI_PACK(wstx(ii,j),1,MPIR,bufout,MPIL,ib,MPIC,ierr)
+              call MPI_PACK(wsty(ii,j),1,MPIR,bufout,MPIL,ib,MPIC,ierr)
  120        continue
 c
-            call pvmfsend( itida(n), msgtype, info )
+            call MPI_PACK(is_l(n)  ,1,MPII,bufout,MPIL,ib,MPIC,ierr)
+            call MPI_PACK(js_l(n)  ,1,MPII,bufout,MPIL,ib,MPIC,ierr)
+            call MPI_PACK(is       ,1,MPII,bufout,MPIL,ib,MPIC,ierr)
+            call MPI_PACK(swlo_s(n),1,MPIR,bufout,MPIL,ib,MPIC,ierr)
+            call MPI_PACK(swla_s(n),1,MPIR,bufout,MPIL,ib,MPIC,ierr)
+            call MPI_PACK(dx_s     ,1,MPIR,bufout,MPIL,ib,MPIC,ierr)
+            call MPI_PACK(dy_s     ,1,MPIR,bufout,MPIL,ib,MPIC,ierr)
+c
+            do 125 j=js_s(n),js_e(n)
+            do 125 i=is_s(n),is_e(n)
+              ii=mod(i-1,NSX_M) + 1
+              call MPI_PACK(ssta(ii,j),1,MPIR,bufout,MPIL,ib,MPIC,ierr)
+              call MPI_PACK(sssa(ii,j),1,MPIR,bufout,MPIL,ib,MPIC,ierr)
+ 125        continue
+c
+ 107      call MPI_BSEND(bufout,ib,MPI_PACKED,n,
+     &                          MSG_MET1,MPIC,ierr)
+          call M_BERR(ierr,*107)
  130     continue
 c
        if(idebug.gt.2)then
-         print *,' Master:  Message MSG_MET1 sent to all slaves.'
+         write(stderr,'(a)')
+     &        ' Master:  Message MSG_MET1 sent to all slaves.'
        endif
 c
 c=======================================================================
@@ -749,27 +729,30 @@ c  loop over slaves, clearing the input buffers on the way
           do 160 n=1,nproc
             call m_recv(MSG_ANY)
 c
-            call pvmfinitsend( PVMDEFAULT, info )
-            call pvmfpack( INTEGER_PVM, mnext, 1, 1, info )
+            ib = 0
+            call MPI_PACK(mnext    ,1,MPII,bufout,MPIL,ib,MPIC,ierr)
             do 140 j=jw_s(n),jw_e(n)
             do 140 i=iw_s(n),iw_e(n)
               ii=mod(i-1,NWX_M) + 1
-              call pvmfpack( REAL_PVM, wstx(ii,j), 1, 1, info )
-              call pvmfpack( REAL_PVM, wsty(ii,j), 1, 1, info )
+              call MPI_PACK(wstx(ii,j),1,MPIR,bufout,MPIL,ib,MPIC,ierr)
+              call MPI_PACK(wsty(ii,j),1,MPIR,bufout,MPIL,ib,MPIC,ierr)
  140        continue
 c
             do 150 j=js_s(n),js_e(n)
             do 150 i=is_s(n),is_e(n)
               ii=mod(i-1,NSX_M) + 1
-              call pvmfpack( REAL_PVM, ssta(ii,j), 1, 1, info )
-              call pvmfpack( REAL_PVM, sssa(ii,j), 1, 1, info )
-  150       continue
-            call pvmfsend( itida(n), msgtype, info )
-  160    continue
+              call MPI_PACK(ssta(ii,j),1,MPIR,bufout,MPIL,ib,MPIC,ierr)
+              call MPI_PACK(sssa(ii,j),1,MPIR,bufout,MPIL,ib,MPIC,ierr)
+ 150        continue
+ 108      call MPI_BSEND(bufout,ib,MPI_PACKED,n,
+     &                          MSG_MET2,MPIC,ierr)
+          call M_BERR(ierr,*108)
+ 160    continue
 c
-       if(idebug.gt.2)then
-         print *,' Master:  Message MSG_MET2 sent to all slaves.'
-       endif
+        if(idebug.gt.2)then
+          write(stderr,'(a)')
+     &        ' Master:  Message MSG_MET2 sent to all slaves.'
+        endif
 c
 c=======================================================================
 c 12.  Send message type MSG_MET3 to slaves
@@ -779,25 +762,31 @@ c
 c  loop over slaves, clearing the input buffers on the way
           do 230 n=1,nproc
             if(lmeta(n))then
-              call pvmfinitsend( PVMDEFAULT, info )
-              call pvmfpack( INTEGER_PVM, mnextp, 1, 1, info )
+              ib = 0
+              call MPI_PACK(mnextp,1,MPII,bufout,MPIL,ib,MPIC,ierr)
               do 210 j=jw_s(n),jw_e(n)
               do 210 i=iw_s(n),iw_e(n)
                 ii=mod(i-1,NWX_M) + 1
-                call pvmfpack( REAL_PVM, wstx(ii,j), 1, 1, info )
-                call pvmfpack( REAL_PVM, wsty(ii,j), 1, 1, info )
+                call MPI_PACK(wstx(ii,j),1,MPIR,bufout,
+     &                                           MPIL,ib,MPIC,ierr)
+                call MPI_PACK(wsty(ii,j),1,MPIR,bufout,
+     &                                           MPIL,ib,MPIC,ierr)
  210          continue
 c
               do 220 j=js_s(n),js_e(n)
               do 220 i=is_s(n),is_e(n)
                 ii=mod(i-1,NSX_M) + 1
-                call pvmfpack( REAL_PVM, ssta(ii,j), 1, 1, info )
-                call pvmfpack( REAL_PVM, sssa(ii,j), 1, 1, info )
+                call MPI_PACK(ssta(ii,j),1,MPIR,bufout,
+     &                                           MPIL,ib,MPIC,ierr)
+                call MPI_PACK(sssa(ii,j),1,MPIR,bufout,
+     &                                           MPIL,ib,MPIC,ierr)
  220          continue
-              call pvmfsend( itida(n), msgtype, info )
+ 109          call MPI_BSEND(bufout,ib,MPI_PACKED,n,
+     &                                          MSG_MET3,MPIC,ierr)
+              call M_BERR(ierr,*109)
               lmeta(n) = .false.
               nmeta = nmeta - 1
-           endif
+            endif
  230      continue
           lmetq = .false.
           if(nmeta.eq.0)then
@@ -805,8 +794,8 @@ c
           endif
 c
        if(idebug.gt.2)then
-         print *,' Master:  Message MSG_MET3 sent to one',
-     &           ' or more slaves'
+         write(stderr,'(a)')
+     &        ' Master:  Message MSG_MET3 sent to one or more slaves'
        endif
 c
 c=======================================================================
@@ -814,11 +803,14 @@ c 13.  Send message type MSG_MET_RDY to slaves
 c=======================================================================
 c
       elseif(msgtype.eq.MSG_MET_RDY)then
-        call pvmfinitsend( PVMDEFAULT, info )
-        call pvmfmcast(nproc, itida, MSG_MET_RDY, info )
+        do iproc=1,nproc
+ 110      call MPI_BSEND(bufout,1,MPI_INTEGER,
+     &                          iproc,MSG_MET_RDY,MPI_COMM_WORLD,ierr)
+          call M_BERR(ierr,*110)
+        enddo
         if(idebug.gt.2)then
-          print *,
-     &    ' Master:  Message MSG_MET_RDY sent to all slaves.'
+          write(stderr,'(a)')
+     &         ' Master:  Message MSG_MET_RDY sent to all slaves.'
         endif
 c
 c=======================================================================
@@ -827,11 +819,14 @@ c  from all slaves for timestep itttsi
 c=======================================================================
 c
       elseif(msgtype.eq.MSG_RQ_TSI) then
-        call pvmfinitsend( PVMDEFAULT, info )
-        call pvmfpack( INTEGER_PVM, itttsi, 1, 1, info )
-        call pvmfmcast(nproc, itida, MSG_RQ_TSI, info )
+        do iproc=1,nproc
+ 111      call MPI_BSEND(itttsi,1,MPI_INTEGER,
+     &                          iproc,MSG_RQ_TSI,MPI_COMM_WORLD,ierr)
+          call M_BERR(ierr,*111)
+        enddo
         if(idebug.gt.2)then
-          print *,' Master:  Message MSG_RQ_TSI sent to all slaves.'
+          write(stderr,'(a)')
+     &        ' Master:  Message MSG_RQ_TSI sent to all slaves.'
         endif
 c
 c=======================================================================
@@ -840,16 +835,20 @@ c  from selected slaves for timestep ittarch
 c=======================================================================
 c
       elseif(msgtype.eq.MSG_RQ_ARC) then
-        call pvmfinitsend( PVMDEFAULT, info )
-        call pvmfpack( INTEGER_PVM, ittarch, 1, 1, info )
-        call pvmfpack( INTEGER_PVM, idvar  , 1, 1, info )
-        call pvmfpack( INTEGER_PVM, jarchl , 1, 1, info )
-        call pvmfpack( INTEGER_PVM, jarchu , 1, 1, info )
-        call pvmfmcast(nsarch, iarcha, MSG_RQ_ARC, info )
+        ib = 0
+        call MPI_PACK(ittarch,1,MPII,bufout,MPIL,ib,MPIC,ierr)
+        call MPI_PACK(idvar  ,1,MPII,bufout,MPIL,ib,MPIC,ierr)
+        call MPI_PACK(jarchl ,1,MPII,bufout,MPIL,ib,MPIC,ierr)
+        call MPI_PACK(jarchu ,1,MPII,bufout,MPIL,ib,MPIC,ierr)
+        do i=1,nsarch
+ 112      call MPI_BSEND(bufout,ib,MPI_PACKED,iarcha(i),
+     &                          MSG_RQ_ARC,MPI_COMM_WORLD,ierr)
+          call M_BERR(ierr,*112)
+        enddo
         if(idebug.gt.2)then
-          print *,
-     &    ' Master:  Message MSG_RQ_ARC sent to selected slaves.',
-     &    ' idvar, range = ',idvar,jarchl,jarchu
+          write(stderr,'(2a,4i5)')
+     &        ' Master:  Message MSG_RQ_ARC sent to selected slaves.',
+     &        ' idvar, range = ',idvar,jarchl,jarchu,ittarch
         endif
 c
 c=======================================================================
@@ -858,12 +857,14 @@ c  has been received and that they may clear their buffers (MSG_ARC_CLR)
 c=======================================================================
 c 
       elseif(msgtype.eq.MSG_ARC_CLR) then 
-        call pvmfinitsend( PVMDEFAULT, info ) 
-        call pvmfpack( INTEGER_PVM, ittarch, 1, 1, info )   
-        call pvmfmcast(nproc, itida, MSG_ARC_CLR, info ) 
+        do iproc=1,nproc
+ 113      call MPI_BSEND(ittarch,1,MPI_INTEGER,iproc,
+     &                           MSG_ARC_CLR,MPI_COMM_WORLD,ierr)
+          call M_BERR(ierr,*113)
+        enddo
         if(idebug.gt.2)then 
-          print *, 
-     &    ' Master:  Message MSG_ARC_CLR sent to all slaves.' 
+          write(stderr,'(a)')
+     &        ' Master:  Message MSG_ARC_CLR sent to all slaves.' 
         endif 
 c
 c=======================================================================
@@ -871,13 +872,17 @@ c  entry point to send snapshot request to the slaves
 c=======================================================================
 c
       elseif(msgtype.eq.MSG_RQ_SNAP) then
-        call pvmfinitsend( PVMDEFAULT, info )
-        call pvmfpack( INTEGER_PVM,ittsnap, 1, 1, info )
-        call pvmfpack( INTEGER_PVM,  idsnp, 1, 1, info )
-        call pvmfmcast(nproc, itida, MSG_RQ_SNAP, info )
+        ib = 0
+        call MPI_PACK(ittsnap,1,MPII,bufout,MPIL,ib,MPIC,ierr)
+        call MPI_PACK(idsnp  ,1,MPII,bufout,MPIL,ib,MPIC,ierr)
+        do iproc=1,nproc
+ 114      call MPI_BSEND(bufout,ib,MPI_PACKED,iproc,
+     &                          MSG_RQ_SNAP,MPI_COMM_WORLD,ierr)
+          call M_BERR(ierr,*114)
+        enddo
         if(idebug.gt.2)then
-          print *,
-     &    ' Master:  Message MSG_RQ_SNAP sent to all slaves.'
+         write(stderr,'(a)')
+     &        ' Master:  Message MSG_RQ_SNAP sent to all slaves.'
         endif
 c
 c=======================================================================
@@ -885,9 +890,9 @@ c  unrecognised request
 c=======================================================================
 c
       else
-        write(stderr,*) 
-     &  ' Master:  Message type: ',msgtype,
-     &  ' not yet implemented in routine m_send'
+        write(stderr,'(a)') 
+     &       ' Master:  Message type: ',msgtype,
+     &       ' not yet implemented in routine m_send'
       endif
 c
 c=======================================================================
@@ -930,6 +935,11 @@ c
 #include "mesdta.h"
 c
       integer msgtype, time
+      logical lflag
+      MPII = MPI_INTEGER
+      MPIR = MPI_REAL
+      MPIL = LENBUF*4
+      MPIC = MPI_COMM_WORLD
 c
 c=======================================================================
 c  check to see if anything to receive
@@ -937,10 +947,11 @@ c  return if no messages
 c=======================================================================
 c
   10  if(msgtype.ge.0)then
-        call pvmfrecv (-1, msgtype, ibuff)
+        call MPI_PROBE(MPI_ANY_SOURCE,msgtype,MPIC,istat,ierr)
       else
-        call pvmfnrecv (-1, MSG_ANY, ibuff)
-        if(ibuff.eq.0)return
+        call MPI_IPROBE(MPI_ANY_SOURCE,MPI_ANY_TAG,
+     &                                 MPIC,lflag,istat,ierr)
+        if(.not.lflag)return
       endif
 c
 c  message received - reset waiting flag
@@ -951,28 +962,25 @@ c=======================================================================
 c  get information about the buffer
 c=======================================================================
 c
-      call pvmfbufinfo(ibuff,ibytes, msgtag, itid, info)
-#ifdef cray-t3d
-        call pvmfgetpe(itid,itidpe)
-        itid = itidpe
-#endif
+      msgtag = istat(MPI_TAG)
+      itid = istat(MPI_SOURCE)
 c
 c  read name of slave and check it corresponds to the tid
 c
-      call pvmfunpack( INTEGER_PVM, mes,  1, 1, info )
-      if(mes.lt.1.or.mes.gt.MXSLAVE)then
+      if(itid.lt.1.or.itid.gt.MXSLAVE)then
         write(stderr,*) ' Error: Message ',msgtag,' from tid ',itid,
-     &     ' has slave number ',mes,' out of range 0 - ',MXSLAVE
-      elseif(itid.ne.itida(mes))then
-        write(6,*) ' Error: Message ',msgtag,' from slave ',mes,
-     &     ' has tid ',itid,', should be ',itida(mes)
-      endif
+     &     ' has slave number ',itid,' out of range 1 - ',MXSLAVE
+c       elseif(itid.ne.itida(mes))then
+c        write(6,*) ' Error: Message ',msgtag,' from slave ',mes,
+c    &     ' has tid ',itid,', should be ',itida(mes)
+        endif
 c
 c=======================================================================
 c  process abort request message (MSG_BYE)
 c=======================================================================
 c
       if(msgtag.eq.MSG_BYE)then
+        call MPI_RECV(ibufout,MPIL,MPII,itid,msgtag,MPIC,istat,ierr)
         write(stderr,*) ' Master: '
         write(stderr,*) '  Abort request received from slave: ',mes
         write(stderr,*) '  Closing down all slaves'
@@ -984,11 +992,14 @@ c  message contains:  me, itt, itt0, iposn
 c=======================================================================
 c
       elseif(msgtag.eq.MSG_POSN)then
-        call pvmfunpack( INTEGER_PVM, infoa(1,mes),  1, 1, info )
-        call pvmfunpack( INTEGER_PVM, infoa(2,mes),  1, 1, info )
-        call pvmfunpack( INTEGER_PVM, infoa(3,mes),  1, 1, info )
+        call MPI_RECV(ibufout,MPIL,MPII,itid,msgtag,MPIC,istat,ierr)
+c       call MPI_GET_COUNT(istat,MPII,lbuff,ierr)
+        mes = ibufout(1)
+        infoa(1,mes) = ibufout(2)
+        infoa(2,mes) = ibufout(3)
+        infoa(3,mes) = ibufout(4)
         if(idebug.gt.2)then
-          write(stderr,901) ' Master:  Message MSG_POSN received: ',
+          write(stderr,901) '  Master:  Message MSG_POSN received: ',
      &    mes, infoa(1,mes),infoa(2,mes),infoa(3,mes)
  901  format(a,i5,3i10)
         endif
@@ -999,14 +1010,19 @@ c message contains: me, string for printing
 c=======================================================================
 c
       elseif(msgtag.eq.MSG_OUTSTR) then
-        call pvmfunpack( STRING,   outstr,80, 1, info )
+        call MPI_RECV(bufout,MPIL,MPI_PACKED,itid,msgtag,
+     &                              MPIC,istat,ierr)
+        call MPI_GET_COUNT(istat,MPI_PACKED,lb,ierr)
+        ib = 0
+        call MPI_UNPACK(bufout,MPIL,ib,mes,1,MPII,MPIC,ierr)
+        call MPI_UNPACK(bufout,MPIL,ib,outstr,80,MPI_CHARACTER
+     &                                           ,MPIC,ierr)
         if(idebug.gt.2)then
-          write(stderr,*) ' Master:  Message MSG_OUTSTR received',
-     &                    ' from slave ',mes
-          write(stderr,*) ':',outstr
+          write(stderr,'(a,i5)') 
+     &      '  Master:  Message MSG_OUTSTR received from slave ',mes
+          write(stderr,"('  :',a,':')") outstr
         else
-          write(stderr,921)mes,outstr
- 921  format(' msg from',i4,': ',a)
+          write(stderr,"(' msg from ',i4,':',a)")mes,outstr
         endif
 c
 c=======================================================================
@@ -1014,11 +1030,16 @@ c  process timestep 'tsi' information (MSG_RY_TSI)
 c=======================================================================
 c
       elseif(msgtag.eq.MSG_RY_TSI)then
-        call pvmfunpack( INTEGER_PVM,itttsi2,    1, 1, info )
-        call pvmfunpack( REAL_PVM,   vols,    1, 1, info )
-        call pvmfunpack( REAL_PVM, ektots,    1, 1, info )
-        call pvmfunpack( REAL_PVM, dtemps,    1, 1, info )
-        call pvmfunpack( REAL_PVM, dsalts,    1, 1, info )
+        call MPI_RECV(bufout,MPIL,MPI_PACKED,itid,msgtag,
+     &                              MPIC,istat,ierr)
+        call MPI_GET_COUNT(istat,MPI_PACKED,lb,ierr)
+        ib = 0
+        call MPI_UNPACK(bufout,MPIL,ib,mes,1,MPII,MPIC,ierr)
+        call MPI_UNPACK(bufout,MPIL,ib,itttsi2,1,MPII,MPIC,ierr)
+        call MPI_UNPACK(bufout,MPIL,ib,vols  ,1,MPIR,MPIC,ierr)
+        call MPI_UNPACK(bufout,MPIL,ib,ektots,1,MPIR,MPIC,ierr)
+        call MPI_UNPACK(bufout,MPIL,ib,dtemps,1,MPIR,MPIC,ierr)
+        call MPI_UNPACK(bufout,MPIL,ib,dsalts,1,MPIR,MPIC,ierr)
 c
 c  checks
 c
@@ -1035,8 +1056,9 @@ c
      &    write(stderr,*) ' Error: Message MSG_RY_TSI from slave ',mes,
      &                    ' sent twice'
         if(idebug.gt.2)then
-          write(stderr,*) ' Master:  Message MSG_RY_TSI received: ',
+          write(stderr,9601)'  Master:  Message MSG_RY_TSI received: ',
      &                      mes,vols,ektots,dtemps,dsalts
+ 9601   format(a,/,1x,i5,1p4e15.7)
         endif
 c
         ltsia(mes) = .true.
@@ -1046,9 +1068,10 @@ c
         dtabs(1) = dtabs(1) + dtemps
         dtabs(2) = dtabs(2) + dsalts
         if(idebug.gt.2)then
-        write(stderr,*) ' Master:  Message MSG_RY_TSI. volume,',
-     &                  ' ektot, dtabs ='
-        write(stderr,*) '    ', volume, ektot, dtabs(1), dtabs(2)
+          write(stderr,9602) 
+     &         '  Master:  Message MSG_RY_TSI. volume, ektot, dtabs = ',
+     &          volume, ektot, dtabs(1), dtabs(2)
+ 9602   format(a,/,1x,1p4e15.7)
         endif
 c
 c print tsi line
@@ -1059,16 +1082,16 @@ c
           dtabs(2) = dtabs(2)/volume
 c
 #ifdef cray-t3d
-          total_time=rtc()*6.6e-9-time_start
-          write(stderr,9602) itttsi,timetsi,ektot,dtabs(1),dtabs(2),
+          total_time=rtc()*6.6e-9-start_time
+          write(stderr,9603) itttsi,timetsi,ektot,dtabs(1),dtabs(2),
      &                       total_time
-9602      format(1x,'ts=',i7,1x,a32,' ke=', 1pe13.6,
+9603      format(1x,'ts=',i7,1x,a32,' ke=', 1pe13.6,
      &    ' dtemp=',1pe13.6,' dsalt=',1pe13.6,' time=',0pf10.4)
 #else
-          itime = time()-intime
-          write(stderr,9602) itttsi,timetsi,ektot,dtabs(1),dtabs(2),
+          itime = MPI_WTIME()-start_time
+          write(stderr,9603) itttsi,timetsi,ektot,dtabs(1),dtabs(2),
      &                       itime
-9602      format(1x,'ts=',i7,1x,a32,' ke=', 1pe13.6,
+9603      format(1x,'ts=',i7,1x,a32,' ke=', 1pe13.6,
      &    ' dtemp=',1pe13.6,' dsalt=',1pe13.6,' time=',i6)
 #endif
           call flush(stderr)
@@ -1080,22 +1103,17 @@ c  process archive replies (MSG_RY_ARC)
 c=======================================================================
 c
       elseif(msgtag.eq.MSG_RY_ARC)then
-#ifdef pvm_buffer
-        call pvmfunpack (REAL_PVM, bufout(1), 1, 1, info)
+        call MPI_RECV(bufout,MPIL,MPIR,itid,msgtag,MPIC,istat,ierr)
+        call MPI_GET_COUNT(istat,MPIR,lbuff,ierr)
         lbuff = nint(bufout(1))
         if(lbuff.gt.LENBUF)then
            write(stderr,*) ' error in m_recv when receiving ',
-     &                      ' MSG_RY_SNAP'
+     &                      ' MSG_RY_ARC'
            write(stderr,*) ' buffer overflow'
         endif
-        call pvmfunpack (REAL_PVM, bufout(2), lbuff-1, 1, info)
         ittsav  = nint(bufout(2))
         idvar2  = nint(bufout(3))
         lbuff   = 3
-#else
-        call pvmfunpack(INTEGER_PVM,ittsav,    1, 1, info )
-        call pvmfunpack(INTEGER_PVM,idvar2, 1, 1, info)
-#endif
 c
 c check for expected timestep
 c
@@ -1115,21 +1133,13 @@ c
        if(.not.lidvra(idvar2))write(stderr,*)     
      &                ' Error: Message MSG_RY_ARC from slave ',mes,
      &                ' contains wrong variable type'
-#ifdef pvm_buffer
  55    imast = nint(bufout(lbuff+1))
-#else
- 55    call pvmfunpack(INTEGER_PVM,imast, 1, 1, info)
-#endif
 c
 c check for "end of message" marker
 c
        if(imast.gt.0) then
-#ifdef pvm_buffer
          lbuff = lbuff+2
          jmast = nint(bufout(lbuff))
-#else
-         call pvmfunpack(INTEGER_PVM, jmast, 1, 1, info)
-#endif
 c
 c check for corrupted message
 c
@@ -1157,40 +1167,26 @@ c
 c Now unpack requested variable(s) for this point 
 c 
           if(idvar2.le.NUM2D) then 
-#ifdef pvm_buffer
             lbuff = lbuff+1
             rest2d(imast,jmast) = bufout(lbuff)
-#else
-            call pvmfunpack(REAL_PVM, rest2d(imast,jmast), 1, 1, info) 
-#endif
           elseif(vartgrd(idvar2)) then
 c
 c convert jmast to sub-volume index
 c
             jzon = jmast - ((jmast-1)/JSUB_M)*JSUB_M
-#ifdef pvm_buffer
             do 56 k=1,kmt(imast,jmast)
               lbuff = lbuff+1
               rest3d(k,imast,jzon) = bufout(lbuff)
   56        continue
-#else
-            call pvmfunpack(REAL_PVM, rest3d(1,imast,jzon), 
-     &                               kmt(imast,jmast), 1, info)
-#endif
           else
 c
 c convert jmast to sub-volume index
 c
            jzon = jmast - ((jmast-1)/JSUB_M)*JSUB_M 
-#ifdef pvm_buffer
            do 57 k=1,kmu(imast,jmast)
              lbuff = lbuff+1
              rest3d(k,imast,jzon) = bufout(lbuff)
   57       continue
-#else
-           call pvmfunpack(REAL_PVM, rest3d(1,imast,jzon), 
-     &                               kmu(imast,jmast), 1, info)
-#endif
          endif   
          goto 55
        endif
@@ -1198,9 +1194,10 @@ c
        if(nseapt.ge.nseachk) call archwr       
 c
        if(idebug.gt.2)then
-        write(stderr,*) ' Master:  Message MSG_RY_ARC from slave ',
-     &                    mes,'  idvar, itt, nseapt, nseachk = ',
-     &                    idvar,ittsav,nseapt,nseachk
+        write(stderr,'(a,i5,a,4i5)') 
+     &       '  Master:  Message MSG_RY_ARC from slave ',mes,
+     &       '  idvar, itt, nseapt, nseachk = ',
+     &          idvar,ittsav,nseapt,nseachk
        endif
 c
 c=======================================================================
@@ -1208,22 +1205,18 @@ c  process snapshot replies (MSG_RY_SNAP)
 c=======================================================================
 c
       elseif(msgtag.eq.MSG_RY_SNAP)then
-#ifdef pvm_buffer
-        call pvmfunpack (REAL_PVM, bufout(1), 1, 1, info)
+        call MPI_RECV(bufout,MPIL,MPIR,itid,msgtag,MPIC
+     &                                              ,istat,ierr)
+        call MPI_GET_COUNT(istat,MPIR,lbuff,ierr)
         lbuff = nint(bufout(1))
         if(lbuff.gt.LENBUF)then
            write(stderr,*) ' error in m_recv when receiving ',
      &                      ' MSG_RY_SNAP'
            write(stderr,*) ' buffer overflow'
         endif
-        call pvmfunpack (REAL_PVM, bufout(2), lbuff-1, 1, info)
         ittsnap2  = nint(bufout(2))
         idsnp2    = nint(bufout(3))
         lbuff     = 3
-#else
-        call pvmfunpack(INTEGER_PVM,ittsnap2,    1, 1, info )
-        call pvmfunpack(INTEGER_PVM, idsnp2, 1, 1, info)
-#endif
 c
 c check for expected timestep and variable type
 c
@@ -1241,17 +1234,9 @@ c
           write(stderr,*) ' Error: Message MSG_RY_SNAP from slave ',
      &                      mes,' contains wrong variable type'
         endif
-#ifdef pvm_buffer
  65      imast = nint(bufout(lbuff+1))
-#else
- 65      call pvmfunpack(INTEGER_PVM, imast, 1, 1, info)
-#endif
          if(imast.gt.0)then
-#ifdef pvm_buffer
            jmast = nint(bufout(lbuff+2))
-#else
-           call pvmfunpack(INTEGER_PVM, jmast, 1, 1, info)
-#endif
 c
 c check for corrupted message
 c
@@ -1260,12 +1245,8 @@ c
             write(stderr,*) ' currently unpacking ',idsnp,'th snapshot'
             call m_send(MSG_ABORT)
           endif
-#ifdef pvm_buffer
           snap2d(imast,jmast) = bufout(lbuff+3)
           lbuff = lbuff+3
-#else
-          call pvmfunpack(REAL_PVM, snap2d(imast,jmast), 1, 1, info)
-#endif
           goto 65
         endif
 c
@@ -1276,7 +1257,7 @@ c
        if(nssnap.eq.0) call snapwr
 c
         if(idebug.gt.2)then
-        write(stderr,*) ' Master:  Message MSG_RY_SNAP from slave ',
+        write(stderr,*) '  Master:  Message MSG_RY_SNAP from slave ',
      &                    mes,'  idsnp, itt, nssnap = ',
      &                    idsnp2,ittsnap2,nssnap         
         endif
@@ -1286,7 +1267,9 @@ c  receive met requests (MSG_CLR_MET)
 c=======================================================================
 c
       elseif(msgtag.eq.MSG_CLR_MET)then
-        call pvmfunpack(INTEGER_PVM, mplus, 1, 1, info )
+        call MPI_RECV(ibufout,MPIL,MPII,itid,msgtag,MPIC,istat,ierr)
+        mes   = ibufout(1)
+        mplus = ibufout(2)
         if(lmeta(mes))then
           write(stderr,*)' Master: Message MSG_CLR_MET received from ',
      &           'slave ',mes,' before previous request answered'
@@ -1302,8 +1285,8 @@ c
         lmeta(mes) = .true.
 c
         if(idebug.gt.2)then
-          write(stderr,*) ' Master:  Message MSG_CLR_MET received',
-     &                    ' from slave ', mes 
+          write(stderr,'(a,i5)') 
+     &       '  Master:  Message MSG_CLR_MET received from slave ', mes 
         endif
 c
 c=======================================================================
@@ -1317,21 +1300,23 @@ c
       endif
 c
 c=======================================================================
-c  flush stderr to ensure debug messages are received
+c  flush stderr to ensure debug messages are printed
 c=======================================================================
 c
       if(idebug.gt.2)then
-          call flush(stderr)
+        call flush(stderr)
       endif
 c
 c=======================================================================
 c  PART 2.
-c  send off any flux messages now ready
+c  if OK to send, send off any flux messages now ready
 c  to go
 c=======================================================================
 c
+      if(.not.lsend)return
+c
       if(lmetp .and. lmetq)then
-c        call m_send(MSG_MET3)
+        call m_send(MSG_MET3)
       endif
 c
 c=======================================================================
@@ -1345,3 +1330,67 @@ c
       if(msgtype.ne.msgtag)goto 10
       return
       end
+
+
+      subroutine M_BERR(ierr,*)
+c
+c  MPI master subroutine to check and process return code from MPI_BSEND
+c
+#include "def_slave.h"
+#include "param.h"
+#include "mesdta.h"
+c
+      character*( MPI_MAX_ERROR_STRING ) string
+      double precision time0,time1
+      save in,time0
+      data in/0/
+c
+      if(ierr.eq.0)then
+        lsend = .true.
+        in = 0
+        return
+      endif
+c
+c  print error message on first entry
+c
+      if(in.eq.0)then
+        lsend = .false.
+        in    = 1
+        time0 = MPI_WTIME()
+        call MPI_ERROR_CLASS(ierr,ierrc)
+        call MPI_ERROR_STRING(ierr,string,len,ierr2)
+        write(stderr,10)ierr,ierrc,time0,string(1:len)
+        call flush(stderr)
+        call m_recv(MSG_ANY)
+        return 1
+ 10   format(' Master: Error with MPI_BSEND ',/,
+     &      '   ierr, ierrc, time = ',2i10,f16.4,/,
+     &      '   error string      = ',a)
+      endif
+c
+c  return again ?
+c
+      in    = in+1
+      time1 = MPI_WTIME()
+      if(time1-time0.gt.10d0)then
+        call m_recv(MSG_ANY)
+        return 1
+      endif
+c
+c  abort
+c
+      call MPI_ERROR_CLASS(ierr,ierrc)
+      call MPI_ERROR_STRING(ierr,string,len,ierr2)
+      write(stderr,11)ierr,ierrc,time1,string(1:len)
+ 11   format(' Master: Continuing error with MPI_BSEND',/,
+     &      '   ierr, ierrc, time = ',2i10,f16.4,/,
+     &      '   error string      = ',a,
+     &      ' Program aborting ...')
+c
+c  exit
+c
+      call flush(stderr)
+      call MPI_ABORT(MPI_COMM_WORLD,-999)
+      stop
+      end
+        

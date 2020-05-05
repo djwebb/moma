@@ -1,7 +1,7 @@
 c====================== include file "dncoef.h" ========================
 c
-c @(#) SCCS module: dncoef.h  version: 1.10
-c     Creation date: 08/09/96
+c @(#) SCCS module: dncoef.h  version: 1.1
+c     Creation date: 10/13/97
 c
 c-----------------------------------------------------------------------
 c     Enter normalizing temperatures, salinities and coefficients

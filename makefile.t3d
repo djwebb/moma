@@ -1,8 +1,10 @@
 #
-# @(#) SCCS module: makefile.t3d  version: 1.10
-#      Creation date: 08/09/96
+#=======================================================================
+# @(#) SCCS module: makefile.t3d  version: 1.1
+#     Creation date: 10/13/97
+#=======================================================================
 #
-#     Moma.pvm make file for Cray-T3D
+#     Moma.pvm make file forCray T3D.  Included for information ONLY !! 
 #
 #   Needs the following environment variables to be set and
 #   the PVM and HDF include files and libraries to be installed

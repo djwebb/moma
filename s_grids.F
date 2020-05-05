@@ -1,7 +1,7 @@
       subroutine s_grids
 c
-c @(#) SCCS module: s_grids.F  version: 1.10
-c     Creation date: 08/09/96
+c @(#) SCCS module: s_grids.F  version: 1.1
+c     Creation date: 10/13/97
 c
 c==================================================================
 c     calculate all grid related items for the slaves

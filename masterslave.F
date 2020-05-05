@@ -1,71 +1,61 @@
-     	program masterslave
+     	
+      program masterslave
 c
-c @(#) SCCS module: masterslave.F  version: 1.10
-c     Creation date: 08/09/96
+c @(#) SCCS module: masterslave.F  version: 1.1
+c     Creation date: 10/13/97
 c
 c==================================================================
-c     top level routine for running moma.pvm on a multiprocessor
+c     top level routine for running moma.mpi on a multiprocessor
 c     where the master and slave components have to be combined
-c     into a single program.
+c     into a single program. 
 c==================================================================
 c
 #include "def_master.h"
+c#include "mpif.h"
 #include "param.h"
 #include "mesdta.h"
 #include "varinfo.h"
 #include "ctmngr.h"
 #include "snaps.h"
 #include "levind.h"
-#ifdef cray-t3d
-      	intrinsic my_pe
-        me = my_pe()
-	time_start=rtc()*6.6e-9
-        intime = time_start
-#else
-	integer time
-	intime = time()
-#endif	
-	call getmyid(mytid)
-#ifdef cray-t3d
 c
-c get the PVM_MAX_PACK environment setting and convert to words
+c  use MPI timing routine for times
 c
-        call pvmfgetopt(PVMMAXPACK,imaxpack)
-        imaxpack=imaxpack/NBYTER
+      double precision total_time
 c
-	do 10 i=1,n$pes
-		itida(i)=i
- 10	continue
-	mytid=me
+c  initialise MPI, initialise timing and request process number
+c
+      call MPI_INIT(ierr)
+      start_time = MPI_WTIME()
+      call MPI_BUFFER_ATTACH(bufmpi,LENBUF*NUMBUF,ierr)
+      call MPI_COMM_RANK(MPI_COMM_WORLD,me,ierr)
+c
+c  call master or slave routine
+c
+      if (me .eq. 0) then
+        write(stdout,10)me
+        call master
+      else
+        write(stdout,11)me
+        call slave
+      endif
+c
+c  write out total time and stop
+c
+      total_time = MPI_WTIME() - start_time
+      write(stdout,12)me,total_time
+      if(me.eq.0)then
+        write (stdout,14)me
+      endif
+c
+      call MPI_FINALIZE(ierr)
+      stop
+c
+  10  format('processor ',i4,' calling subroutine master')
+  11  format('processor ',i4,' calling subroutine slave')
+  12  format('total elapsed time for ',i4,' is ',f10.4)
+  14  format(1x,' ==> END of model run. [masterslave exit]',i5,//)
+c
+      end
 
-        if (me .eq. 0) then
-	  write(stdout,*)'processor ', me,' calling subroutine master'
-          write(stdout,*)'PVM_MAX_PACK = ', imaxpack
-          call flush(stdout)
-	  call master
-          call flush(stdout)
-        else
-          mtid=0
-	  write(stdout,*)'processor ', me,' calling subroutine slave'
-          call flush(stdout)
-	  call slave
-          call flush(stdout)
-        endif
-        total_time=rtc()*6.6e-9-time_start
-	print*,'total elapsed time for ',me,' is ',total_time
-#else
-	call getmasterid(mtid)
-	if (mtid .lt. 0) then
-	  write(stdout,*)'processor ', me,' calling subroutine master'
-	  call master
-	else
-	  write(stdout,*)'processor ', me,' calling subroutine slave'
-	  call slave
-	endif
-	utime(3) = etime(utime)
-	itotal_time = time() - intime
-	print * ,'total elapsed time for ',me,' is ',
-     &            itotal_time,utime(3)
-#endif
-        end
 

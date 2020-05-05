@@ -1,8 +1,8 @@
 #ifdef ncsa_hdf
       subroutine archrd_hdf(ncntl)
 c
-c @(#) SCCS module: hdf.F  version: 1.10
-c     Creation date: 08/09/96
+c @(#) SCCS module: hdf.F  version: 1.1
+c     Creation date: 10/13/97
 c
 c=======================================================================
 c  subroutine to read hdf version of the restart file
@@ -119,7 +119,7 @@ c  read the 2-D datasets
 c=======================================================================
 c
       do 50 n=1,nproc
-        iarcha(n)=itida(n)
+        iarcha(n)=n
         narcha(n)=n
   50  continue
       jarchl = 1
@@ -166,7 +166,7 @@ c
           do 200 n=1,nproc
             if(jarchu.gt.jt_s(n).and.jarchl.le.jt_e(n))then
               nsarch=nsarch+1
-              iarcha(nsarch) = itida(n)
+              iarcha(nsarch) = n
               narcha(nsarch) = n
             endif
  200      continue
@@ -281,7 +281,7 @@ c
         
         write_id = sfstart(hdffile, DFACC_CREATE)
         if(write_id.eq.-1) then
-          write(stdout,*),' error opening the file'
+          write(stdout,*)' error opening the file'
           return
         endif
         write (stdout,24) itt, hdffile
@@ -306,7 +306,7 @@ c
         sdsid = sfcreate(write_id,tlabel(2),
      &                 REAL_HDF,itsize,itdims)
         call hdf_error( sdsid,'cannot create totsec dataset', 0)
-        ret = sfsdtstr( sdsid, 'Model Seconds', '', '')
+        ret = sfsdtstr( sdsid, 'Model Seconds', '', '', '')
         call hdf_error( ret, 'cannot set datastrings', 0)
         ret = sfwdata( sdsid, 0, 1, itdims, totsec)
         call hdf_error( ret, 'cannot write dataset', 0)
@@ -318,7 +318,7 @@ c
         sdsid = sfcreate(write_id,tlabel(3),
      &                 REAL_HDF,itsize,itdims)
         call hdf_error( sdsid,'cannot create totday dataset', 0)
-        ret = sfsdtstr( sdsid, 'Model Day', '', '')
+        ret = sfsdtstr( sdsid, 'Model Day', '', '', '')
         call hdf_error( ret, 'cannot set datastrings', 0)
         ret = sfwdata(  sdsid, 0, 1,itdims, totday)
         call hdf_error( ret, 'cannot write dataset', 0)
@@ -330,7 +330,7 @@ c
         sdsid = sfcreate(write_id,tlabel(4),
      &                 REAL_HDF,itsize,itdims)
         call hdf_error( sdsid,'cannot create years dataset', 0)
-        ret = sfsdtstr( sdsid, 'Model Year', '', '')
+        ret = sfsdtstr( sdsid, 'Model Year', '', '', '')
         call hdf_error( ret, 'cannot set datastrings', 0)
         ret = sfwdata(  sdsid,0,1,itdims,years)
         call hdf_error( ret, 'cannot write dataset', 0)
@@ -350,7 +350,7 @@ c
         sdsid = sfcreate( write_id,'KMT',
      &                  INTEGER_HDF, irank, dims2) 
         call hdf_error( sdsid,'cannot create kmt dataset', 0)
-        ret = sfsdtstr( sdsid, 'KMT', '', '')
+        ret = sfsdtstr( sdsid, 'KMT', '', '', '')
         call hdf_error( ret, ' cannot set datastrings', 0)
         ifill_value = 999
         ret = sfsfill(sdsid,ifill_value)
@@ -390,7 +390,7 @@ c
         sdsid = sfcreate( write_id,'KMU',
      &                  INTEGER_HDF,irank,dims2)
         call hdf_error( sdsid,'cannot create kmu dataset', 0)
-        ret = sfsdtstr( sdsid, 'KMU', '', '')
+        ret = sfsdtstr( sdsid, 'KMU', '', '', '')
         call hdf_error( ret, 'cannot set datastrings', 0)
         ifill_value = 999
         ret = sfsfill(sdsid,ifill_value)
@@ -663,7 +663,7 @@ c
 c        
         write_id = sfstart(hdffile, DFACC_CREATE)
         if(write_id.eq.-1) then
-          write(stdout,*),' error opening the file'
+          write(stdout,*)' error opening the file'
           return
         endif
         write (stdout,24) itt, hdffile
@@ -688,7 +688,7 @@ c
       sdsid = sfcreate(write_id,tlabel(2),
      &                 REAL_HDF,itsize,itdims)
       call hdf_error( sdsid,'cannot create totsec dataset', 0)
-      ret = sfsdtstr( sdsid, 'Model Seconds', '', '')
+      ret = sfsdtstr( sdsid, 'Model Seconds', '', '', '')
       call hdf_error( ret, 'cannot set datastrings', 0)
       ret = sfwdata( sdsid, 0, 1, itdims, totsec)
       call hdf_error( ret, 'cannot write dataset', 0)
@@ -700,7 +700,7 @@ c
       sdsid = sfcreate(write_id,tlabel(3),
      &                 REAL_HDF,itsize,itdims)
       call hdf_error( sdsid,'cannot create totday dataset', 0)
-      ret = sfsdtstr( sdsid, 'Model Day', '', '')
+      ret = sfsdtstr( sdsid, 'Model Day', '', '', '')
       call hdf_error( ret, 'cannot set datastrings', 0)
       ret = sfwdata(  sdsid, 0, 1,itdims, totday)
       call hdf_error( ret, 'cannot write dataset', 0)
@@ -712,7 +712,7 @@ c
       sdsid = sfcreate(write_id,tlabel(4),
      &                 REAL_HDF,itsize,itdims)
       call hdf_error( sdsid,'cannot create years dataset', 0)
-      ret = sfsdtstr( sdsid, 'Model Year', '', '')
+      ret = sfsdtstr( sdsid, 'Model Year', '', '', '')
       call hdf_error( ret, 'cannot set datastrings', 0)
       ret = sfwdata(  sdsid,0,1,itdims,years)
       call hdf_error( ret, 'cannot write dataset', 0)
@@ -732,7 +732,7 @@ c
       sdsid = sfcreate( write_id,'KMT',
      &                  INTEGER_HDF, irank, dims2) 
       call hdf_error( sdsid,'cannot create kmt dataset', 0)
-      ret = sfsdtstr( sdsid, 'KMT', '', '')
+      ret = sfsdtstr( sdsid, 'KMT', '', '', '')
       call hdf_error( ret, ' cannot set datastrings', 0)
       ifill_value = 999
       ret = sfsfill(sdsid,ifill_value)
@@ -772,7 +772,7 @@ c
       sdsid = sfcreate( write_id,'KMU',
      &                  INTEGER_HDF,irank,dims2)
       call hdf_error( sdsid,'cannot create kmu dataset', 0)
-      ret = sfsdtstr( sdsid, 'KMU', '', '')
+      ret = sfsdtstr( sdsid, 'KMU', '', '', '')
       call hdf_error( ret, 'cannot set datastrings', 0)
       ifill_value = 999
       ret = sfsfill(sdsid,ifill_value)
@@ -924,28 +924,29 @@ c
       end
 
 
-        subroutine hdf_error(istat,cstr,info)
+      subroutine hdf_error(istat,cstr,info)
 c
 c subroutine to check return codes from the hdf calls
+c
 c   istat - return code
 c   cstr  - character string explaining the error
 c   info  - optional integer information (printed if non-zero)
 c
 #include "def_master.h"
 #include "param.h"
-#include "mesdta.h"
-        character*(*) cstr
-        integer istat, info
 c
-        if(istat .eq. -1) then
-          if(info.ne.0)then
-            write(stdout,*)'HDF Error: ',cstr, info
-          else
-            write(stdout,*)'HDF Error: ',cstr
-          endif
-          call m_abort
+      character*(*) cstr
+      integer istat, info
+c
+      if(istat.eq.-1) then
+        if(info.ne.0)then
+          write(stdout,*)'HDF Error: ',cstr, info
+        else
+          write(stdout,*)'HDF Error: ',cstr
         endif
+        call m_abort
+      endif
 c
-        return
-        end
+      return
+      end
 #endif

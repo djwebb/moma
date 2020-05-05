@@ -1,8 +1,8 @@
 c====================== include file "ctmngr.h" ========================
 #ifdef hcomments
 c
-c @(#) SCCS module: ctmngr.h  version: 1.10
-c     Creation date: 08/09/96
+c @(#) SCCS module: ctmngr.h  version: 1.1
+c     Creation date: 10/13/97
 c
 c-----------------------------------------------------------------------
 c     Time manager clock parameters 

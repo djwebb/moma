@@ -1,13 +1,120 @@
 
 =======================================================================
-   @(#) SCCS module: READ.ME  version: 1.10
-        Creation date: 08/09/96
+   @(#) SCCS module: READ.ME  version: 1.1
+        Creation date: 10/13/97
 =======================================================================
 
-README file for moma.pvm 
+README file for moma.mpi 
 ========================
 
-NOTE:  This is an early release of moma.pvm.  Please report all bugs found.
+This is an early release of moma.mpi, the mpi version of the moma and
+moma.pvm codes.  It has been tested succesfully on a pair of Silicon 
+Graphics RS10000 workstations running a 64 bit operating system and the
+mpich version of the MPI message passing interface standard.
+
+Except for the change to mpi, the code is the same as that used in moma.pvm, whose READ.ME file follows below.
+
+Information on the MPI standard can be obtained from:
+
+    http://www.mcs.anl.gov/mpi/
+    http://www.mpi-forum.org/
+
+Copies of mpich can be obtained from ...
+
+    http://www.mcs.anl.gov/mpi/mpich/
+
+Introduction
+============
+
+    moma.mpi is a mpi implementation of the message passing ocean model
+    moma.pvm.  The latter used the pvm message passing system.  The 
+    initial release of the mpi codeis based on version 1.10 of moma.pvm.
+    This mpi release is known to work with the mpich implementation 
+    of the MPI standard.  
+
+    As users of moma.pvm will know, the organisation of the ocean model
+    is based on the idea of a master process which controls the model
+    run, and a series of slave processes, each of which is responsible
+    for one region of the ocean.
+
+    On most of the computer systems supported, mpich requires that
+    the compiled code is the same for all processes.  However in a
+    unix workstation environment, mpich allows the compiled codes to be 
+    different.  
+
+Default implementation
+
+    For this implementation, the default is to produce separate
+    master and slave programs.  As discussed in the mpich users
+    guide the model can then be run using a command of the form
+
+    mpirun -p4pg pgfile master
+
+    on the machine where program master is to be run.  The file pgfile 
+    contains the information on both the computers to use and the
+    programs to run on each.  Thus if master is to be run on the
+    computer with the name 'sgi1' and the one slave program is to
+    be run on each of the machines 'sgi2' to 'sgi6' and sun1, with
+    two copies of slave running on sun1, then the file will have the form
+
+       sgi1   0   /...path.../master
+       sgi2   1   /...path.../slave.sgi
+       sgi3   1   /...path.../slave.sgi
+       sgi4   1   /...path.../slave.sgi
+       sgi5   1   /...path.../slave.sgi
+       sgi6   1   /...path.../slave.sgi
+       sun1   2   /...path.../slave.sun
+       
+
+      where "...path...' represents the unix path name leading to
+      the directory where the codes are stored.    
+
+Masterslave option
+
+      This produces a single program containing both master and
+      slave code.  The first process, actually processor zero,
+      acts as the master and the remaining processes as slaves.
+      The option needs the subroutines to be compiled with the
+      flag -DMasterslave.
+
+      The program masterslave can then be run with
+
+          mpirun -np 3 masterslave
+
+      Note: this means spawn 3 copies of masterslave, one acting
+            as master and two as slaves.
+
+Details on the changes
+
+      The conversion from moma.pvm to moma.mpi was fairly 
+      straightforward.  The changes include:
+
+  1)  moma.mpi uses buffered messages.  The message buffer 'bufmpi' 
+      has been added to hold the outgoing messages.
+
+  2)  To overcome some timing problems when reading the initial met
+      fields, the MSG_CONT entry in s_recv has been changed so that 
+      the routine always returns after processing this message.
+
+  3)  Timing is now done using the MPI_WTIME() routine.
+
+  4)  The itida array is no longer used.  The master is now always
+      processor 0.  Slaves are numbered 1 to nproc.
+
+  4)  Some bugs in the hdf routine which earlier compilers tolerated 
+      have been corrected. 
+
+As this is a new version of the program, please let me know of any 
+further bugs or problems found when running the code on other systems.
+
+David Webb
+Southampton Oceanography Centre
+13th october 1997
+
+David.Webb@soc.soton.ac.uk
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 Introduction
 ============
@@ -41,18 +148,18 @@ core team including:
 
 Advice on CRAY T3D specifics has also been received from:
 
-           Mike O'Neill        meon@cray.com
-           Bob Carruthers      Bob.Carruthers@cray.com
+           Mike O'Neill and Bob Carruthers from Cray
 
 The code may be freely adapted and used without charge for non-commercial 
 purposes.  Publications that report on work that has made use of the code 
 should reference one or more of the relevant publications of the OCCAM core 
 team.
 
-Copyright 1993, 1994, 1995, 1996.  D.J. Webb, B.A. de Cuevas, A.C. Coward, 
-                                   A.C. Coward and C.S. Gwilliam,
-                                   Southampton Oceanography Centre,
-                                   Empress Dock, Southampton SO14 3ZH, U.K..
+Copyright 1993, 1994, 1995, 1996, 1997:  
+D.J. Webb, B.A. de Cuevas, A.C. Coward,
+A.C. Coward and C.S. Gwilliam,
+Southampton Oceanography Centre,
+Empress Dock, Southampton SO14 3ZH, U.K..
 
 
 Differences from the GFDL MOM code 

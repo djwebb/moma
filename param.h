@@ -1,8 +1,8 @@
 c====================== include file "param.h" =========================
 #ifdef hcomments
 c
-c @(#) SCCS module: param.h  version: 1.10
-c     Creation date: 08/09/96
+c @(#) SCCS module: param.h  version: 1.1
+c     Creation date: 10/13/97
 c
 c-----------------------------------------------------------------------
 c     Main parameter file which sets ocean characteristics:
@@ -31,8 +31,9 @@ c
 c snapshot parameters:
 c     NSNAPS   = total number of horizontal snapshots
 c
-c  pvm parameters
-c     LENBUFF  = size of buffer used with pvm
+c  MPI parameters
+c     LENBUFF  = size of buffer used with MPI
+c     NUMBUF   = number of nominal buffers to allocate
 c
 c  surface flux parameters:
 c    Master:
@@ -59,13 +60,24 @@ c
       parameter  (MXSLAVE=255, IBOUND=4*(IMT_S+JMT_S))
       parameter (NWX_M = 80, NWY_M = 41, NSX_M = 80, NSY_M = 40) 
       parameter (NWX_S = 80, NWY_S = 41, NSX_S = 80, NSY_S = 40) 
-#ifdef pvm_buffer
+c
+c  choose buffer size
+c  This version allows for above MET fields
+c
       parameter (LENBUF1=3*IMT_S*JMT_S+10           )
       parameter (LENBUF2=IMT_S*(JSUB_M+2)*KM+10     )
       parameter (LENBUF3=LENBUF1/LENBUF2            )
       parameter (LENBUF4=LENBUF3/(LENBUF3-0.1)      )
-      parameter (LENBUF =LENBUF2+LENBUF3*(LENBUF1-LENBUF2) )
-#endif
+      parameter (LENBUF5=LENBUF2+LENBUF4*(LENBUF1-LENBUF2) )
+
+      parameter (LENBUF6=2*NWX_M*NWY_M+2*NSX_M*NSY_M)
+      parameter (LENBUF7=LENBUF5/LENBUF6            )
+      parameter (LENBUF8=LENBUF7/(LENBUF7-0.1)      )
+      parameter (LENBUF =LENBUF6+LENBUF8*(LENBUF5-LENBUF6) )
+
+  
+      parameter (NUMBUF = 10)
+
 #ifdef hcomments
 c
 c     add parameter constants

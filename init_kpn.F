@@ -1,7 +1,7 @@
       subroutine init_kpn
 c
-c @(#) SCCS module: init_kpn.F  version: 1.10
-c      Creation date: 08/09/96
+c @(#) SCCS module: init_kpn.F  version: 1.1
+c      Creation date: 10/13/97
 c
 c==================================================================
 c

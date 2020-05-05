@@ -1,7 +1,7 @@
       subroutine checks
 c
-c @(#) SCCS module: checks.F  version: 1.10
-c     Creation date: 08/09/96
+c @(#) SCCS module: checks.F  version: 1.1
+c     Creation date: 10/13/97
 c
 c==================================================================
 c     do consistency checks
@@ -43,7 +43,7 @@ c
         stop
       endif
 #ifndef ncsa_hdf
-      if(ftrest.eq.'hdf '.and.init)then
+      if(ftrest.eq.'hdf '.and..not.init)then
         print *,' hdf restart file not supported.  "ncsa_hdf" not set'
         print *,' Program stopping... '
         stop
