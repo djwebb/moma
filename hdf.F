@@ -1,7 +1,7 @@
       subroutine archwr_hdf
 c
 c @(#) SCCS information - module:  hdf.F     
-c @(#)                    version: 1.1    date: 03/21/95
+c @(#)                    version: 1.2    date: 03/21/95
 c
 c=======================================================================
 c  subroutine to save hdf version of the restart file

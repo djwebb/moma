@@ -1,6 +1,6 @@
 #ifdef hcomments 
 c
-c @(#) SCCS module: hdf.h  version: 1.1
+c @(#) SCCS module: hdf.h  version: 1.2
 c    Creation date: 02/21/95
 c
 c    include file for hdf routines

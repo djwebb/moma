@@ -1,4 +1,7 @@
 c====================== include file "scalar.h" ========================
+#ifdef hcomments
+c
+c     @(#) SCCS module: scalar.h, version 1.2
 c
 c     various scalar quantities:
 c
@@ -16,13 +19,16 @@ c     grav   = earth's gravitational acceleration (cm/sec**2)
 c     cdbot  = bottom drag coefficient
 c     ncon   = number of  passes through convective code in tracer
 c
+#endif
       common /scalar/ dtts, dtuv, dtsf, c2dtts, c2dtuv, c2dtsf
      &,               area, volume, omega, radius, grav, cdbot
       common /scalri/ ncon
+#ifdef hcomments
 c
 c     non dimensional quantities:
 c
 c     radian = degrees per radian
 c     pi     = something good to eat
 c
+#endif
       common /ndcon/ radian, pi

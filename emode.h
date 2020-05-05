@@ -1,4 +1,7 @@
 c====================== include file "emode.h" =========================
+#ifdef hcomments
+c
+c     @(#) SCCS module: emode.h, version 1.2
 c
 c     variables for rigid lid calculation of external mode
 c
@@ -23,6 +26,7 @@ c     res   = relaxation residual
 c     cof   = normalizing coefficient for 1
 c     cofis = flow around 1
 c
+#endif
       common /emode/
      & cfn(imt,jmt), cfs(imt,jmt), cfe(imt,jmt), cfw(imt,jmt)
      &,ptd(imt,jmt,3), res(imt,jmt), cpf(imt,jmt)
@@ -30,3 +34,4 @@ c
      &,zu(imt,jmt),    zv(imt,jmt),  sfu(imt,jmt),  sfv(imt,jmt)
      &,rmsk(imt,jmt)
      &,cof(imt,jmt), cofis(nisle)
+

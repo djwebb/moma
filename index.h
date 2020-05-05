@@ -1,4 +1,7 @@
 c====================== include file "index.h" =========================
+#ifdef hcomments
+c
+c     @(#) SCCS module: index.h, version 1.2
 c
 c    various starting & ending indices for controlling where quantities
 c    are calculated:
@@ -16,6 +19,8 @@ c    jperm = "j" coordinate for the island perimeter point
 c    iofs  = offset for indexing into the island perimeter 
 c            coordinates
 c
+#endif
       common /index1/ isz(jmt,lseg), iez(jmt,lseg)
       common /index2/ alonis(nisle), alatis(nisle), nippts(nisle)
      &,               iofs(nisle), iperm(maxipp), jperm(maxipp)
+

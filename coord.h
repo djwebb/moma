@@ -1,4 +1,7 @@
 c====================== include file "coord.h" =========================
+#ifdef hcomments
+c
+c     @(#) SCCS module: coord.h, version 1.2
 c
 c                    model grid point coordinates
 c
@@ -32,5 +35,7 @@ c     zt(k) = distance (cm) from surface down to center of level k
 c             (depth of "t" and "u,v" grid points)
 c     zw(k) = distance (cm) from surface down to bottom of level k 
 c
+#endif
       common /coord/ stlon, stlat, dxdeg, dydeg, xt(imt), yt(jmt), 
      &               xu(imt), yu(jmt), zw(km), zt(kmp1)
+

@@ -1,18 +1,24 @@
-      program momap
+      program moma
 c
 c==================================================================
-c  MOM's Apple Pie code 
+c  MOM's Apple pie.     Version 1.2
+c
 c            - Stripped down(!) version of the MOM (Bryan-Cox-
 c              -Semtner) ocean model rewritten for use on an
 c              Array Processor.
 c            - D J Webb, IOS.
 c            - Base Version - 14 May 1992
+c
+c  This version adds implicit coriolis and corrects 
+c  errors in the horizontal viscosity calculation and  
+c  the euler forward timestepping - 21 Oct 1992.
+c
 c @(#) SCCS information - module:  moma.F     
-c @(#)                    version: 1.1    date: 05/15/92
+c @(#)                    version: 1.2    date: 11/05/92
 c==================================================================
 c
 #include "param.h"
-c
+
 #include "scalar.h"
 #include "switch.h"
 #include "coord.h"
@@ -21,7 +27,7 @@ c
 #include "levind.h"
 #include "timelv.h"
 #include "slabs.h"
-c
+
 #include "cdiag.h"
 #include "chmix.h"
 #include "crelax.h"
@@ -36,15 +42,16 @@ c
 c
       namelist /eddy/   am, ah, fkpm, fkph, cdbot
       namelist /tsteps/ dtts, dtuv, dtsf
-      namelist /parms/  mxscan, sor, crit
+      namelist /parms/  acor, mxscan, sor, crit
       namelist /contrl/ init, fnrest, days, restrt, nmix, eb, ncon, 
      &                  tsi,  dgnstc, snaps 
       namelist /iland/ alonis, alatis
 c
 c     constants usually initialised in block data
 c
-      model =' Stripped down MOM code for array processor.'//
-     &       ' Version 1.0 ... May 1992  '
+      model(1) =' Stripped down MOM code for array processor.'
+      model(2) ='  Module: moma.F.  Version: 1.2.'//
+     &          '  Date: 11/05/92.'
       stlon = -4.0
       stlat = -72.0
       dxdeg = 4.0
@@ -363,65 +370,29 @@ c       step model
 c------------------------------------------------------------------
 c
 2800  continue
-#ifdef debugprint
-c!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-c  DEBEG
-c!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      print *,'******************************************************'
-     &       ,'******************************************************'
-      print *,'******************************************************'
-     &       ,'******************************************************'
-      print * 
-      print *,' main routine before call to step:'
-      print *,' itt =',itt,' mixts,eb,mxpas2 =',mixts,eb,mxpas2
-      print *,' surface b.c. (smf,stf) =',smf,stf
-c!!END DEBUG!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#endif
-      print *,' step model.  itt = ',itt
       call step 
-#ifdef debugprint
-c!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-c  DEBEG
-c!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      print *
-      print *,' main routine following call to step:'
-      print *,' itt =',itt,' mixts,eb,mxpas2 =',mixts,eb,mxpas2
-      print *,' surface b.c. (smf,stf) =',smf,stf
-      print 2801,' np,t(k,60,20,1,np) =',np,(t(k,60,20,1,np),k=1,km)
-      print 2801,' nc,t(k,60,20,1,nc) =',nc,(t(k,60,20,1,nc),k=1,km)
-      print 2801,' nm,t(k,60,20,1,nm) =',nm,(t(k,60,20,1,nm),k=1,km)
-      print 2801,' np,t(k,60,20,2,np) =',np,(t(k,60,20,2,np),k=1,km)
-      print 2801,' nc,t(k,60,20,2,nc) =',nc,(t(k,60,20,2,nc),k=1,km)
-      print 2801,' nm,t(k,60,20,2,nm) =',nm,(t(k,60,20,2,nm),k=1,km)
-      print 2801,' np,p(60,20,np)*e-12=',np,p(60,20,np)*1e-12
-      print 2801,' nc,p(60,20,nc)*e-12=',nc,p(60,20,nc)*1e-12
-      print 2801,' nm,p(60,20,nm)*e-12=',nm,p(60,20,nm)*1e-12
-      print 2801,' np,u(k,60,20,np) =  ',np,(u(k,60,20,np),k=1,km)
-      print 2801,' nc,u(k,60,20,nc) =  ',nc,(u(k,60,20,nc),k=1,km)
-      print 2801,' nm,u(k,60,20,nm) =  ',nm,(u(k,60,20,nm),k=1,km)
-      print 2801,' np,v(k,60,20,np) =  ',np,(v(k,60,20,np),k=1,km)
-      print 2801,' nc,v(k,60,20,nc) =  ',nc,(v(k,60,20,nc),k=1,km)
-      print 2801,' nm,v(k,60,20,nm) =  ',nm,(v(k,60,20,nm),k=1,km)
-2801  format(a,i2,8f12.6,/,23x,8f12.6)
-c!!END DEBUG!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#endif
 c
 c-----------------------------------------------------------------
-c       if this is the end of the 1st pass of an euler backward
-c       setup second pass
+c       if this is the end of a mixing timestep then:
+c          if euler backward - set pointers for second pass
+c          if euler forward  - reset pointer
 c------------------------------------------------------------------
 c
-      if (mixts .and. eb) then
-        eots   = .true.
-        nc = nnp
-        np = nnm
-        mixts  = .false.
-        mxpas2 = .true.
-        go to 2800
+      if (mixts)then
+        if (eb) then
+          eots   = .true.
+          nc = nnp
+          np = nnm
+          mixts  = .false.
+          mxpas2 = .true.
+          go to 2800
+        else
+          nm = nnm
+        endif
       endif
 c
 c------------------------------------------------------------------
-c  at end of second pass of euler backward correct pointers
+c  at end of second pass of euler backward - reset pointers
 c------------------------------------------------------------------
 c
       if(mxpas2)then
@@ -435,8 +406,7 @@ c      as required
 c-----------------------------------------------------------------
 c
       if (prntsi.and.eots) write (stdout,9602) itt, stamp, ektot,
-     &                      dtabs(1), dtabs(2), mscan,
-     &                      tddt(1),tddt(2),tvar(1),tvar(2)
+     &                      dtabs(1), dtabs(2), mscan
       if (diagts.and.eots) call pdiag
       if (snapts.and.eots) call arch
 c
@@ -458,9 +428,9 @@ c------------------------------------------------------------------
 c     close all units
 c------------------------------------------------------------------
 c
+      write (stdout,9603) 
       close (unit=stdin,status='keep')
       close (unit=stderr,status='keep')
-      write (stdout,'(1x,a)') ' ==> END of model run'
       close (unit=stdout,status='keep')
       stop
 c
@@ -472,9 +442,9 @@ c
 9461  format (' j=',i3,5x,5(2i5,10x))
 9499  format (/' error => lseg too small for',a15,' indices'
      &        /'          j =',i5,'  lseg + 1 =',i8)
-9602  format (1x,'ts=',i7, 1x, a32, ', ke=', 1pe13.6,' dtemp=',1pe13.6
-     &,        ' dsalt=',1pe13.6,' scans=',i3
-     &,/,25x,'tddt(1),tddt(2),tvar(1),tvar(2) =',1p4e13.6)
+9602  format (1x,'ts=',i7, 1x, a32, ', ke=', 1pe13.6,
+     &        ' dtemp=',1pe13.6,' dsalt=',1pe13.6,' scans=',i3)
+9603  format(1x,' ==> END of model run.',//)
       end
       subroutine step 
 c
@@ -495,7 +465,6 @@ c
 #include "emode.h"
 c
 #include "cdiag.h"
-c  DEBUG
 #include "cvbc.h"
 c
 c-----------------------------------------------------------------
@@ -519,18 +488,6 @@ c
       do 100 jc=2,jmtm1
       do 100 ic=2,imtm1
         call setvbc (ic,jc)
-#ifdef debugprint
-c!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-c  DEBEG
-c!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      if(ic.eq.20 .and. jc.eq.20)then
-      print *
-      print *,' subroutine step. after call to setvbc'
-      print *,'  ic,jc   =',ic,jc
-      print *,'  smf,stf =',smf,stf
-      endif
-c!!END DEBUG!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#endif
         call clinic (ic,jc)
         call tracer (ic,jc)
 100   continue
@@ -540,29 +497,7 @@ c      calculate stream function
 c-----------------------------------------------------------------
 c
       call vort
-#ifdef debugprint
-c!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-c  DEBEG
-c!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      print *
-      print *,' subroutine step.  following call to vort'
-      print 7,' zu(60,20),zv(60,20) =',zu(60,20),zv(60,20)
-      print 7,' ztd(60,20)          =',ztd(60,20)
-   7  format(a,1p8e16.6)
-c!!END DEBUG!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#endif
       call stream
-#ifdef debugprint
-c!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-c  DEBUG
-c!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      print *
-      print *,' subroutine step.  following call to stream'
-      print *,' nm,nc,np            =',nm,nc,np
-      print 7,' p(60,20,nm-nc-np)   =',p(60,20,nm),p(60,20,nc),
-     &          p(60,20,np)
-c!!END DEBUG!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#endif
 c
 c-----------------------------------------------------------------
 c     1.  add barotropic velocity to baroclinic 
@@ -632,6 +567,7 @@ c
 #include "param.h"
 c
 #include "scalar.h"
+#include "switch.h"
 #include "coord.h"
 #include "grdvar.h"
 #include "levind.h"
@@ -652,19 +588,6 @@ c
       boxa = dx*csu(jc)*dy
       boxar = c1/boxa
 c
-c    set up masks, equal to 0 on sub-seabottom points.
-c
-      do 110 k=1,km
-      maskop(k)=0
-      if(k.le.kmu(ic,jp))maskop(k)=1
-      maskom(k)=0
-      if(k.le.kmu(ic,jm))maskom(k)=1
-      maskpo(k)=0
-      if(k.le.kmu(ip,jc))maskpo(k)=1
-      maskmo(k)=0
-      if(k.le.kmu(im,jc))maskmo(k)=1
- 110  continue 
-c
 c=============================================================
 c  calculate horizontal and vertical advective fluxes
 c=============================================================
@@ -681,28 +604,6 @@ c
       fuw(k) = (sfu(ic,jc)+(u(k,ic,jc,nc)+u(k,im,jc,nc))*p5)
      &                               *dy*dz(k)
       fw(k)  = (fue(k)-fuw(k)+fvn(k)-fvs(k))
-#ifdef debugprint
-c!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-c  DEBEG
-c!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      if(ic.eq.60.and.jc.eq.20.and.k.lt.4)then
-      print *
-      print *,' subroutine clinic.  after calculating fluxes'
-      print *,' k =',k
-      print 7,' current at northern boundary'
-      print 7,' sfv(ic,jp),v,vop,tot=',sfv(ic,jp),
-     &          v(k,ic,jc,nc),v(k,ic,jp,nc),
-     &          sfv(ic,jp)+(v(k,ic,jc,nc)+v(k,ic,jp,nc))*p5
-      print 7,' current at westhern boundary'
-      print 7,' sfu(ic,jc),u,umo,tot=',sfu(ic,jc),
-     &          u(k,ic,jc,nc),u(k,im,jc,nc),
-     &          sfu(ic,jc)+(u(k,ic,jc,nc)+u(k,im,jc,nc))*p5
-      print 7,' fvn(k),fvs(k)       =',fvn(k),fvs(k)
-      print 7,' fue(k),fuw(k),fw(k) =',fue(k),fuw(k),fw(k)
-   7  format(a,1p8e16.6)
-      endif
-c!!END DEBUG!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#endif
  160  continue
 c
 c=============================================================
@@ -766,7 +667,7 @@ c
 c-----------------------------------------------------------------
 c         calculate quantities for the computation of
 c         vertical diffusion and advection of momentum
-c         - positive upwards
+c         - positive for upwards flux of momentum
 c-----------------------------------------------------------------
 c
       do 1600 k=1,kmc-1
@@ -778,22 +679,39 @@ c
         fwb2(k) = fw(k)*(v(k,ic,jc,nc) + v(k+1,ic,jc,nc))*p5
 1600  continue
 c
-c     set k=0 elements to reflect wind stress
-c     set level "kz" for a no bottom drag condition.
+c-----------------------------------------------------------------
+c     set k=0 elements to reflect surface wind stress
+c     set level "kmc" for bottom drag condition.
 c     set k=0 elements of vertical advection array to the rigid lid
-c     condition (w(0) = 0). also assume w(km)=0. If "kz" < "km"
-c     and there is a bottom slope, w(kz) may be non zero.
+c     condition (w(0) = 0). also assume w(km)=0. If "kmc" < "km"
+c     and there is a bottom slope, w(kmc) may be non zero.
 c     smf is the surface stress acting on the ocean
 c     bmf is the bottom stress acting on the ocean floor
+c-----------------------------------------------------------------
 c
       vmf(0,1)  = -smf(1)*boxa
       vmf(0,2)  = -smf(2)*boxa
       vmf(kmc,1)= -bmf(1)*boxa
       vmf(kmc,2)= -bmf(2)*boxa
-      fwb1(0)  = c0
-      fwb2(0)  = c0
+      fwb1(0)   = c0
+      fwb2(0)   = c0
       fwb1(km) = c0
       fwb2(km) = c0
+c
+c  set coriolis 
+c
+c------------------------------------------------------------------
+c       set up for the coriolis term:
+c       use tau timestep for explicit trtmnt ... or
+c       use tau-1 timestep for implicit treatment with remainder of
+c       term to be added later
+c------------------------------------------------------------------
+c
+          if (acor .eq. c0) then
+            lcor = nc
+          else
+            lcor = nm
+          endif
 c
 c=============================================================
 c    main calculation to timestep baroclinic velocity
@@ -802,21 +720,22 @@ c
       do 400 k=1,kmc
       u(k,ic,jc,np) = 
 c  coriolis term and pressure gradient
-     &   fcor(jc)*v(k,ic,jc,nc) - dpdx(k)
+     &   fcor(jc)*v(k,ic,jc,lcor) - dpdx(k)
 c  u-advection
-     & +(fuw(k)*(u(k,im,jc,nc) + u(k,ic,jc,nc))*maskmo(k)*p5
-     & - fue(k)*(u(k,ip,jc,nc) + u(k,ic,jc,nc))*maskpo(k)*p5
+     & +(fuw(k)*(u(k,im,jc,nc) + u(k,ic,jc,nc))*p5
+     & - fue(k)*(u(k,ip,jc,nc) + u(k,ic,jc,nc))*p5
 c  v-advection
-     & + fvs(k)*(u(k,ic,jm,nc) + u(k,ic,jc,nc))*maskom(k)*p5
-     & - fvn(k)*(u(k,ic,jp,nc) + u(k,ic,jc,nc))*maskop(k)*p5
+     & + fvs(k)*(u(k,ic,jm,nc) + u(k,ic,jc,nc))*p5
+     & - fvn(k)*(u(k,ic,jp,nc) + u(k,ic,jc,nc))*p5
 c  w-advection
      & + fwb1(k  ) - fwb1(k-1)
 c  x diffusion  
-     & + bbu(jc)*(u(k,ip,jc,nm)-u(k,ic,jc,nm))*maskpo(k)
-     & + bbu(jc)*(u(k,im,jc,nm)-u(k,ic,jc,nm))*maskmo(k)
+     & +(bbu(jc)*(u(k,ip,jc,nm)-u(k,ic,jc,nm))
+     & + bbu(jc)*(u(k,im,jc,nm)-u(k,ic,jc,nm))
 c  y diffusion
-     & + ccu(jc)*(u(k,ic,jp,nm)-u(k,ic,jc,nm))*maskop(k)
-     & + ddu(jc)*(u(k,ic,jm,nm)-u(k,ic,jc,nm))*maskom(k)
+     & + ccu(jc)*(u(k,ic,jp,nm)-u(k,ic,jc,nm))
+     & + ddu(jc)*(u(k,ic,jm,nm)-u(k,ic,jc,nm)) )
+     & *dz(k)
 c  z diffusion  
      &  + vmf(k  ,1) - vmf(k-1,1) )*boxar*dzr(k)
 c
@@ -827,24 +746,33 @@ c***************************************************************
 c
  400  continue
 c
+c***************************************************************
+c  DEBUG
+c***************************************************************
+      if(ic.eq.73.and.jc.eq.27.and. .false.)then
+        print 501,'Clinic1',ic,jc,np,nc,nm
+        print 501,' k, Dirn,     Coriolis,       Pressure,'//
+     &                   '      Advection,      Diffusion'   
+      endif
+c **  end DEBUG  ***********************************************
       do 500 k=1,kmc
       v(k,ic,jc,np) = 
 c  coriolis term and pressure gradient
-     &  -fcor(jc)*u(k,ic,jc,nc) - dpdy(k)
+     &  -fcor(jc)*u(k,ic,jc,lcor) - dpdy(k)
 c  u-advection
-     & +(fuw(k)*(v(k,im,jc,nc) + v(k,ic,jc,nc))*maskmo(k)*p5
-     & - fue(k)*(v(k,ip,jc,nc) + v(k,ic,jc,nc))*maskpo(k)*p5
+     & +(fuw(k)*(v(k,im,jc,nc) + v(k,ic,jc,nc))*p5
+     & - fue(k)*(v(k,ip,jc,nc) + v(k,ic,jc,nc))*p5
 c  v-advection
-     & + fvs(k)*(v(k,ic,jm,nc) + v(k,ic,jc,nc))*maskom(k)*p5
-     & - fvn(k)*(v(k,ic,jp,nc) + v(k,ic,jc,nc))*maskop(k)*p5
+     & + fvs(k)*(v(k,ic,jm,nc) + v(k,ic,jc,nc))*p5
+     & - fvn(k)*(v(k,ic,jp,nc) + v(k,ic,jc,nc))*p5
 c  w-advection
      & + fwb2(k  ) - fwb2(k-1)
 c  x diffusion  
-     & +(bbu(jc)*(v(k,ip,jc,nm)-v(k,ic,jc,nm))*maskpo(k)
-     & + bbu(jc)*(v(k,im,jc,nm)-v(k,ic,jc,nm))*maskmo(k)
+     & +(bbu(jc)*(v(k,ip,jc,nm)-v(k,ic,jc,nm))
+     & + bbu(jc)*(v(k,im,jc,nm)-v(k,ic,jc,nm))
 c  y diffusion
-     & + ccu(jc)*(v(k,ic,jp,nm)-v(k,ic,jc,nm))*maskop(k)
-     & + ddu(jc)*(v(k,ic,jm,nm)-v(k,ic,jc,nm))*maskom(k))
+     & + ccu(jc)*(v(k,ic,jp,nm)-v(k,ic,jc,nm))
+     & + ddu(jc)*(v(k,ic,jm,nm)-v(k,ic,jc,nm)) )
      & *dz(k)
 c  z diffusion
      & + vmf(k  ,2) - vmf(k-1,2) )*boxar*dzr(k)
@@ -854,62 +782,84 @@ c  the terms that allow for the curvature of the grid near the
 c  poles have been left out of this version of the model
 c***************************************************************
 c
-#ifdef debugprint
-c!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-c DEBUG
-c!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      if(ic.eq.60.and.jc.eq.20.and.k.lt.4)then
-      boxvol=boxa*dz(k)
-      boxvr=boxar*dzr(k)
-      print *
-      print *,' subroutine clinic.  main calculation'
-      print *,'  ic,jc,k=',ic,jc,k
-      print 7,' dx,dy,cst(jc),boxa,boxvol',
-     &         dx,dy,cst(jc),boxa,boxvol,
-     &         boxvr,boxar*dzr(k)
-      print 7,' rhoo,rhpo,rhop,rhpp;k; =',rhoo(k),
-     &         rhpo(k),rhop(k),rhpp(k)
-      print 7,' fcor*boxvol,dpdy*boxvol (+/boxvol)',
-     &- fcor(jc)*u(k,ic,jc,nc)*boxvol, - dpdy(k)*boxvol,
-     &- fcor(jc)*u(k,ic,jc,nc),        - dpdy(k)
-c  u-advection
-      print 7,' u-advc',
-     & + fuw(k)*(v(k,im,jc,nc) + v(k,ic,jc,nc))*maskmo(k)*p5,
-     & - fue(k)*(v(k,ip,jc,nc) + v(k,ic,jc,nc))*maskpo(k)*p5,
-     & +fuw(k)*(v(k,im,jc,nc)+v(k,ic,jc,nc))*maskmo(k)*p5*boxvr,
-     & -fue(k)*(v(k,ip,jc,nc)+v(k,ic,jc,nc))*maskpo(k)*p5*boxvr
-c  v-advection
-      print 7,' v-advc',
-     & + fvs(k)*(v(k,ic,jm,nc) + v(k,ic,jc,nc))*maskom(k)*p5,
-     & - fvn(k)*(v(k,ic,jp,nc) + v(k,ic,jc,nc))*maskop(k)*p5,
-     & +fvs(k)*(v(k,ic,jm,nc)+v(k,ic,jc,nc))*maskom(k)*p5*boxvr,
-     & -fvn(k)*(v(k,ic,jp,nc)+v(k,ic,jc,nc))*maskop(k)*p5*boxvr
-c  w-advection
-      print 7,' w-advc',
-     & +fwb2(k),-fwb2(k-1),+fwb2(k)*boxvr,-fwb2(k-1)*boxvr
-c  x diffusion  
-      print 7,' x-diff',
-     & + bbu(jc)*(v(k,ip,jc,nm)-v(k,ic,jc,nm))*maskpo(k),
-     & + bbu(jc)*(v(k,im,jc,nm)-v(k,ic,jc,nm))*maskmo(k),
-     & bbu(jc)*(v(k,ip,jc,nm)-v(k,ic,jc,nm))*maskpo(k),
-     & bbu(jc)*(v(k,im,jc,nm)-v(k,ic,jc,nm))*maskmo(k)*boxvr
-c  y diffusion
-      print 7,' y-diff',
-     & + ccu(jc)*(v(k,ic,jp,nm)-v(k,ic,jc,nm))*maskop(k),
-     & + ddu(jc)*(v(k,ic,jm,nm)-v(k,ic,jc,nm))*maskom(k),
-     & ccu(jc)*(v(k,ic,jp,nm)-v(k,ic,jc,nm))*maskop(k)*boxvr,
-     & ddu(jc)*(v(k,ic,jm,nm)-v(k,ic,jc,nm))*maskom(k)*boxvr
-c  z diffusion
-      print 7,' z-diff',
-     & + vmf(k,2), - vmf(k-1,2),
-     & + vmf(k,2)*boxvr, - vmf(k-1,2)*boxvr
+c***************************************************************
+c  DEBUG
+c***************************************************************
+      if(ic.eq.73.and.jc.eq.27.and. .false.)then
+c  coriolis term and pressure gradient
+      t1 = fcor(jc)*v(k,ic,jc,lcor)
+      t2 =  - dpdx(k)
+c  advection
+      t3 = 
+     & +(fuw(k)*(u(k,im,jc,nc) + u(k,ic,jc,nc))*p5
+     & - fue(k)*(u(k,ip,jc,nc) + u(k,ic,jc,nc))*p5
+     & + fvs(k)*(u(k,ic,jm,nc) + u(k,ic,jc,nc))*p5
+     & - fvn(k)*(u(k,ic,jp,nc) + u(k,ic,jc,nc))*p5
+     & + fwb1(k  ) - fwb1(k-1)
+     &   )*boxar*dzr(k)
+      t31 = 
+     & +(fuw(k)*(u(k,im,jc,nc) + u(k,ic,jc,nc))*p5
+     & - fue(k)*(u(k,ip,jc,nc) + u(k,ic,jc,nc))*p5
+     &   )*boxar*dzr(k)
+      t32 = (
+     & + fvs(k)*(u(k,ic,jm,nc) + u(k,ic,jc,nc))*p5
+     & - fvn(k)*(u(k,ic,jp,nc) + u(k,ic,jc,nc))*p5
+     &   )*boxar*dzr(k)
+      t33 = (
+     & + fwb1(k  ) - fwb1(k-1)
+     &   )*boxar*dzr(k)
+c  diffusion 
+      t4 =  
+     &(+(bbu(jc)*(u(k,ip,jc,nm)-u(k,ic,jc,nm))
+     & + bbu(jc)*(u(k,im,jc,nm)-u(k,ic,jc,nm))
+     & + ccu(jc)*(u(k,ic,jp,nm)-u(k,ic,jc,nm))
+     & + ddu(jc)*(u(k,ic,jm,nm)-u(k,ic,jc,nm)) )
+     & *dz(k)
+     &  + vmf(k  ,1) - vmf(k-1,1) )*boxar*dzr(k)
+c  coriolis term and pressure gradient
+      t5 = -fcor(jc)*u(k,ic,jc,lcor) 
+      t6 = - dpdy(k)
+c  advection
+      t7 = 
+     & +(fuw(k)*(v(k,im,jc,nc) + v(k,ic,jc,nc))*p5
+     & - fue(k)*(v(k,ip,jc,nc) + v(k,ic,jc,nc))*p5
+     & + fvs(k)*(v(k,ic,jm,nc) + v(k,ic,jc,nc))*p5
+     & - fvn(k)*(v(k,ic,jp,nc) + v(k,ic,jc,nc))*p5
+     & + fwb2(k  ) - fwb2(k-1)
+     &                         )*boxar*dzr(k)
+      t71 = 
+     & +(fuw(k)*(v(k,im,jc,nc) + v(k,ic,jc,nc))*p5
+     & - fue(k)*(v(k,ip,jc,nc) + v(k,ic,jc,nc))*p5
+     &                         )*boxar*dzr(k)
+      t72 = (
+     & + fvs(k)*(v(k,ic,jm,nc) + v(k,ic,jc,nc))*p5
+     & - fvn(k)*(v(k,ic,jp,nc) + v(k,ic,jc,nc))*p5
+     &                         )*boxar*dzr(k)
+      t73 = (
+     & + fwb2(k  ) - fwb2(k-1)
+     &                         )*boxar*dzr(k)
+
+c  diffusion 
+      t8 = 
+     &(+(bbu(jc)*(v(k,ip,jc,nm)-v(k,ic,jc,nm))
+     & + bbu(jc)*(v(k,im,jc,nm)-v(k,ic,jc,nm))
+     & + ccu(jc)*(v(k,ic,jp,nm)-v(k,ic,jc,nm))
+     & + ddu(jc)*(v(k,ic,jm,nm)-v(k,ic,jc,nm)) )
+     & *dz(k)
+     & + vmf(k  ,2) - vmf(k-1,2) )*boxar*dzr(k)
+      print 502,k,' u ',t1,t2,t3,t4
+      print 503,  '   ',t31,t32,t33
+      print 503,  ' v ',t5,t6,t7,t8
+      print 503,  '   ',t71,t72,t73
       endif
-c!!END DEBUG!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#endif
+ 501  format(1x,/,1x,a,10i5)
+ 502  format(1x,i3,a3,1p6e16.6)
+ 503  format(1x,3x,a3,1p6e16.6)
+c **  end DEBUG  ***********************************************
  500  continue
 c
 c-----------------------------------------------------------------
-c     form time change of vertically averaged forcing
+c     calculate vertically averaged forcing
 c-----------------------------------------------------------------
 c
       zu(ic,jc) = c0
@@ -923,35 +873,37 @@ c
       zv(ic,jc) = zv(ic,jc)*hr(ic,jc)
 c
 c-----------------------------------------------------------------
-c     timestep baroclinit terms
+c     timestep baroclinic terms
 c-----------------------------------------------------------------
 c
-      do 700 k=1,kmc
-      q1temp = u(k,ic,jc,np)
-      q2temp = v(k,ic,jc,np)
-      u(k,ic,jc,np) = u(k,ic,jc,nm) + c2dtuv*u(k,ic,jc,np) 
-      v(k,ic,jc,np) = v(k,ic,jc,nm) + c2dtuv*v(k,ic,jc,np) 
-#ifdef debugprint
-c!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-c DEBUG
-c!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      if(ic.eq.60.and.jc.eq.20.and.k.lt.4)then
-      print *
-      print *,' subroutine clinic. before removing vertical mean'
-      print *,'  ic,jc,k=',ic,jc,k
-      print 7,'  u(k,ic,jc,nm), v(k,ic,jc,nm)     =',
-     &           u(k,ic,jc,nm), v(k,ic,jc,nm)
-      print 7,'  u(k,ic,jc,np), v(k,ic,jc,np) old =',q1temp,q2temp
-      print 7,'  c2dtuv                           =',c2dtuv
-      print 7,'  u(k,ic,jc,np), v(k,ic,jc,np) new =',
-     &           u(k,ic,jc,np), v(k,ic,jc,np)
-
-      print 7,' zu(ic,jc), zv(ic,jc)              =',
-     &          zu(ic,jc),zv(ic,jc)
+      if(acor.eq.c0)then
+        do 700 k=1,kmc
+          u(k,ic,jc,np) = u(k,ic,jc,nm) + c2dtuv*u(k,ic,jc,np) 
+          v(k,ic,jc,np) = v(k,ic,jc,nm) + c2dtuv*v(k,ic,jc,np) 
+c******************************************************************
+c  DEBUG
+c******************************************************************
+      if(ic.eq.73.and.jc.eq.27.and. .false.)then
+      if(k.eq.1)then
+        print 501,'         u(t+1),         u(t),         u(t-1),'//
+     &            '         v(t+1),         v(t),         v(t-1)'
       endif
-c!!END DEBUG!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#endif
- 700  continue
+      print 502,k,'   ',u(k,ic,jc,np),u(k,ic,jc,nc),u(k,ic,jc,nm),
+     &                  v(k,ic,jc,np),v(k,ic,jc,nc),v(k,ic,jc,nm)
+c
+      endif
+c **  end DEBUG  ***********************************************
+ 700    continue
+      else
+        fx    = c2dtuv*acor*c2*omega*sine(jc)
+        detmr = c1/(c1 + fx*fx)
+        do 710 k=1,kmc
+          t1 = (u(k,ic,jc,np)+fx*v(k,ic,jc,np))*detmr
+          t2 = (v(k,ic,jc,np)-fx*u(k,ic,jc,np))*detmr
+          u(k,ic,jc,np) = u(k,ic,jc,nm) + c2dtuv*t1 
+          v(k,ic,jc,np) = v(k,ic,jc,nm) + c2dtuv*t2
+ 710    continue
+      endif
 c
 c-----------------------------------------------------------------
 c     remove vertical mean
@@ -967,26 +919,8 @@ c
       sumu = sumu*zwr
       sumv = sumv*zwr
       do 900 k=1,kmc
-      q1temp = u(k,ic,jc,np)
-      q2temp = v(k,ic,jc,np)
       u(k,ic,jc,np) = u(k,ic,jc,np) - sumu
       v(k,ic,jc,np) = v(k,ic,jc,np) - sumv
-#ifdef debugprint
-c!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-c DEBUG
-c!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      if(ic.eq.60.and.jc.eq.20.and.k.lt.4)then
-      print *
-      print *,' subroutine clinic.  after removing vertical mean'
-      print *,'  ic,jc,k=',ic,jc,k
-      print 7,'  u(k,ic,jc,np), v(k,ic,jc,np) old =',
-     &           q1temp,q2temp
-      print 7,'  sumu,sumv                        =',sumu,sumv
-      print 7,'  u(k,ic,jc,np), v(k,ic,jc,np) new =',
-     &           u(k,ic,jc,np), v(k,ic,jc,np)
-      endif
-c!!END DEBUG!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#endif
  900  continue
       return
       end
@@ -1011,18 +945,6 @@ c
 #include "cvbc.h"
 #include "cvmix.h"
 c
-#ifdef debugprint
-c!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-c  DEBUG
-c!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      data in/1/
-      if(ic.eq.60.and.jc.eq.20)then
-      print *
-      print *,' subroutine tracer, on entry'
-      print *,'  ic,jc =',ic,jc
-      endif
-c!!END DEBUG!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#endif
 c
 c    outer loops over i and j indices
 c
@@ -1086,12 +1008,12 @@ c
       do 930 k=1,kmc-1
         vtf(k) = fkph*(t(k+1,ic,jc,m,nm)-t(k  ,ic,jc,m,nm))
      &                 *dzwr(k)*boxa
-        fwb1(k) = fw(k)*(t(k,ic,jc,m,nm)+t(k+1,ic,jc,m,nm))*p5
+        fwb1(k) = fw(k)*(t(k,ic,jc,m,nc)+t(k+1,ic,jc,m,nc))*p5
  930  continue
 c
 c=============================================================
 c  surface and bottom advective and diffusive boundary conditions
-c  stf is flux into the ocean
+c  stf is downwards flux into the ocean
 c=============================================================
 c
       vtf(0)   = -stf(m)*boxa
@@ -1103,15 +1025,25 @@ c=============================================================
 c  main timestepping calculation
 c=============================================================
 c
+c
+c***************************************************************
+c  DEBUG
+c***************************************************************
+      if(ic.eq.73.and.jc.eq.27.and. .false.)then
+        print 501,'Tracer',ic,jc,np,nc,nm
+        print 501,' k, t-s,      Advection,      Advection,'//
+     &                    '      Advection,      Diffusion'
+      endif
+c **  end DEBUG  ***********************************************
       do 960 k=1,kmc
       t(k,ic,jc,m,np) = t(k,ic,jc,m,nm)
      &                + c2dtts*boxar*dzr(k)*(
 c  u-advection
-     &   fuw(k)*(t(k,im,jc,m,nc) + t(k,ic,jc,m,nc))*maskmo(k)*p5
-     & - fue(k)*(t(k,ip,jc,m,nc) + t(k,ic,jc,m,nc))*maskpo(k)*p5
+     &   fuw(k)*(t(k,im,jc,m,nc) + t(k,ic,jc,m,nc))*p5
+     & - fue(k)*(t(k,ip,jc,m,nc) + t(k,ic,jc,m,nc))*p5
 c  v-advection
-     & + fvs(k)*(t(k,ic,jm,m,nc) + t(k,ic,jc,m,nc))*maskom(k)*p5
-     & - fvn(k)*(t(k,ic,jp,m,nc) + t(k,ic,jc,m,nc))*maskop(k)*p5
+     & + fvs(k)*(t(k,ic,jm,m,nc) + t(k,ic,jc,m,nc))*p5
+     & - fvn(k)*(t(k,ic,jp,m,nc) + t(k,ic,jc,m,nc))*p5
 c  w-advection
      & + fwb1(k  ) - fwb1(k-1)
 c  x diffusion
@@ -1124,144 +1056,84 @@ c  y diffusion
 c  z diffusion  
      & + vtf(k  ) - vtf(k-1)
      &   )
-#ifdef debugprint
-c!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-c DEBUG
-c!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      if((ic.eq.60.and.jc.eq.20.and.k.lt.4)
-c     & .or.   (ic.eq.73.and.jc.eq.5)
-c     & .or.   (m.eq.2.and.(t(k,ic,jc,m,np).ne.t(k,ic,jc,m,nm)))
-     &      )then
-      in=in+1
-      boxvr=boxar*dzr(k)
-      print *
-      print *,' subroutine tracer, main calculation'
-      print *,'  ic,jc,k,m =',ic,jc,k,m
-      print 6,'  tp, tm    =',t(k,ic,jc,m,np), t(k,ic,jc,m,nm), c2dtts,
-     &        boxa*dz(k),boxar*dzr(k)
-c  u-advection
-      print 7,'  u-advc',
-     &   fuw(k)*(t(k,im,jc,m,nc) + t(k,ic,jc,m,nc))*maskmo(k)*p5
-     &,- fue(k)*(t(k,ip,jc,m,nc) + t(k,ic,jc,m,nc))*maskpo(k)*p5
-     &,  fuw(k)*(t(k,im,jc,m,nc) + t(k,ic,jc,m,nc))*maskmo(k)*p5
+c
+c***************************************************************
+c  DEBUG
+c***************************************************************
+      if(ic.eq.73.and.jc.eq.27.and. .false.)then
+c  advection
+      t1 = 
+     & ( fuw(k)*(t(k,im,jc,m,nc) + t(k,ic,jc,m,nc))*maskmo(k)*p5
      & - fue(k)*(t(k,ip,jc,m,nc) + t(k,ic,jc,m,nc))*maskpo(k)*p5
-      print 7,'  /vol  ',
-     &   fuw(k)*(t(k,im,jc,m,nc) + t(k,ic,jc,m,nc))*maskmo(k)*p5
-     &   *boxvr
-     &,- fue(k)*(t(k,ip,jc,m,nc) + t(k,ic,jc,m,nc))*maskpo(k)*p5
-     &   *boxvr
-     &,( fuw(k)*(t(k,im,jc,m,nc) + t(k,ic,jc,m,nc))*maskmo(k)*p5
-     & - fue(k)*(t(k,ip,jc,m,nc) + t(k,ic,jc,m,nc))*maskpo(k)*p5)
-     &   *boxvr
-   7  format(a,1p8e18.8)
-c  v-advection
-      print 7,'  v-advc',
-     & + fvs(k)*(t(k,ic,jm,m,nc) + t(k,ic,jc,m,nc))*maskom(k)*p5
-     &,- fvn(k)*(t(k,ic,jp,m,nc) + t(k,ic,jc,m,nc))*maskop(k)*p5
-     &,+ fvs(k)*(t(k,ic,jm,m,nc) + t(k,ic,jc,m,nc))*maskom(k)*p5
-     & - fvn(k)*(t(k,ic,jp,m,nc) + t(k,ic,jc,m,nc))*maskop(k)*p5
-      print 7,'  /vol  ',
-     & + fvs(k)*(t(k,ic,jm,m,nc) + t(k,ic,jc,m,nc))*maskom(k)*p5
-     &   *boxvr
-     &,- fvn(k)*(t(k,ic,jp,m,nc) + t(k,ic,jc,m,nc))*maskop(k)*p5
-     &   *boxvr
-     &,( fvs(k)*(t(k,ic,jm,m,nc) + t(k,ic,jc,m,nc))*maskom(k)*p5
-     & - fvn(k)*(t(k,ic,jp,m,nc) + t(k,ic,jc,m,nc))*maskop(k)*p5)
-     &   *boxvr
-c  w-advection
-      print 7,'  w-advc',
-     & + fwb1(k  ), - fwb1(k-1)
-     &,+ fwb1(k  )  - fwb1(k-1)
-      print 7,'  /vol  ',
-     & + fwb1(k  )*boxvr, - fwb1(k-1)*boxvr
-     &,+ (fwb1(k  )  - fwb1(k-1))*boxvr
-c  x diffusion
-      print 7,'  x-diff',
-     & + bbt(jc)*(t(k,ip,jc,m,nm)-t(k,ic,jc,m,nm))*maskpo(k)*dz(k),
-     & + bbt(jc)*(t(k,im,jc,m,nm)-t(k,ic,jc,m,nm))*maskmo(k)*dz(k),
-     & + bbt(jc)*(t(k,ip,jc,m,nm)-t(k,ic,jc,m,nm))*maskpo(k)*dz(k)
-     & + bbt(jc)*(t(k,im,jc,m,nm)-t(k,ic,jc,m,nm))*maskmo(k)*dz(k)
-      print 7,'  /vol  ',
-     & + bbt(jc)*(t(k,ip,jc,m,nm)-t(k,ic,jc,m,nm))*maskpo(k)*dz(k)
-     &   *boxvr
-     &,  bbt(jc)*(t(k,im,jc,m,nm)-t(k,ic,jc,m,nm))*maskmo(k)*dz(k)
-     &   *boxvr
-     &,+(bbt(jc)*(t(k,ip,jc,m,nm)-t(k,ic,jc,m,nm))*maskpo(k)
-     & + bbt(jc)*(t(k,im,jc,m,nm)-t(k,ic,jc,m,nm))*maskmo(k))
-     &   *boxvr*dz(k)
-c  y diffusion
-      print 7,'  y-diff',
-     & + cct(jc)*(t(k,ic,jp,m,nm)-t(k,ic,jc,m,nm))*maskop(k)*dz(k),
-     & + ddt(jc)*(t(k,ic,jm,m,nm)-t(k,ic,jc,m,nm))*maskom(k)*dz(k),
-     & + cct(jc)*(t(k,ic,jp,m,nm)-t(k,ic,jc,m,nm))*maskop(k)*dz(k)
-     & + ddt(jc)*(t(k,ic,jm,m,nm)-t(k,ic,jc,m,nm))*maskom(k)*dz(k)
-      print 7,'  /vol  ',
-     & + cct(jc)*(t(k,ic,jp,m,nm)-t(k,ic,jc,m,nm))*maskop(k)
-     &   *boxvr*dz(k)
-     &,  ddt(jc)*(t(k,ic,jm,m,nm)-t(k,ic,jc,m,nm))*maskom(k)
-     &   *boxvr*dz(k)
-     &, (cct(jc)*(t(k,ic,jp,m,nm)-t(k,ic,jc,m,nm))*maskop(k)
-     & + ddt(jc)*(t(k,ic,jm,m,nm)-t(k,ic,jc,m,nm))*maskom(k))
-     &   *boxvr*dz(k)
-c  z diffusion  
-      print 7,'  z-diff',
-     & + vtf(k  ), - vtf(k-1),
-     & + vtf(k  )  - vtf(k-1)
-      print 7,'  /vol  ',
-     & + vtf(k  )*boxvr, - vtf(k-1)*boxvr,
-     & + (vtf(k  )  - vtf(k-1))*boxvr
-c  composite terms
-      temp1=
-c  u-advection
-     &   fuw(k)*(t(k,im,jc,m,nc) + t(k,ic,jc,m,nc))*maskmo(k)*p5
+     & )*boxar*dzr(k)
+      t11 = 
+     & ( fuw(k)*(t(k,im,jc,m,nc) + t(k,ic,jc,m,nc))*maskmo(k)*p5
+     & )*boxar*dzr(k)
+      t12 = (
      & - fue(k)*(t(k,ip,jc,m,nc) + t(k,ic,jc,m,nc))*maskpo(k)*p5
-c  v-advection
+     & )*boxar*dzr(k)
+      t2 = (
      & + fvs(k)*(t(k,ic,jm,m,nc) + t(k,ic,jc,m,nc))*maskom(k)*p5
      & - fvn(k)*(t(k,ic,jp,m,nc) + t(k,ic,jc,m,nc))*maskop(k)*p5
-c  w-advection
-     & + fwb1(k  ) - fwb1(k-1)
+     & )*boxar*dzr(k)
+      t21 = (
+     & + fvs(k)*(t(k,ic,jm,m,nc) + t(k,ic,jc,m,nc))*maskom(k)*p5
+     & )*boxar*dzr(k)
+      t22 = (
+     & - fvn(k)*(t(k,ic,jp,m,nc) + t(k,ic,jc,m,nc))*maskop(k)*p5
+     & )*boxar*dzr(k)
+      t3 = (
+     & + fwb1(k  ) - fwb1(k-1))*boxar*dzr(k)
+      t31 = (
+     & + fwb1(k  )            )*boxar*dzr(k)
+      t32 = (
+     &             - fwb1(k-1))*boxar*dzr(k)
+c  diffusion 
+      t4 =  
 c  x diffusion
-     & +(bbt(jc)*(t(k,ip,jc,m,nm)-t(k,ic,jc,m,nm))*maskpo(k)
+     &(+(bbt(jc)*(t(k,ip,jc,m,nm)-t(k,ic,jc,m,nm))*maskpo(k)
      & + bbt(jc)*(t(k,im,jc,m,nm)-t(k,ic,jc,m,nm))*maskmo(k)
 c  y diffusion
      & + cct(jc)*(t(k,ic,jp,m,nm)-t(k,ic,jc,m,nm))*maskop(k)
      & + ddt(jc)*(t(k,ic,jm,m,nm)-t(k,ic,jc,m,nm))*maskom(k))
      & * dz(k)
 c  z diffusion  
-     & + vtf(k  ) - vtf(k-1)
-      temp2 = max(
-c  u-advection
-     & abs(fuw(k)*(t(k,im,jc,m,nc) + t(k,ic,jc,m,nc))*maskmo(k)*p5),
-     & abs(fue(k)*(t(k,ip,jc,m,nc) + t(k,ic,jc,m,nc))*maskpo(k)*p5),
-c  v-advection
-     & abs(fvs(k)*(t(k,ic,jm,m,nc) + t(k,ic,jc,m,nc))*maskom(k)*p5),
-     & abs(fvn(k)*(t(k,ic,jp,m,nc) + t(k,ic,jc,m,nc))*maskop(k)*p5),
-c  w-advection
-     & abs(fwb1(k  )), abs(fwb1(k-1)),abs(
-c  x diffusion
-     & +(bbt(jc)*(t(k,ip,jc,m,nm)-t(k,ic,jc,m,nm))*maskpo(k)
-     & + bbt(jc)*(t(k,im,jc,m,nm)-t(k,ic,jc,m,nm))*maskmo(k)
-c  y diffusion
-     & + cct(jc)*(t(k,ic,jp,m,nm)-t(k,ic,jc,m,nm))*maskop(k)
-     & + ddt(jc)*(t(k,ic,jm,m,nm)-t(k,ic,jc,m,nm))*maskom(k))
-     & * dz(k)
-c  z diffusion  
-     & + vtf(k  ) - vtf(k-1))   )
-      print *,'  nm,nc,np = ',nm,nc,np
-      print *, 'tp-tm, temp1*c2dtts*boxvr,temp2*c2dtts*boxvr'
-     &,t(k,ic,jc,m,np) - t(k,ic,jc,m,nm)
-     &,temp1*c2dtts*boxvr,temp2*c2dtts*boxvr
-      print *, ' temp1, temp2'
-     &,          temp1, temp2
-        if(in.gt.100)then
-          print *,' in =',in,' stopping'
-          stop
-        endif
+     & + vtf(k  ) - vtf(k-1) )*boxar*dzr(k)
+      print 502,k,m,t1,t2,t3,t4
+      print 503,fuw(k)*p5,fuw(k)*boxar*dzr(k)*p5,
+     &         t(k,im,jc,m,nc),t(k,ic,jc,m,nc),t11
+      print 503,fue(k)*p5,fue(k)*boxar*dzr(k)*p5,
+     &         t(k,ip,jc,m,nc),t(k,ic,jc,m,nc),t12
+      print 503,fvs(k)*p5,fvs(k)*boxar*dzr(k)*p5,
+     &         t(k,ic,jm,m,nc),t(k,ic,jc,m,nc),t21
+      print 503,fvn(k)*p5,fvn(k)*boxar*dzr(k)*p5,
+     &         t(k,ic,jp,m,nc),t(k,ic,jc,m,nc),t22
+      print 503,fw(k  )*p5,fw(k  )*p5*boxar*dzr(k),
+     &         t(k+1,ic,jc,m,nc),t(k,ic,jc,m,nc),t31
+      print 503,fw(k-1)*p5,fw(k-1)*p5*boxar*dzr(k),
+     &         t(k-1,ic,jc,m,nc),t(k,ic,jc,m,nc),t32
       endif
-c!!END DEBUG!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#endif
+ 501  format(1x,/,1x,a,10i5)
+ 502  format(1x,i3,i3,1p6e16.6)
+ 503  format(1x,   6x,1p6e16.6)
+c **  end DEBUG  ***********************************************
  960  continue
  900  continue
+c***************************************************************
+c  DEBUG
+c***************************************************************
+      if(ic.eq.73.and.jc.eq.27.and. .false.)then
+        print 501,'         T(t+1),         T(t),         T(t-1),'//
+     &            '         S(t+1),         S(t),         S(t-1)'
+      do 901 k=1,km
+      print 504,k,
+     &      t(k,ic,jc,1,np),t(k,ic,jc,1,nc),t(k,ic,jc,1,nm),
+     &      t(k,ic,jc,2,np),t(k,ic,jc,2,nc),t(k,ic,jc,2,nm)
+ 504  format(1x,i3,3x,1p6e16.6)
+901   continue
+      endif
+c **  end DEBUG  ***********************************************
+
 c
 c=============================================================
 c   convectively adjust water column if gravitaionally unstable.
@@ -1272,29 +1144,10 @@ c
         do 1070 ks=1,2
         call state(t(1,ic,jc,1,np),t(1,ic,jc,2,np),temp(1),
      &              kmc, ks)
+
         do 1070 m=1,nt
         do 1070 k=ks,kmc-1,2
         if(temp(k).gt.temp(k+1))then
-#ifdef debugprint
-c!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-c DEBUG
-c!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-c DEBUG !!!!!! set m to 1 or 2
-      if(m.eq.0)then
-        in=in+1
-        print *,' subroutine tracer - convection'
-        print *,' n,ks,m,k,ic,jc = ',n,ks,m,k,ic,jc
-        print 6,' den(l),den(k+1), diff =',temp(k),temp(k+1),
-     &            temp(k)-temp(k+1)
-        print 6,' t(k),  t(k+1)  , diff =',t(k,ic,jc,1,np),
-     &     t(k+1,ic,jc,1,np),t(k,ic,jc,1,np)-t(k+1,ic,jc,1,np)
-        print 6,' s(k),  s(k+1)  , diff =',t(k,ic,jc,2,np),
-     &     t(k+1,ic,jc,2,np),t(k,ic,jc,2,np)-t(k+1,ic,jc,2,np)
-   6  format(a,1p3e25.17,(/,24x,3e25.17))
-        if(in.gt.200)stop
-      endif
-c!!END DEBUG!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#endif
           t(k,ic,jc,m,np) = (dz(k)*t(k,ic,jc,m,np)+
      &                    +  dz(k+1)*t(k+1,ic,jc,m,np))*dzw2r(k)
           t(k+1,ic,jc,m,np) = t(k,ic,jc,m,np)
@@ -1388,10 +1241,12 @@ c
       elseif(ind.eq.0)then
         do 400 k=1,kk
         tq=t(k)-to(k)
-        sq=(s(k)-35.0)/1000.0-so(k)
+        sq=s(k)-so(k)
+c       sq=(s(k)-35.0)/1000.0-so(k)
         rho(k) = (c(k,1) + (c(k,4) + c(k,7)*sq)*sq +
      &           (c(k,3) + c(k,8)*sq + c(k,6)*tq)*tq)*tq +
      &           (c(k,2) + (c(k,5) + c(k,9)*sq)*sq)*sq
+
  400    continue
 c
 c  compare 1 with 2, 3 with 4, etc.  density w.r.t bottom level
@@ -1401,7 +1256,8 @@ c
         do 500 k2=1,2
         k=k1+k2
         tq=t(k)-to1(k)
-        sq=(s(k)-35.0)/1000.0-so1(k)
+        sq=s(k)-so1(k)
+c       sq=(s(k)-35.0)/1000.0-so1(k)
         rho(k) = (co1(k,1) + (co1(k,4)    + co1(k,7)*sq)*sq
      &         + (co1(k,3) +  co1(k,8)*sq + co1(k,6)*tq)*tq)*tq
      &         + (co1(k,2) + (co1(k,5)    + co1(k,9)*sq)*sq)*sq
@@ -1413,7 +1269,8 @@ c  compare 2 with 3, 4 with 5 etc
         do 600 k2=1,2
         k=k1+k2
         tq=t(k)-to2(k)
-        sq=(s(k)-35.0)/1000.0-so2(k)
+        sq=s(k)-so2(k)
+c       sq=(s(k)-35.0)/1000.0-so2(k)
         rho(k) = (co2(k,1) + (co2(k,4)    + co2(k,7)*sq)*sq
      &         + (co2(k,3) +  co2(k,8)*sq + co2(k,6)*tq)*tq)*tq
      &         + (co2(k,2) + (co2(k,5)    + co2(k,9)*sq)*sq)*sq
@@ -1477,7 +1334,7 @@ c     along diagonals to allow for complete vectorization &
 c     parallelization
 c
 c==================================================================
-c
+c     based on mom routine hyper
 c
 #include "param.h"
 c
@@ -1536,6 +1393,22 @@ c
                 cpf(i,j) = c1/(cfn(i,j)+cfs(i,j)+cfe(i,j)+cfw(i,j))
 560          continue
 c
+c             augment coeffs for implicit treatment of coriolis term
+c
+              if (acor .ne. c0) then
+                fx = -c2dtsf*acor*cstr(j)*dyr*omega
+                do 570 i=isz(j,l),iez(j,l)
+                  cfn(i,j) = cfn(i,j)+(hr(i,j  )-hr(i-1,j  ))*sine(j  )
+     $                        *fx*dxr
+                  cfs(i,j) = cfs(i,j)-(hr(i,j-1)-hr(i-1,j-1))*sine(j-1)
+     $                        *fx*dxr
+                  cfe(i,j) = cfe(i,j)-(hr(i  ,j)*sine(j)-hr(i  ,j-1)*
+     $                        sine(j-1))*fx*dxr
+                  cfw(i,j) = cfw(i,j)+(hr(i-1,j)*sine(j)-hr(i-1,j-1)*
+     $                        sine(j-1))*fx*dxr
+570            continue
+              endif
+c
 c             normalize coefficients
 c
               do 580 i=isz(j,l),iez(j,l)
@@ -1550,6 +1423,7 @@ c
 c
 c       modify coefficients to include island perimeter points
 c
+        if(nisle.eq.0)goto 710
         do 700 isle=1,nisle
           cofis(isle) = c0
           do 690 n=1,nippts(isle)
@@ -1558,8 +1432,7 @@ c
             fxa = c2*cstr(j)*cstr(j)
             fxb = c2*csu(j  )*dyr*dyr*cstr(j)
             fxc = c2*csu(j-1)*dyr*dyr*cstr(j)
-            fxd = c0
-c           fxd = -c2dtsf*acor*cstr(j)*dyr*omega
+            fxd = -c2dtsf*acor*cstr(j)*dyr*omega
             if(hr(i-1,j  ) .ne. c0 .or. hr(i  ,j  ) .ne. c0)
      &        cfn(i,j) = fxb/(h(i-1,j)+h(i,j))
             if(hr(i-1,j-1) .ne. c0 .or. hr(i  ,j-1) .ne. c0)
@@ -1571,6 +1444,18 @@ c           fxd = -c2dtsf*acor*cstr(j)*dyr*omega
 c
             cpf(i,j) = c1/(cfn(i,j)+cfs(i,j)+cfe(i,j)+cfw(i,j))
 c
+            if(hr(i-1,j  ) .ne. c0 .or. hr(i  ,j  ) .ne. c0)
+     $        cfn(i,j) = cfn(i,j)
+     $        +fxd*dxr*(hr(i,j)-hr(i-1,j))*sine(j)
+            if(hr(i-1,j-1) .ne. c0 .or. hr(i  ,j-1) .ne. c0)
+     $        cfs(i,j) = cfs(i,j)
+     $        -fxd*dxr*(hr(i,j-1)-hr(i-1,j-1))*sine(j-1)
+            if(hr(i  ,j  ) .ne. c0 .or. hr(i  ,j-1) .ne. c0)
+     $        cfe(i,j) = cfe(i,j)
+     $        -fxd*dxr*(hr(i,j)*sine(j)-hr(i,j-1)*sine(j-1))
+            if(hr(i-1,j  ) .ne. c0 .or. hr(i-1,j-1) .ne. c0)
+     $        cfw(i,j) = cfw(i,j)
+     $        +fxd*dxr*(hr(i-1,j)*sine(j)-hr(i-1,j-1)*sine(j-1))
             cfn(i,j) = cfn(i,j)*cpf(i,j)
             cfs(i,j) = cfs(i,j)*cpf(i,j)
             cfe(i,j) = cfe(i,j)*cpf(i,j)
@@ -1580,6 +1465,7 @@ c
 690       continue
           cofis(isle) = c1/cofis(isle)
 700     continue
+710     continue
       endif
 c
 c------------------------------------------------------------------
@@ -1781,6 +1667,8 @@ c     (potential temperature and salinity)
 c------------------------------------------------------------------
 c
       call bcest(stf,smf, ic, jc)
+c  convert salinity to model units.
+      stf(2) = (stf(2)-35.0)*0.001
 c
 c------------------------------------------------------------------
 c     set no flux condition for tracer at  bottom.
@@ -1789,11 +1677,7 @@ c------------------------------------------------------------------
 c
       gamma = secday/50.0
       do 100 m=1,nt
-c!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-c  DEBUG !! set flux to zero
-c !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        stf(m)=c0
-c        stf(m) = gamma*(stf(m)-t(1,ic,jc,m,nm))*dz(1)
+        stf(m) = gamma*(stf(m)-t(1,ic,jc,m,nm))*dz(1)
         btf(m) = c0
 100   continue
 c
@@ -1990,26 +1874,8 @@ c
       vbar   =  (diag1-diag2)*dx2r*hr(i,j)*csur(j)
 c  add to baroclinic velocity
       do 100 k=1,kmu(i,j)
-      q1temp=u(k,i,j,np)
-      q2temp=v(k,i,j,np)
       u(k,i,j,np) = u(k,i,j,np)+ubar
       v(k,i,j,np) = v(k,i,j,np)+vbar
-#ifdef debugprint
-c!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-c  DEBEG
-c!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      if(i.eq.60.and.j.eq.20.and.k.lt.4)then
-      print *
-      print *,' subroutine addv after adding ubar. k=',k
-      print 7,' u(k,60,20,np),v(k,60,20,np) old =',
-     &          q1temp,q2temp
-      print 7,' ubar,vbar                       =',ubar,vbar
-      print 7,' u(k,60,20,np),v(k,60,20,np) new =',
-     &          u(k,60,20,np),v(k,60,20,np)
-   7  format(a,1p8e16.6)
-      endif
-c!!END DEBUG!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#endif
  100  continue
 c
       return
@@ -2058,26 +1924,9 @@ c  calculate external mode velocities
       sfv(i,j) =  (p(i+1,j,nc)-p(i,j,nc))*dxr*
      &                   min(hr(i,j),hr(i,j-1))*cstr(j)
 c  calculate  correction
-      q1temp = sfu(i,j)
-      q2temp = sfv(i,j)
       sfu(i,j) = sfu(i,j) - p5*(ubar+ubarw)
       sfv(i,j) = sfv(i,j) - p5*(vbar+vbars)
 c
-#ifdef debugprint
-c!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-c  DEBEG
-c!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      if(i.eq.60.and.j.eq.20)then
-      print *
-      print *,' subroutine "corv" after calculating sfu,sfv'
-      print 7,' ubar ,vbar    (60,20)     =',ubar,vbar
-      print 7,' ubarw,vbars               =',ubarw,vbars
-      print 7,' sfu(60,20),sfv(60,20) old =',q1temp,q2temp
-      print 7,' sfu(60,20),sfv(60,20) new =',sfu(60,20),sfv(60,20)
-   7  format(a,1p8e16.6)
-      endif
-c!!END DEBUG!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#endif
       return
       end
 
@@ -2099,24 +1948,48 @@ c
 c
 #include "scalar.h"
 #include "switch.h"
+#include "emode.h"
 #include "grdvar.h"
 #include "levind.h"
 #include "timelv.h"
 #include "slabs.h"
 c
 #include "cdiag.h"
-c
-c  DEBUG !!
-      data in/1/
+c ***************************************************************
+c  DEBUG
+c ***************************************************************
+      common /cdebug/eka(imt,jmt)
+c ***** end DEBUG ***********************************************
+
 c
       ku = kmu(ic,jc)
       kt = kmt(ic,jc)
+c**************************************************************
+c  DEBUG   
+c**************************************************************
+      eka(ic,jc)=0.0
+c**  end DEBUG  ***********************************************
       if(ku.ne.0)then
         boxa = dx*csu(jc)*dy
         do 100 k=1,ku 
         boxv  = boxa*dz(k)
         ektot = ektot + (u(k,ic,jc,nc)**2 + v(k,ic,jc,nc)**2)
      &                  *p5*boxv
+c**************************************************************
+c  DEBUG   
+c**************************************************************
+        eka(ic,jc) = eka(ic,jc) 
+     &                + (u(k,ic,jc,nc)**2 + v(k,ic,jc,nc)**2)
+     &                  *p5*dz(k)*hr(ic,jc)
+      if(ic.eq.73.and.jc.eq.27.and. .false.)then
+      if(k.eq.1)print *, 'eka calculation:',ic,jc
+      print *,u(k,ic,jc,nc),v(k,ic,jc,nc),dz(k),hr(ic,jc),
+     &    + (u(k,ic,jc,nc)**2 + v(k,ic,jc,nc)**2)
+     &                  *p5*dz(k)*hr(ic,jc),
+     &    + (u(k,ic,jc,nc)**2 + v(k,ic,jc,nc)**2)
+     &                  *p5*boxv
+      endif
+c**  end DEBUG  ***********************************************
  100    continue
       endif
 c
@@ -2135,20 +2008,6 @@ c
      &            + abs(t(k,ic,jc,m,np)-t(k,ic,jc,m,nm))*boxv
         tvar(m) = tvar(m)+(t(k,ic,jc,m,np)**2
      &                       -t(k,ic,jc,m,nm)**2)*boxv
-C  DEBUG !!!! test m.eq.1 or 2
-      if(m.eq.0.and.(t(k,ic,jc,m,np).ne.t(k,ic,jc,m,nm)))
-     &  then
-        in = in+1
-        print *
-        print *,'  diag k,ic,jc,m,np,nm=',k,ic,jc,m,np,nm
-        print *,'  t(k,ic,jc,m,np),t(k,ic,jc,m,nm), ',
-     &            't(k,ic,jc,m,np)-t(k,ic,jc,m,nm)'
-      print *,     t(k,ic,jc,m,np),t(k,ic,jc,m,nm),
-     &             t(k,ic,jc,m,np)-t(k,ic,jc,m,nm)
-      print *,'  tddt(2),dtabs(2),tvar(2)='
-      print *,tddt(2),dtabs(2),tvar(2)
-        if(in.gt.100)stop
-      endif
  500    continue
       endif
       return
@@ -2312,6 +2171,7 @@ c          temperature an salinity set to 0.0 and 35.0 at sea
 c                                      to -2.0 and 40.0 over land.
 c------------------------------------------------------------------
 c
+      sconst=0.0349
       do 200 n=1,3
       do 200 j=1,jmt
       do 200 i=1,imt
@@ -2320,11 +2180,11 @@ c
         v(k,i,j,n)=c0
         if(k.gt.kmt(i,j))then
           t(k,i,j,1,n)=-2.0
-          t(k,i,j,2,n)=40.0
+          t(k,i,j,2,n)=0.01
         else
-          t(k,i,j,1,n)= theta0 (yt(j), zt(k), cst(j))
-          t(k,i,j,2,n)= 34.9
-        endif
+          t(k,i,j,1,n)= theta0 (yt(j), zt(k))
+          t(k,i,j,2,n)= sconst-0.035
+      endif
 200   continue
 c
 c------------------------------------------------------------------
@@ -2971,7 +2831,7 @@ c
 c
       end
 
-      function theta0 (ydeg, depth, coslat)
+      function theta0 (ydeg, depth)
 c
 c==================================================================
 c     this subroutine returns estimates of global mean potential
@@ -3028,7 +2888,7 @@ c
       refcos = abs(cos(pi*reflat/180.))
       endif
 c
-c     coslat = abs(cos(pi*ydeg/180.))
+      coslat = abs(cos(pi*ydeg/180.))
       factor = coslat/refcos
       z = depth * 0.01
 c
@@ -3109,12 +2969,11 @@ c     5. set snapts if time to archive model
 c
 c------------------------------------------------------------------
 c
-      dtday = dt*secday
       last   = (totday .ge. days) 
-      diagts = tmnset (dgnstc, totday, dtday)
+      diagts = tmnset (dgnstc, totday, dt)
       mixts  = (mod(itt,nmix) .eq. 1) 
-      prntsi = tmnset (tsi, totday, dtday)
-      snapts = tmnset (snaps, totday, dtday) .and. .not. last
+      prntsi = tmnset (tsi, totday, dt)
+      snapts = tmnset (snaps, totday, dt) .and. .not. last
 c
       return
       end
@@ -3164,6 +3023,11 @@ c
 #include "emode.h"
 #include "timelv.h"
 #include "slabs.h"
+c****************************************************************
+c  DEBUG
+c****************************************************************
+      common /cdebug/ eka(imt,jmt)
+c****************************************************************
       dimension ptemp(imt,km)
       character*12 trname(nt)
 c
@@ -3204,6 +3068,7 @@ c
         fx = 1.0e-2
         do 680 m=1,nt
         scl = c1
+        if (m .eq. 2) scl=1.e-3
         do 710 k=1,km
         do 710 i=1,imt
  710    ptemp(i,k) = t(k,i,jj,m,nc)
@@ -3230,9 +3095,9 @@ c
       endif
 700   continue
 c
-c-----------------------------------------------------------------------
+c-----------------------------------------------------------------
 c       print the stream function
-c-----------------------------------------------------------------------
+c-----------------------------------------------------------------
 c
       scl=1.e12
       is = indp (slonxy, xt, imt)
@@ -3243,6 +3108,16 @@ c
      &, itt, xt(is), xt(ie), yt(js), yt(je), scl
       call matrix (p(1,1,np), imt, is, ie, -js, -je, scl)
 c
+c****************************************************************
+c  DEBUG
+c****************************************************************
+      if( .false.)then
+        scl=0.0
+        write (stdout,8000) ' ektot (cm/sec)**2'
+     &  , itt, xt(is), xt(ie), yt(js), yt(je), scl
+        call matrix (eka, imt, is, ie, -js, -je, scl)
+      endif
+c**  end DEBUG  *************************************************
       return
 c
 8000  format(1x,a27,1x,'ts=',i7
@@ -3339,7 +3214,6 @@ c  create archive file name
 c
       write (file,'(i10.10)')nint(totday)
       file = 'd'//file(7:10)//'.restart'
-      print *,'**file**',file,'*****'
       open(iorest, file=file, form='UNFORMATTED',
      &       access='SEQUENTIAL')
 c

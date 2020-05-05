@@ -1,4 +1,7 @@
 c====================== include file "crelax.h" ========================
+#ifdef hcomments
+c
+c     @(#) SCCS module: crelax.h, version 1.2
 c
 c     variables used in relaxation. see "stream.F" 
 c
@@ -10,4 +13,6 @@ c
 c     output:  (from stream)
 c       mscan   = actual number of scans taken
 c
+#endif
       common /crelax/  mxscan, crit, sor, mscan
+

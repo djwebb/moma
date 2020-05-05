@@ -1,4 +1,7 @@
 c====================== include file "switch.h" =========================
+#ifdef hcomments
+c
+c     @(#) SCCS module: switch.h, version 1.2
 c
 c     all time dependent decisions are made in time manager
 c     "tmngr.F" and communicated elsewhere in the model via 
@@ -11,7 +14,10 @@ c     init    = true if this run is starts from scratch
 c               false if restarting from an archived data set.
 c     nmix    = number of time steps between time step mixing
 c               to damp leap frog time splitting
-c     eb      = true implies euler backward mixing
+c     eb      = true implies euler backward mixing, false
+c               implies a forward timestep.
+c     acor    = (>0, 0) = (implicit, explicit) treatment of coriolis
+c               term
 c     tsi     = number of days between printing of time step info
 c     dgnstc  = number of days between diagnostic calculations:
 c     snaps   = number of days between saving an archive dataset
@@ -36,8 +42,10 @@ c     eots    = end of a time step. always true except for first
 c               pass of an euler backward time step
 c     mxpas2  = second pass of mixing timestep
 c
+#endif
       logical init, restrt, eb, first, last, mixts,
      &        eots, mxpas2, prntsi, diagts, snapts 
-      common /switch/ days, init, nmix, eb, tsi, dgnstc,  
+      common /switch/ days, init, nmix, eb, acor, tsi, dgnstc,  
      &        snaps, restrt, first, last, mixts, eots, mxpas2,
      &        prntsi, diagts, snapts 
+

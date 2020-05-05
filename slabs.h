@@ -1,4 +1,7 @@
 c====================== include file "slabs.h" =========================
+#ifdef hcomments
+c
+c     @(#) SCCS module: slabs.h, version 1.2
 c
 c     This defines the basic array storage scheme.  In the MOM
 c     model the data is stored on disk in slabs (hence the name).
@@ -23,12 +26,13 @@ c     (note: only the baroclinic component of the velocity is
 c      stored on the slab disks. in memory, the barotropic
 c      component is added on to give the full velocity)
 c
+#endif
        common /slabs/ t(km,imt,jmt,nt,3),
      &                u(km,imt,jmt,3), v(km,imt,jmt,3)
- 
+#ifdef hcomments
 c
 c  the working arrays are
- 
+c 
 c     uclin  = internal mode u (used for advective fluxes &
 c               diagnostics)
 c     vclin  = internal mode v 
@@ -56,6 +60,7 @@ c     restr  = term for restoring surface tracers to prescribed
 c              values via newtonain damping
 c     rests  = time scale for restoring surface tracers (days)
 c
+#endif
        common /work/
      &     dpdx(km),  dpdy(km),
      &     fue(km), fuw(km),   fvn(km),  fvs(km),
@@ -63,3 +68,4 @@ c
      &     fw(0:km),  fwb1(0:km), fwb2(0:km), temp (km),
      &     maskpo(km), maskmo(km), maskop(km), maskom(km),
      &     rhoo(km),   rhpo(km),   rhpp(km),   rhop(km)
+

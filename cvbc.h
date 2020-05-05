@@ -1,4 +1,7 @@
 c====================== include file "cvbc.h" ==========================
+#ifdef hcomments
+c
+c     @(#) SCCS module: cvbc.h, version 1.2
 c
 c     vertical boundary condition variables:
 c
@@ -13,4 +16,6 @@ c          2 => surface water flux (ppt/cm**2/sec)
 c     btf = bottom tracer flux (for consistency but normally zero!)
 c          1 => bottom heat flux   2 => bottom water flux
 c
+#endif
        common /cvbc/ smf(2),  bmf(2), stf(nt), btf(nt)
+

@@ -1,4 +1,7 @@
 c====================== include file "param.h" =========================
+#ifdef hcomments
+c
+c     @(#) SCCS module: param.h, version 1.2
 c
 c     main parameter file which sets ocean characteristics:
 c
@@ -11,6 +14,7 @@ c              segments
 c     nisle  = number of islands
 c     maxipp = max number of island perimeter points
 c
+#endif
       parameter (imt=92, jmt=36, km=15, nt=2, lseg=5, nisle=2,
      &           maxipp = 1000, imu=imt)
       parameter  (imtp1=imt+1, imtm1=imt-1, imtm2=imt-2, 
@@ -18,7 +22,9 @@ c
      &            jmtm1=jmt-1, jmtm2=jmt-2, 
      &            istart=2, iend=imtm1, jscan=jmtm2,
      &            kmp1=km+1, kmp2=km+2, kmm1=km-1)
+#ifdef hcomments
 c
 c     add parameter constants
 c
+#endif
 #include "pconst.h"

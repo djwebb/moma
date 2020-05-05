@@ -1,4 +1,7 @@
 c====================== include file "ctmngr.h" ========================
+#ifdef hcomments
+c
+c     @(#) SCCS module: ctmngr.h, version 1.2
 c
 c     time manager clock parameters 
 c
@@ -8,6 +11,8 @@ c     totsec  = accumulated time in days
 c     years   = accumulated time in years
 c     stamp   = date & time stamp corresponding to itt
 c
+#endif
       character*32 stamp
       common /ctmngr/ itt, totsec, totday, years
       common /ctmngc/ stamp
+

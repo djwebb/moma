@@ -1,4 +1,7 @@
 c====================== include file "grdvar.h" =========================
+#ifdef hcomments
+c
+c     @(#) SCCS module: grdvar.h, version 1.2
 c
 c  This version assumes all dx and dy boxes are of equal size when
 c  measured in degrees.  Variables dxt, dxu etc replaced by dx, 
@@ -38,9 +41,11 @@ c     dzwur(k)= upper diffusion grid factor = 1.0/(dz(k)*dzw(k))
 c     dzwlr(k)= lower diffusion grid factor = 1.0/(dz(k+1)*dzw(k))
 c     tanra(j)= tan(j)/radius on the "u,v" grid
 c
+#endif
       common /grdvar/ dx, dxr, dx2r, dx4r, dy, dyr, dy2r, dy4r,
      &                csu(jmt),  csur(jmt),  cst(jmt),   cstr(jmt),
      &                phi(jmt),  phit(jmt),  sine(jmt),  tng(jmt),
      &                fcor(jmt), tanra(jmt),
      &                dz(km),    dzr(km),    dz2r(km),   c2dz(km), 
      &                dzw(0:km), dzwr(0:km), dzw2r(0:km)
+
