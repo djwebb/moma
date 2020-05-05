@@ -1,7 +1,7 @@
 c====================== include file "versno.h" ========================
 #ifdef hcomments
 c
-c     @(#) SCCS module: versno.h, version 1.5
+c     @(#) SCCS module: versno.h, version 1.6
 c
 #endif
       character*80 model(2)

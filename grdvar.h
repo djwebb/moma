@@ -1,7 +1,7 @@
 c====================== include file "grdvar.h" =========================
 #ifdef hcomments
 c
-c     @(#) SCCS module: grdvar.h, version 1.5
+c     @(#) SCCS module: grdvar.h, version 1.6
 c
 c  This version assumes all dx and dy boxes are of equal size when
 c  measured in degrees.  Variables dxt, dxu etc replaced by dx, 

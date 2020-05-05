@@ -1,48 +1,84 @@
       program moma
 c
 c==================================================================
-c  MOM's Apple pie.     Version 1.5
+c  Program MOMA,     Version 1.6
 c
-c            - Stripped down(!) version of the MOM (Bryan-Cox-
-c              -Semtner) ocean model rewritten for use on an
-c              Array Processor.
-c            - D J Webb, IOS.
-c            - Free Surface Version - 15 February 1992
+c  Free surface ocean model for use with array processors.
 c
-c  This version solves the depth integrated equation
-c  using a free surface barotropic model.  This replaces
-c  the stream function method used in the standard model.
-c
+c  Copyright 1993.  D.J. Webb.  
+c                   Institute of Oceanographic Sciences,
+c                   Godalming, Surrey GU8 5UB, U.K..
+c  
 c @(#) SCCS information - module:  moma.F     
-c @(#)                    version: 1.5    date: 02/15/93
+c @(#)                    version: 1.6    date: 02/24/93
 c
-c  The main differences from version 1.4 are:
-c  1.  Free surface code added.  Stream function code removed.
-c      The free surface code is similar to Killworth, Stainforth
-c      Webb and Patterson (1989), except that for efficiency mean
-c      velocity is used as a variable instead of transport.
-c  2.  In the baroclinic momentum equation, a revised horizontal
-c      advection scheme is used.
-c  3.  Near topography, in the baroclinic momentum equation, a revised
-c      vertical advection scheme is used.
 c
-c  The main differences from the base moma code are:
-c  1.  Revised common block structures.
-c  2.  Collection of all 'array processor' loops (i.e. loops over the
+c  This code is a free surface version of the Bryan-Cox-Semtner
+c  code reorganised for efficient running on array processor
+c  computers.  The basic finite difference scheme used in the
+c  model is described in Bryan (1969), Semtner (1974) and
+c  Cox (1984).  The present model follows most closely
+c  the format of the GFDL Modular Ocean Model (ref)
+c  and makes use of many of the subroutines and include
+c  files of that model.
+c
+c  The code may be freely adapted and used without charge.
+c
+c  For further information on the model contact the author.
+c  e-mail:   djw@unixa.nerc-wormley.ac.uk
+c  telemail: ios.wormley
+c
+c  
+c  The main differences from the modular ocean model code code are:
+c
+c  1.  Collection of all 'array processor' loops (i.e. loops over the
 c      horizontal indices ic and jc) in subroutine step.  When an array
 c      processor is used, code should be added to this subroutine to 
 c      partition the horizontal index (ic, jc) ranges between the
 c      different processors so that they each have a similar workload.
+c  2.  Revised common block structures.  All variables are stored
+c      in core.
 c  3.  Removal of all 'slab' optimisation code in the program and
 c      the introduction of code designed to optimise inner loop 
 c      calculations using the vertical index k.
 c  4.  To simplify the development and testing of the array processor
-c      code the following features of the moma code were removed.  It
-c      should now be straightforward (but possibly time consuming) to
-c      add the features back into the present code if they are 
-c      required:
+c      code the following features of the moma code were removed:
 c        (a) Diagnostic calculations in routines clinic and tracer.
 c        (b) Moma code options.
+c      It should now be straightforward (but possibly time consuming)
+c      to add the features back into the present code if they are 
+c      required:
+c   5. The stream function code is removed and replaced by a free-
+c      surface code.  The latter is similar to Killworth, Stainforth
+c      Webb and Patterson (1989).  For efficiency, the mean horizontal
+c      velocity is now used instead of horizontal transport and
+c      the viscous terms are calculated in routine clinic.
+c  2.  In the baroclinic momentum equation, a revised horizontal
+c      advection scheme option is included.
+c  3.  Near topography, in the baroclinic momentum equation, a revised
+c      vertical advection scheme option is included.
+c
+c  References:
+c
+c  Bryan, K., 1969:  A numerical method for the circulation of the
+c  World Ocean.  Journal of Computational Physics, 4, 347-  .
+c
+c  Semtner, A.J., 1974:  A general circulation model for the 
+c  World Ocean.  UCLA Department of meteorology Technical Report
+c  No. 8, 99pp.
+c
+c  Cox, M.D., 1984:  A primitive equation, 3-dimensional model of
+c  the ocean.  GFDL Ocean Technical Report No.1, Geophysical
+c  Fluid Dynamics Laboratory/NOAA, Princeton University, 
+c  Princeton N.J., U.S.A..
+c
+c
+c
+c  Killworth, P.D., Stainforth, D., Webb, D.J. and Paterson, P.M.,
+c  1989:  A free surface Bryan-Cox-Semtner model.  Institute of
+c  Oceanographic Sciences, Report No. 270.
+c
+c  
 c
 c==================================================================
 c
@@ -66,24 +102,36 @@ c
 #include "versno.h"
 c***************************************************************
       dimension utime(3)
+c
+c  DEBUG !! ****************************************************
+c
+      logical logbt, loguv, logts, lptbt, lptuv, lptts, lptin,
+     &         loldah, loldav
+      common /cdebug/ logbt, loguv, logts, lptbt, lptuv, lptts,
+     &         lptin, loldah, loldav
+      namelist /ndebug/ logbt, loguv, logts, lptbt, lptuv, lptts,
+     &         lptin, loldah, loldav
+c
 c     external myhandler
 c***************************************************************
 c
       namelist /eddy/   am, ah, fkpm, fkph, cdbot
       namelist /tsteps/ dtts, dtuv, dtbt
       namelist /contrl/ init, fnrest, days, restrt, nmix, eb, ncon, 
-     &                  tsi,  dgnstc, snaps
+     &                  tsi,  dgnstc, snaps, acor
 c
 c  start timing
 c 
       call dtime(utime)
       utime(3)=0.0
 c
+c      ieer = ieee_handler('set','common',myhandler)
+c
 c     constants usually initialised in block data
 c
       model(1) =' Stripped down MOM code for array processor.'
       model(2) ='  Module: moma.F.  Version: 1.5.'//
-     &          '  Date: 02/15/93.'
+     &          '  Date: 2/15/93.'
       stlon = -4.0
       stlat = -72.0
       dxdeg = 4.0
@@ -124,6 +172,7 @@ c
       fkpm  = 1.0
       cdbot = 0.0
       eb    = .true.
+      acor  = 0.6
       nmix  = 16
       ncon  = 1
 c
@@ -152,6 +201,21 @@ c
       write (stdout,eddy)
       read  (stdin, tsteps)
       write (stdout,tsteps)
+c
+c  DEBUG !! ****************************************************
+c
+      logbt = .true.
+      loguv = .true.
+      logts = .true.
+      lptbt = .true.
+      lptuv = .true.
+      lptts = .true.
+      lptin = .true.
+      loldah = .true.
+      loldav = .true.
+      read(stdin, ndebug)
+      write(stdout, ndebug)
+c end DEBUG ****************************************************
       close (unit=stdin,status='keep')
 c
 c------------------------------------------------------------------
@@ -242,7 +306,10 @@ c------------------------------------------------------------------
 c       print map of "kmt" levels. 
 c------------------------------------------------------------------
 c
-      if (init) then
+c
+c  DEBUG !!  *******************************************
+c
+      if (init.and.lptin) then
       write (stdout,9402)
       do 1300 ibk=1,imt,40
       isp  = ibk
@@ -366,6 +433,8 @@ c
      &        ' dtemp=',1pe13.6,' dsalt=',1pe13.6,' times=',2f10.2)
 9603  format(1x,' ==> END of model run.',//)
       end
+
+
       subroutine step 
 c
 c==================================================================
@@ -386,6 +455,17 @@ c
 c
 #include "cdiag.h"
 c
+c
+c  DEBUG !! ****************************************************
+c
+#include "grdvar.h"
+#include "ctmngr.h"
+      logical logbt, loguv, logts, lptbt, lptuv, lptts, lptin,
+     &         loldah, loldav
+      common /cdebug/ logbt, loguv, logts, lptbt, lptuv, lptts,
+     &         lptin, loldah, loldav
+c end DEBUG ****************************************************
+c
 c------------------------------------------------------------------
 c    update pointers for new value of itt.  
 c    nnp, nnc and nnm are not changed during a timestep
@@ -393,6 +473,17 @@ c    np, nc, nm may be modified during a forward or euler backward
 c    timestep.
 c------------------------------------------------------------------
 c
+c****************************************************************
+c  DEBUG
+c****************************************************************
+      if(.false.)then
+      print *
+      print 921,'step0  itt,lt,nm,nc,np,nm0,nc0,np0   =',
+     &                  itt,lt,nm,nc,np,nm0,nc0,np0
+      print *,'mixts,eb,totsec=',mixts,eb,totsec
+c      call idebug('step2',0,0,0,0)
+      endif
+c** end DEBUG ***************************************************
       nnc = np
       nnm = nc
       nnp = nm
@@ -423,6 +514,14 @@ c       return here for second pass of euler backward timestep
 c------------------------------------------------------------------
 c
  100  continue
+c****************************************************************
+c  DEBUG
+c****************************************************************
+      if(.false.)then
+      print 921,'step1  itt,lt,nm,nc,np,nm0,nc0,np0   =',
+     &                  itt,lt,nm,nc,np,nm0,nc0,np0
+      endif
+c** end DEBUG ***************************************************
 c
 c-----------------------------------------------------------------
 c      main baroclinic timestep loop over grid cells, from south 
@@ -459,8 +558,9 @@ c****************************************************************
 c  DEBUG
 c****************************************************************
       if(.false.)then
-      print *,'step.  itt,lt,nm,nc,np,nm0,nc0,np0=',
-     &                itt,lt,nm,nc,np,nm0,nc0,np0 
+      print 921,'step.  itt,lt,nm,nc,np,nm0,nc0,np0   =',
+     &                  itt,lt,nm,nc,np,nm0,nc0,np0 
+ 921  format(1x,a,9i5)
       call idebug('step2',0,0,0,0)
       endif
 c** end DEBUG ***************************************************
@@ -476,8 +576,14 @@ c      main free surface model loop to carry out a
 c      partial timestep for each model point
 c-----------------------------------------------------------------
 c
-c     print *, 'frees. itt,lt,lb,nm,nc,np,nm0,nc0,np0=',
-c     &                 itt,lt,lb,nm,nc,np,nm0,nc0,np0
+c****************************************************************
+c  DEBUG
+c****************************************************************
+      if(.false.)then
+      print 921, 'frees. itt,lt,nm,nc,np,nm0,nc0,np0,lb=',
+     &                   itt,lt,nm,nc,np,nm0,nc0,np0,lb
+      endif
+c** end DEBUG ***************************************************
           do 300 jc=2,jmtm1
           do 300 ic=2,imtm1
             call frees(ic,jc)
@@ -509,8 +615,8 @@ c****************************************************************
 c  DEBUG
 c****************************************************************
       if(.false.)then
-      print *,'step.  h0,u0,v0(3,3,np0)=',
-     &                h0(3,3,np0),u0(3,3,np0),v0(3,3,np0)  
+      print *,'step. lt,h0,u0,v0(47,4,np0)=',
+     &             lt,h0(47,4,np0),u0(47,4,np0),v0(47,4,np0)  
       endif
 c** end DEBUG ***************************************************
  500      continue
@@ -543,6 +649,140 @@ c
           t(k,  1,jc,n,np) = t(k,imtm1,jc,n,np)
           t(k,imt,jc,n,np) = t(k,    2,jc,n,np)
  800  continue
+c
+c  DEBUG !! ****************************************************
+c  test d/dt(curl v) = curl(force)
+c
+      if(.true. .and. logbt.and.lptbt.and..not.loguv)then
+c  print velocities
+      do 810 jc=4,6
+      do 810 ic=47,49
+      print 811,ic,jc,u(1,ic,jc,np),u(1,ic-1,jc,np),
+     &                u(1,ic,jc-1,np),u(1,ic-1,jc-1,np)
+      print 811,ic,jc,v(1,ic,jc,np),v(1,ic-1,jc,np),
+     &                v(1,ic,jc-1,np),v(1,ic-1,jc-1,np)
+      print 811,ic,jc,u(1,ic,jc,nm),u(1,ic-1,jc,nm),
+     &                u(1,ic,jc-1,nm),u(1,ic-1,jc-1,nm)
+      print 811,ic,jc,v(1,ic,jc,nm),v(1,ic-1,jc,nm),
+     &                v(1,ic,jc-1,nm),v(1,ic-1,jc-1,nm)
+ 810  continue
+ 811  format(1x,2i3,1p6e16.6)
+ 812  format(3a)
+c
+      if(.false.)then
+      print *,'test force'
+      print 812,'  ic jc     d/dt            force+      ',
+     &                '    corio           force       ',
+     &                '    grad p          v(1,ic,jc,np) '
+      do 815 jc=4,6
+      do 815 ic=47,49
+        fxa = grav*dx2r*csur(jc)
+        fxb = grav*dy2r
+        temp1 = h0(ic+1,jc+1,nc0) - h0(ic,jc,nc0)
+        temp2 = h0(ic,jc+1,nc0) - h0(ic+1,jc,nc0)
+        dpdxx  = (temp1-temp2)*fxa
+        dpdyy  = (temp1+temp2)*fxb
+      ucor = fcor(jc)*0.5*(v(1,ic,jc,np)+v(1,ic,jc,nc))
+      vcor =-fcor(jc)*0.5*(u(1,ic,jc,np)+u(1,ic,jc,nc))
+      dudt = (u(1,ic,jc,np)-u(1,ic,jc,nc))/dtuv
+      dvdt = (v(1,ic,jc,np)-v(1,ic,jc,nc))/dtuv
+      zuu  = zu(ic,jc)+ucor-dpdxx
+      zvv  = zv(ic,jc)+vcor-dpdyy
+      print 811, ic,jc,dudt,zuu,ucor,zu(ic,jc),-dpdxx,u(1,ic,jc,np) 
+      print 811, ic,jc,dvdt,zvv,vcor,zv(ic,jc),-dpdyy,v(1,ic,jc,np)
+ 815  continue 
+c
+      print *,' test curl'
+c
+c  point ++
+c
+      do 821 jc=4,6
+      do 821 ic=47,49
+        fxa = grav*dx2r*csur(jc)
+        fxb = grav*dy2r
+        temp1 = h0(ic+1,jc+1,nc0) - h0(ic,jc,nc0)
+        temp2 = h0(ic,jc+1,nc0) - h0(ic+1,jc,nc0)
+      dpdx1  = (temp1-temp2)*fxa
+      dpdy1  = (temp1+temp2)*fxb
+      ucor1 = fcor(jc)*0.5*(v(1,ic,jc,np)+v(1,ic,jc,nc))
+      vcor1 =-fcor(jc)*0.5*(u(1,ic,jc,np)+u(1,ic,jc,nc))
+      dudt1 = (u(1,ic,jc,np)-u(1,ic,jc,nc))/dtuv
+      dvdt1 = (v(1,ic,jc,np)-v(1,ic,jc,nc))/dtuv
+      zu1   = zu(ic,jc)
+      zv1   = zv(ic,jc)
+      zuu1  = zu1+ucor1-dpdx1
+      zvv1  = zv1+vcor1-dpdy1
+c  point +-
+        fxa = grav*dx2r*csur(jc)
+        fxb = grav*dy2r
+        temp1 = h0(ic,jc+1,nc0) - h0(ic-1,jc,nc0)
+        temp2 = h0(ic-1,jc+1,nc0) - h0(ic,jc,nc0)
+      dpdx2  = (temp1-temp2)*fxa
+      dpdy2  = (temp1+temp2)*fxb
+      ucor2 = fcor(jc)*0.5*(v(1,ic-1,jc,np)+v(1,ic-1,jc,nc))
+      vcor2 =-fcor(jc)*0.5*(u(1,ic-1,jc,np)+u(1,ic-1,jc,nc))
+      dudt2 = (u(1,ic-1,jc,np)-u(1,ic-1,jc,nc))/dtuv
+      dvdt2 = (v(1,ic-1,jc,np)-v(1,ic-1,jc,nc))/dtuv
+      zu2   = zu(ic-1,jc)
+      zv2   = zv(ic-1,jc)
+      zuu2  = zu2+ucor2-dpdx2
+      zvv2  = zv2+vcor2-dpdy2
+c  point --
+        fxa = grav*dx2r*csur(jc-1)
+        fxb = grav*dy2r
+        temp1 = h0(ic,jc,nc0) - h0(ic-1,jc-1,nc0)
+        temp2 = h0(ic-1,jc,nc0) - h0(ic,jc-1,nc0)
+      dpdx3  = (temp1-temp2)*fxa
+      dpdy3  = (temp1+temp2)*fxb
+      ucor3 = fcor(jc-1)*0.5*(v(1,ic-1,jc-1,np)+v(1,ic-1,jc-1,nc))
+      vcor3 =-fcor(jc-1)*0.5*(u(1,ic-1,jc-1,np)+u(1,ic-1,jc-1,nc))
+      dudt3 = (u(1,ic-1,jc-1,np)-u(1,ic-1,jc-1,nc))/dtuv
+      dvdt3 = (v(1,ic-1,jc-1,np)-v(1,ic-1,jc-1,nc))/dtuv
+      zu3   = zu(ic-1,jc-1)
+      zv3   = zv(ic-1,jc-1)
+      zuu3  = zu3+ucor3-dpdx3
+      zvv3  = zv3+vcor3-dpdy3
+c  point -+
+        fxa = grav*dx2r*csur(jc-1)
+        fxb = grav*dy2r
+        temp1 = h0(ic+1,jc,nc0) - h0(ic,jc-1,nc0)
+        temp2 = h0(ic,jc,nc0) - h0(ic+1,jc-1,nc0)
+      dpdx4  = (temp1-temp2)*fxa
+      dpdy4  = (temp1+temp2)*fxb
+      ucor4 = fcor(jc-1)*0.5*(v(1,ic,jc-1,np)+v(1,ic,jc-1,nc))
+      vcor4 =-fcor(jc-1)*0.5*(u(1,ic,jc-1,np)+u(1,ic,jc-1,nc))
+      dudt4 = (u(1,ic,jc-1,np)-u(1,ic,jc-1,nc))/dtuv
+      dvdt4 = (v(1,ic,jc-1,np)-v(1,ic,jc-1,nc))/dtuv
+      zu4   = zu(ic,jc-1)
+      zv4   = zv(ic,jc-1)
+      zuu4  = zu4+ucor4-dpdx4
+      zvv4  = zv4+vcor4-dpdy4
+c calculate curls
+      curldt = ((dvdt1 + dvdt4 - dvdt2 - dvdt3)*dy
+     &        -((dudt1 + dudt2)*dx*csu(jc  )
+     &         -(dudt4 + dudt3)*dx*csu(jc-1))
+     &              )*dx2r*dyr*cstr(jc)
+      curlzuu = ((zvv1 + zvv4 - zvv2 - zvv3)*dy
+     &        -((zuu1 + zuu2)*dx*csu(jc  )
+     &         -(zuu4 + zuu3)*dx*csu(jc-1))
+     &              )*dx2r*dyr*cstr(jc)
+      curlzu = ((zv1 + zv4 - zv2 - zv3)*dy
+     &        -((zu1 + zu2)*dx*csu(jc  )
+     &         -(zu4 + zu3)*dx*csu(jc-1))
+     &              )*dx2r*dyr*cstr(jc)
+      curlcor = ((vcor1 + vcor4 - vcor2 - vcor3)*dy
+     &        -((ucor1 + ucor2)*dx*csu(jc  )
+     &         -(ucor4 + ucor3)*dx*csu(jc-1))
+     &              )*dx2r*dyr*cstr(jc)
+      curlmp  =-((dpdy1 + dpdy4 - dpdy2 - dpdy3)*dy
+     &        -((dpdx1 + dpdx2)*dx*csu(jc  )
+     &         -(dpdx4 + dpdx3)*dx*csu(jc-1))
+     &              )*dx2r*dyr*cstr(jc)
+      print 811,ic,jc,curldt,curlzuu,curlzu,curlcor,curlmp
+ 821  continue
+      endif
+      endif
+c  end debug
 c
 c-----------------------------------------------------------------
 c     if this is the end of the first pass of an euler backward
@@ -600,9 +840,19 @@ c
         nm = nnm
       endif
 c
+c****************************************************************
+c  DEBUG
+c****************************************************************
+      if(.false.)then
+      print 921,'step9  itt,lt,nm,nc,np,nm0,nc0,np0   =',
+     &                  itt,lt,nm,nc,np,nm0,nc0,np0
+      call idebug('step2',0,0,0,0)
+      endif
+c** end DEBUG ***************************************************
       return
       end
  
+
       subroutine clinic(ic,jc)
 c
 c==================================================================
@@ -629,6 +879,14 @@ c
 #include "cvbc.h"
 #include "cvmix.h"
 c
+c
+c  DEBUG !! ****************************************************
+c
+      logical logbt, loguv, logts, lptbt, lptuv, lptts, lptin,
+     &         loldah, loldav
+      common /cdebug/ logbt, loguv, logts, lptbt, lptuv, lptts,
+     &         lptin, loldah, loldav
+c end DEBUG ****************************************************
 c  DEBUG !! *************************************************
 #include "ctmngr.h"
       data ierr/0/
@@ -640,7 +898,11 @@ c ***********************************************************
       jm = jc-1
       ip = ic+1
       im = ic-1
-      kmd  = max(kmu(ip,jc),kmu(im,jc),kmu(ic,jp),kmu(ic,jm))
+c
+c  NOTE !! for new advection scheme this should be the max
+c  of all the neighbouring points.
+c
+      kmd  = max(kmu(ip,jc),kmu(im,jc),kmu(ic,jp),kmu(ic,jm),kmc)
       boxa = dx*csu(jc)*dy
       boxar = c1/boxa
 c
@@ -651,10 +913,18 @@ c
       dxp5 = p5*dx
       dyp5 = p5*dy
       do 100 k=1,kmd
-c      fvn(k) = (v(k,ic,jc,nc)+v(k,ic,jp,nc))*p5*dx*cst(jp)*dz(k)
-c      fvs(k) = (v(k,ic,jc,nc)+v(k,ic,jm,nc))*p5*dx*cst(jc)*dz(k)
-c      fue(k) = (u(k,ic,jc,nc)+u(k,ip,jc,nc))*p5*dy*dz(k)
-c      fuw(k) = (u(k,ic,jc,nc)+u(k,im,jc,nc))*p5*dy*dz(k)
+c
+c  DEBUG !! ****************************************************
+c
+      if(loldah)then
+
+      fvn(k) = (v(k,ic,jc,nc)+v(k,ic,jp,nc))*p5*dx*cst(jp)*dz(k)
+      fvs(k) = (v(k,ic,jc,nc)+v(k,ic,jm,nc))*p5*dx*cst(jc)*dz(k)
+      fue(k) = (u(k,ic,jc,nc)+u(k,ip,jc,nc))*p5*dy*dz(k)
+      fuw(k) = (u(k,ic,jc,nc)+u(k,im,jc,nc))*p5*dy*dz(k)
+
+      else
+
       fvjc   = csu(jc)*
      &         (v(k,im,jc,nc)+2.0*v(k,ic,jc,nc)+v(k,ip,jc,nc))
       fuic   = (u(k,ic,jp,nc)+2.0*u(k,ic,jc,nc)+u(k,ic,jm,nc))
@@ -668,27 +938,76 @@ c
      &         (u(k,ip,jp,nc)+2.0*u(k,ip,jc,nc)+u(k,ip,jm,nc)))
       fuw(k) = dz(k)*dy*p125*( fuic +
      &         (u(k,im,jp,nc)+2.0*u(k,im,jc,nc)+u(k,im,jm,nc)))
-      fw(k)  = (fuw(k)-fue(k)+fvs(k)-fvn(k))
+
+      endif
+
+      if(loldaw)then
+      fw(k)  = (fue(k)-fuw(k)+fvn(k)-fvs(k))
+      else
+      fw(k-1)  = (fuw(k)-fue(k)+fvs(k)-fvn(k))
+      endif
+c end DEBUG ****************************************************
  100  continue
+      
+c
+c  DEBUG !! ****************************************************
+c  old vertical advection
+      if(loldaw)then
+      fw(0) = c0
+      do 179 k=1,kmc-1
+      fw(k)=fw(k)+fw(k-1)
+ 179  continue
+      fw(kmc)=c0
+      else
 c
 c=============================================================
 c    integrate up from the bottom level
 c=============================================================
 c
-      do 200 k=kmc,kmd,-1
-      fw(k)=c0
- 200  continue
-      do 210 k=kmd-1,0,-1
-      fw(k)=fw(k)+fw(k+1)
+      fw(kmd)=c0
+      do 210 k=kmd,1,-1
+      fw(k-1)=fw(k-1)+fw(k)
  210  continue
+      endif
+c end DEBUG ****************************************************
+c
+c DEBUG  !! **********************************************
+c
+      if(lptuv.and.ic.eq.47.and.jc.eq.4)then
+        print *
+        print *,' clinic at entry'
+        print *,' u(*,ic,jc,nc)='
+        print *,(u(k,ic,jc,nc),k=1,km)
+        print *,' u(*,ic,jc,nm)='
+        print *,(u(k,ic,jc,nm),k=1,km)
+        print *,' v(*,ic,jc,nc)='
+        print *,(v(k,ic,jc,nc),k=1,km)
+        print *,' v(*,ic,jc,nm)='
+        print *,(v(k,ic,jc,nm),k=1,km)
+        print *,'c0,v(1,ic,jc,nc),v(1,ic,jp,nc)',
+     &           c0,v(1,ic,jc,nc),v(1,ic,jp,nc)
+        print *,' p5,dx,cst(jp),dz(1)',
+     &            p5,dx,cst(jp),dz(1)
+        print *,' fvn='
+        print *,fvn
+        print *,' fvs='
+        print *,fvs
+        print *,' fue='
+        print *,fue
+        print *,' fuw='
+        print *,fuw
+        print *,' fw='
+        print *,fw
+      endif
+c  end DEBUG *********************************************
 c
 c  DEBUG !! *************************************************
 c  calculate vertical velocity and print if CLF criteria is
 c  breached
       do 220 k=kmc,0,-1
-      wvel=fw(k)*boxar
-      cfl =abs(dzw(k)/(wvel*dtuv))
-      if(cfl.lt.2.0)then
+      wvel=fw(k)*boxar   
+      cfl =abs((wvel*dtuv)/dzw(k))
+      if(cfl.gt.0.5)then
         print 221,itt,ic,jc,k,wvel,cfl,fw(k),dtuv
  221  format(' clinic.  cfl error.  itt,ic,jc,k,wvel,cfl,fw(k),',
      &       'dtuv=',4i5,1p4e16.6)
@@ -847,6 +1166,17 @@ c  y diffusion
 c  z diffusion
      & + vmf(k  ,2) - vmf(k-1,2) )*boxar*dzr(k)
 c
+c DEBUG  !! **********************************************
+c
+      if(lptuv.and.ic.eq.47.and.jc.eq.4.and.k.le.2)then
+      print *
+      print *,' clinic.  ic,jc,k,np,nc,nm=',ic,jc,k,np,nc,nm
+      print *,' forcing=',vcor+vrest
+      print *,' fwb2(k),fwb2(k-1),vmf(k,2),vmf(k-1,2)=',
+     &          fwb2(k),fwb2(k-1),vmf(k,2),vmf(k-1,2)
+      endif
+c  end DEBUG **********************************************
+c
 c***************************************************************
 c  the corrections to the advection and diffusion terms that
 c  allow for the curvature of the grid near the poles have been
@@ -863,6 +1193,14 @@ c
       zv(ic,jc) = zv(ic,jc) + vrest*fx
       u(k,ic,jc,np) = ucor + urest
       v(k,ic,jc,np) = vcor + vrest
+c
+c  DEBUG !! ****************************************************
+c  do not change baroclinic fields
+      if(loguv.eq..false.)then
+      u(k,ic,jc,np) = 0.
+      v(k,ic,jc,np) = 0.
+      endif
+c end DEBUG ****************************************************
  600  continue
 c
 c-----------------------------------------------------------------
@@ -871,6 +1209,14 @@ c-----------------------------------------------------------------
 c
       zu(ic,jc) = zu(ic,jc)*hr(ic,jc)
       zv(ic,jc) = zv(ic,jc)*hr(ic,jc)
+c
+c  DEBUG !!  *******************************************
+c
+      if(.false. .and. lptbt.and.ic.eq.47.and.jc.eq.4)then
+        print *,' zu(ic,jc),zv(ic,jc)='
+     &           ,zu(ic,jc),zv(ic,jc)
+      endif
+c  end DEBUG *******************************************
 c
 c-----------------------------------------------------------------
 c     timestep baroclinic terms
@@ -892,6 +1238,17 @@ c
  750    continue
       endif
 c
+c  DEBUG !!  *******************************************
+c
+      if(lptuv.and.ic.eq.47.and.jc.eq.4)then
+        print *,' clinic after calculating new value'
+        print *,' u(*,ic,jc,np)='
+        print *,(u(k,ic,jc,np),k=1,km)
+        print *,' clinic v(*,ic,jc,np)='
+        print *,(v(k,ic,jc,np),k=1,km)
+      endif
+c  end DEBUG *******************************************
+c
 c-----------------------------------------------------------------
 c     remove vertical mean velocity
 c-----------------------------------------------------------------
@@ -909,6 +1266,17 @@ c
       u(k,ic,jc,np) = u(k,ic,jc,np) - sumu
       v(k,ic,jc,np) = v(k,ic,jc,np) - sumv
  900  continue
+c
+c  DEBUG !!  *******************************************
+c
+      if(lptuv.and.ic.eq.47.and.jc.eq.4)then
+        print *,' clinic after removing mean'
+        print *,' u(*,ic,jc,np)='
+        print *,(u(k,ic,jc,np),k=1,km)
+        print *,' clinic v(*,ic,jc,np)='
+        print *,(v(k,ic,jc,np),k=1,km)
+      endif
+c  end DEBUG *******************************************
       return
       end
  
@@ -932,6 +1300,14 @@ c
 #include "cvbc.h"
 #include "cvmix.h"
 c
+c
+c  DEBUG !! ****************************************************
+c
+      logical logbt, loguv, logts, lptbt, lptuv, lptts, lptin,
+     &         loldah, loldav
+      common /cdebug/ logbt, loguv, logts, lptbt, lptuv, lptts,
+     &         lptin, loldah, loldav
+c end DEBUG ****************************************************
 c  DEBUG !! *************************************************
 #include "ctmngr.h"
 #include "switch.h"
@@ -977,6 +1353,39 @@ c
       fw(k-1)  = (fuw(k)-fue(k)+fvs(k)-fvn(k))
  160  continue
 c
+c  DEBUG !!  *******************************************
+c
+      if(.false..and.ic.eq.47.and.jc.eq.4)then
+        print *
+        print *,' tracer v(k,ic,jc,nc)'
+        print *, (v(k,ic,jc,nc),k=1,kmc)
+        print *,' tracer v(k,im,jc,nc)'
+        print *, (v(k,im,jc,nc),k=1,kmc)
+        print *,' tracer v(k,ic,jm,nc)'
+        print *, (v(k,ic,jm,nc),k=1,kmc)
+        print *,' tracer v(k,im,jm,nc)'
+        print *, (v(k,im,jm,nc),k=1,kmc)
+        print *
+        print *,' tracer u(k,ic,jc,nc)'
+        print *, (u(k,ic,jc,nc),k=1,kmc)
+        print *,' tracer u(k,im,jc,nc)'
+        print *, (u(k,im,jc,nc),k=1,kmc)
+        print *,' tracer u(k,ic,jm,nc)'
+        print *, (u(k,ic,jm,nc),k=1,kmc)
+        print *,' tracer u(k,im,jm,nc)'
+        print *, (u(k,im,jm,nc),k=1,kmc)
+        print *,' tracer fvn,fvs,fue,fuw,fw,w='
+        print 181,fvn
+        print 181,fvs
+        print 181,fue
+        print 181,fuw
+        print 181,fw
+        print 181,(fw(k)*boxar,k=0,km)
+ 181  format(1x,1p5e16.6)
+      endif
+c  end DEBUG !! *****************************************
+
+c
 c=============================================================
 c    integrate up from the lowest layer 
 c    fw is positive upwards
@@ -987,13 +1396,23 @@ c
       fw(k)=fw(k)+fw(k+1)
  180  continue
 c
+c  DEBUG !!  *******************************************
+c
+      if(.false..and.ic.eq.47.and.jc.eq.4)then
+        print *
+        print *,' tracer fw='
+        print 181,fw
+      endif
+c  end DEBUG !! *****************************************
+
+c
 c  DEBUG !! *************************************************
 c  calculate vertical velocity and print if CLF criteria is
 c  breached
       do 220 k=kmc,0,-1
       wvel=fw(k)*boxar
-      cfl =abs(dzw(k)/(wvel*dtts))
-      if(cfl.lt.2.0)then
+      cfl =abs((wvel*dtts)/dzw(k))
+      if(cfl.gt.0.5)then
         print 221,itt,ic,jc,k,wvel,cfl
  221  format(' tracer.  cfl error.  itt,ic,jc,k,wvel,cfl=',
      &         4i5,1p2e16.6)
@@ -1031,7 +1450,7 @@ c=============================================================
 c
       vtf(0)   = -stf(m)*boxa
       vtf(kmc) = c0
-      fwb1(0)  = fw(0)*t(k,ic,jc,m,nc)
+      fwb1(0)  = fw(0)*t(1,ic,jc,m,nc)
       fwb1(kmc)= c0
 c
 c=============================================================
@@ -1060,6 +1479,28 @@ c  y diffusion
 c  z diffusion  
      & + vtf(k  ) - vtf(k-1)
      &   )
+c
+c  DEBUG !! ****************************************************
+c  do not change t-s fields
+      if(logts.eq..false.) t(k,ic,jc,m,np) = t(k,ic,jc,m,nm)
+
+c end DEBUG ****************************************************
+c
+c  DEBUG !!  *******************************************
+c
+      if(.false..and.
+     &  ic.eq.47.and.jc.eq.4.and.k.le.3.and.m.eq.1)then
+        print *,' tracer. ic,jc,k,m,kmc=',ic,jc,k,m,kmc
+        print *,' im,ip,jm,jp,nm,nc,np=',im,ip,jm,jp,nm,nc,np
+        print *,' t(k,ic,jc,m,np),t(k,ic,jc,m,nm),c2dtts=',
+     &            t(k,ic,jc,m,np),t(k,ic,jc,m,nm),c2dtts
+        print *,' fwb1(k  ),-fwb1(k-1),vtf(k  ),-vtf(k-1)=',
+     &           fwb1(k  ),-fwb1(k-1),vtf(k  ),-vtf(k-1)
+        print *,' -stf(m),boxa=',-stf(m),boxa
+        print *,'fw(k),t(k,ic,jc,m,nc)=',fw(0),t(k,ic,jc,m,nc)
+      endif
+c end DEBUG !! *****************************************
+c
  960  continue
  900  continue
 c
@@ -1244,6 +1685,14 @@ c
 #include "switch.h"
 #include "timelv.h"
 c
+c  DEBUG !! ****************************************************
+c
+      logical logbt, loguv, logts, lptbt, lptuv, lptts, lptin,
+     &         loldah, loldav
+      common /cdebug/ logbt, loguv, logts, lptbt, lptuv, lptts,
+     &         lptin, loldah, loldav
+c end DEBUG ****************************************************
+c
 c
 c---------------------------------------------------------------------
 c  set indices
@@ -1313,7 +1762,9 @@ c  calculate partial solutions
 c---------------------------------------------------------------------
 c
         ustar = u0(ic,jc,nm0) + dtbt*(zu(ic,jc) - dpdx + fricu)
+     &                        + fac1*v0(ic,jc,nm0)
         vstar = v0(ic,jc,nm0) + dtbt*(zv(ic,jc) - dpdy + fricv)
+     &                        - fac1*u0(ic,jc,nm0)
 c
 c---------------------------------------------------------------------
 c  final step of semi-implicit scheme
@@ -1583,12 +2034,34 @@ c
 #include "timelv.h"
 #include "slabs.h"
 c
+c  DEBUG !! ****************************************************
+c
+      logical logbt, loguv, logts, lptbt, lptuv, lptts, lptin,
+     &        loldah, loldav
+      common /cdebug/ logbt, loguv, logts, lptbt, lptuv, lptts,
+     &                lptin, loldah, loldav
+c end DEBUG ****************************************************
+c
+c
+c  DEBUG !! ****************************************************
+c do not add barotropic velocities if barotropic model turned off
+      if(logbt.eq..false.) return
+c end DEBUG ****************************************************
+
       ubar=u0(ic,jc,np0)
       vbar=v0(ic,jc,np0)
       do 100 k=1,kmu(ic,jc)
-      u(k,ic,jc,np) = u(k,ic,jc,np) + ubar
-      v(k,ic,jc,np) = v(k,ic,jc,np) + vbar
+        u(k,ic,jc,np) = u(k,ic,jc,np) + ubar
+        v(k,ic,jc,np) = v(k,ic,jc,np) + vbar
  100  continue
+c
+c DEBUG  !! **********************************************
+c
+      if(lptbt.and.ic.eq.47.and.jc.eq.4)then
+        print *,'addv.  At end of step u0,v0=',
+     &           u0(ic,jc,np0),v0(ic,jc,np0)
+      endif
+c  end DEBUG *********************************************
 c
       return
       end
@@ -1672,6 +2145,14 @@ c
 #include "coord.h"
 #include "grdvar.h"
 c
+c  DEBUG !! ****************************************************
+c
+      logical logbt, loguv, logts, lptbt, lptuv, lptts, lptin,
+     &         loldah, loldav
+      common /cdebug/ logbt, loguv, logts, lptbt, lptuv, lptts,
+     &         lptin, loldah, loldav
+c end DEBUG ****************************************************
+c
 c
 c------------------------------------------------------------------
 c     set latitudes & longitudes of "t" & "u,v" grid points (in degrees)
@@ -1753,6 +2234,10 @@ c------------------------------------------------------------------
 c     print grid related arrays
 c------------------------------------------------------------------
 c
+c
+c  DEBUG !!  *******************************************
+c
+      if(lptin)then
       write (stdout,9101)
       write (stdout,9001) dz
       write (stdout,9102)
@@ -1769,6 +2254,8 @@ c
       write (stdout,9001) xt
       write (stdout,9108)
       write (stdout,9001) xu
+      endif
+c end DEBUG ****************************************************
 c
       return
 c
@@ -2665,4 +3152,9 @@ c      ieeer = ieee_flags('clear','exception','all',out(4))
       endif
  20   continue
       return
+      end
+
+      integer function myhandler(sig, code, context)
+      integer sig, code, context(5)
+      call abort()
       end
