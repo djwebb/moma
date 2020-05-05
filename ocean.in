@@ -1,0 +1,24 @@
+
+ File 'ocean.in'.  Input file for MOMA model. 
+ **** version for MOM-A code
+
+ &contrl
+     init=.true.,      fnrest=' '
+     days = 0.125,       restrt=.false.,
+     nmix=16,          eb=.true.,      ncon=1,
+     tsi   = 0.125,    dgnstc= 0.125,  snaps = 2.0,
+ &end
+ &eddy
+      am    = 1.0e9,   ah    = 2.0e7,
+      fkph  = 20.0,    fkpm  = 1.0,    cdbot = 0.0,
+ &end
+ &tsteps
+     dtts=10800.,      dtuv=10800,     dtsf=10800.,
+ &end
+ &parms
+     mxscan=100,       sor=1.60,       crit=.1e9,
+ &end
+ &iland
+     alonis = 130.0, 130.0,  alatis=-66.0, -22.0,
+ &end
+
