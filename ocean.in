@@ -1,15 +1,14 @@
-
  File 'ocean.in'.  Input file for MOMA model. 
- ****    version for free surface MOM-A code 
+ ****    version for free surface moma code 
  ****    2 day test run.
 
-
  &contrl
-     init=.true.,        fnrest=' ',
-     days = 2.0,         restrt=.true.,
-     nmix=  24,          eb=.true.,      ncon=1,
-     tsi   = 0.0416666,  dgnstc= 2.0,    snaps =1.0,
-     acor = 0.6
+     init=.false.,       fnrest='d0002.hdf.moma', 
+     days = 3.0,         restrt=.false.,     
+     nmix=  24,          eb=.true.,      ncon=1,         acor = 0.6,
+     tsi=0.0833333,      snapd=1.0,      archd= 2.0, 
+     ftrest = 'hdf',     ftsnap = 'hdf', ftarch = 'hdf', 
+     dgnstc=10.0,        dchkbd = 0.1
  &end
  &eddy
       am    = 1.0e9,   ah    = 2.0e7,

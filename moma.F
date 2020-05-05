@@ -1,7 +1,7 @@
       program moma
 c
 c==================================================================
-c  Program MOMA,     Version 1.14
+c  Program MOMA,     Version 1.15
 c
 c  Free surface ocean model for use with array processors.
 c
@@ -10,7 +10,7 @@ c                   Institute of Oceanographic Sciences,
 c                   Godalming, Surrey GU8 5UB, U.K..
 c  
 c @(#) SCCS information - module:  moma.F     
-c @(#)                    version: 1.14    date: 07/28/94
+c @(#)                    version: 1.15    date: 03/14/95
 c
 c
 c  This code is a free surface version of the Bryan-Cox-Semtner
@@ -26,9 +26,7 @@ c
 c  The code may be freely adapted and used without charge.
 c
 c  For further information on the model contact the author.
-c  e-mail:   djw@unixa.nerc-wormley.ac.uk
-c  telemail: ios.wormley
-c
+c  e-mail:   djw@ios.ac.uk
 c  
 c  The main differences from the modular ocean model code code are:
 c
@@ -53,7 +51,9 @@ c  5.  The stream function code is removed and replaced by a free-
 c      surface code.  The latter is similar to Killworth, Stainforth
 c      Webb and Patterson (1989).  For efficiency, the mean horizontal
 c      velocity is now used instead of horizontal transport and
-c      the viscous terms are calculated in routine clinic.
+c      the viscous terms are calculated in routine clinic.  
+c      A leapfrog timestepping scheme is used with averaging over each
+c      baroclinic timestep to prevent aliasing problems
 c  6.  In the baroclinic momentum equation, a revised horizontal
 c      advection scheme option is included.  The old scheme can still be 
 c      used by specifying the flag 'oldadv'
@@ -61,15 +61,40 @@ c  7.  Near topography, in the baroclinic momentum equation, a revised
 c      vertical advection scheme option is included.
 c  8.  An option to precalculate the baroclinic part of the 
 c      pressure filed is included using flag 'presetp'.
+c  9.  Snapshot and archive functions separated.  Input 'snapd' and 'archd'.
 c
 c
 c  cpp precompiler options:
 c
-c     'oldadv'   - use the origonal scheme for the horizontal
-c                  advection velocity at velocity points.
-c     'presetp'  - precalculate the baroclinic pressure field
-c                  before calling clinic
-c     'hcomments'- include comments from '*.h' files
+c     'oldadv'    - use the origonal scheme for the horizontal
+c                   advection velocity at velocity points.
+c     'presetp'   - precalculate the baroclinic pressure field
+c                   before calling clinic
+c     'hcomments' - include comments from '*.h' files
+c     'cyclic'    - invoke cyclic boundary conditions
+c     'simple_world' - use routine topog to construct kmt, this generates
+c                   a simplified version of the global ocean.
+c     'free_eb'   - use the euler backward timestepping scheme without
+c                   averaging for the free surface euqations.
+c     'de_checkbd'- use filter to remove checkerboarding in free
+c                   surface height field.
+c     'ncsa_hdf' - produce additional hdf versions of archive files.
+c
+c  Compilation:
+c
+c      Without 'ncsa_hdf' the program can be compiled with a command
+c      of the form
+c             f77 -o moma moma.F
+c      This assumes that the fortran compiler also calls the cpp
+c      preprocessor.  With 'ncsa_hdf' the hdf include files and
+c      subroutines are also needed.  These require commands like:
+c             
+c             set HDFROOT = /users/occam/hdf/sunos2
+c             f77 -Dncsa_hdf -I$HDFROOT/include -o moma moma.F 
+c                  $HDFROOT/lib/libnetcdf.a $HDFROOT/lib/libdf.a
+c
+c      where the third line is really a continuation of the f77 command line
+c      and HDFROOT is set to point to the hdf root directory.
 c
 c  References:
 c
@@ -122,10 +147,14 @@ c==================================================================
 c
       dimension utime(3)
 c
-      namelist /eddy/   am, ah, fkpm, fkph, cdbot
+      namelist /contrl/ init, fnrest, fnkmt, days, restrt, nmix, eb 
+     &,                 ncon, tsi, dgnstc, snapd, archd, acor
+# ifdef de_checkbd
+     &,                 dchkbd
+# endif
+     &,                 ftrest, ftsnap, ftarch
       namelist /tsteps/ dtts, dtuv, dtbt
-      namelist /contrl/ init, fnrest, days, restrt, nmix, eb, ncon, 
-     &                  tsi,  dgnstc, snaps, acor
+      namelist /eddy/   am, ah, fkpm, fkph, cdbot
 c
 c  start timing
 c 
@@ -135,8 +164,8 @@ c
 c     constants usually initialised in block data
 c
       model(1) =' Stripped down MOM code for array processor.'
-      model(2) =' Module: moma.F.  Version: 1.14. '//
-     &          ' Date: 07/28/94'
+      model(2) =' Module: moma.F.  Version: 1.15. '//
+     &          ' Date: 03/14/95'
       stlon = -4.0
       stlat = -72.0
       dxdeg = 4.0
@@ -160,12 +189,22 @@ c
 c
       init = .true.
       first= .true.
-      restrt = .false.
-      fnrest = ' '
-      iorest = 21
+      days = 2.0
+      eb    = .true.
+      acor  = 0.6
+      nmix  = 16
+      ncon  = 1
       tsi   = 2.0
       dgnstc= 2.0
-      snaps = 2.0
+      snapd = 2.0
+      archd = 2.0
+      restrt = .false.
+      fnrest = ' '
+      fnkmt  = ' '
+      ftrest = 'hdf'
+      ftsnap = 'hdf'
+      ftarch = 'hdf'
+      iorest = 21
 c
       dtts = 10800d0
       dtuv = 10800d0
@@ -176,10 +215,9 @@ c
       fkph  = 20.0
       fkpm  = 1.0
       cdbot = 0.0
-      eb    = .true.
-      acor  = 0.6
-      nmix  = 16
-      ncon  = 1
+#ifdef de_checkbd
+      dchkbd = 0.1
+#endif
 c
 c==================================================================
 c     begin introductory section
@@ -218,6 +256,19 @@ c
         write(stdout,'(a)') ' dtuv not integer multiple of dtbt.'
         write(stdout,'(a,i5)') ' dtbt now set to set to:',dtbt
       endif
+#ifdef de_checkbd
+c
+c scale the checkerboard filter weighting factor
+c
+      dchkbd = dchkbd*grav*dtbt*zw(KM)
+c
+#endif
+c
+c------------------------------------------------------------------
+c     list code options chosen by user for this model run
+c------------------------------------------------------------------
+c
+      call docmnt (stdout, .false., .false., .false., .false.)
 c
 c------------------------------------------------------------------
 c     set up model grids in x, y, & z
@@ -252,12 +303,11 @@ c
       if (init) then
         call ocn1st
       else
-        call rdrest
+        call archrd
       endif
 c
 c------------------------------------------------------------------
 c     compute number of vertical levels on the "u" grid
-c     and set cyclic boundary conditions
 c------------------------------------------------------------------
 c
       do 900 i=1,imt
@@ -269,45 +319,48 @@ c
 990   continue
 1000  continue
       do 1100 j=1,jmt
+#ifdef cyclic
         kmu(imt,j) = kmu(2,j)
+#else
+        kmu(imt,j) = 0
+#endif
 1100  continue
 c
 c------------------------------------------------------------------
 c     compute area and volume of ocean ("t,s" grid boxes)
-c     and set cyclic boundary conditions
 c------------------------------------------------------------------
 c
       area   = c0
       volume = c0
       ocnp   = 0
 c
-      do 700 j=2,jmtm1
-      do 690 i=2,imtm1
+      do 300 j=2,jmtm1
+      do 300 i=2,imtm1
       if (kmt(i,j) .gt. 0) then
         area   = area + cst(j)*dx*dy
         volume = volume + cst(j)*dx*dy*zw(kmt(i,j))
         ocnp   = ocnp + float(kmt(i,j))
       endif
-690   continue
-700   continue
-      write (stdout,9341) area, volume
+300   continue
+      write (stdout,301) area, volume
 c
 c------------------------------------------------------------------
 c       print map of "kmt" levels. 
 c------------------------------------------------------------------
 c
 c
-      write (stdout,9402)
-      do 1300 ibk=1,imt,40
+      write (stdout,401)
+      do 410 ibk=1,imt,40
       isp  = ibk
       iept = ibk + 40 - 1
       if(iept.gt.imt) iept=imt
       write (stdout,'(/, 4x, 40i3)') (ii, ii=isp,iept)
-      do 1290 jrev=1,jmt
+      do 400 jrev=1,jmt
       j=jmt-jrev+1
       write (stdout,'(1x,i3, 40i3)')j,(kmt(i,j),i=isp,iept)
-1290  continue
-1300  continue
+ 400  continue
+ 410  continue
+      write(stdout,*)
 c
 c------------------------------------------------------------------
 c     compute depths and reciprocal depths
@@ -355,6 +408,12 @@ c
 2670  continue
 c
 c------------------------------------------------------------------
+c     do all consistency checks now
+c------------------------------------------------------------------
+c
+      call checks
+c
+c------------------------------------------------------------------
 c     start the time step loop
 c------------------------------------------------------------------
 c
@@ -381,7 +440,8 @@ c
       if (prntsi) write (stdout,9602) itt, stamp, ektot,
      &                      dtabs(1), dtabs(2),utime(1),utime(3)
       if (diagts) call pdiag
-      if (snapts) call arch
+      if (snapts) call snap
+      if (archts) call archwr
 c
 c------------------------------------------------------------------
 c       end timestepping loop
@@ -392,10 +452,16 @@ c
 3401  continue
 c
 c------------------------------------------------------------------
-c     save restart at end of run if restrt is true
+c     documentation info at end of run
 c------------------------------------------------------------------
 c
-      if (restrt) call wrrest
+      call docmnt (stdout, .true., .true., .true., .true.)
+c
+c------------------------------------------------------------------
+c     save restart dataset at end of run if restrt is true
+c------------------------------------------------------------------
+c
+      if (restrt) call archwr
 c
 c------------------------------------------------------------------
 c     close all units  (stderr is not closed because it is set equal
@@ -406,10 +472,10 @@ c
       close (unit=stdout,status='keep')
       stop
 c
-9341  format (//,'  Regional & Global ocean statistics:'
+ 301  format (//,'  Regional & Global ocean statistics:'
      &,/,'  the total ocean surface area (t grid) =',1pe15.8,'cm**2'
      &,/,'  the total ocean volume (t grid)       =',1pe15.8,'cm**3')
-9402  format(/t50,'number of levels on "t,s" grid')
+ 401  format(/t50,'number of levels on "t,s" grid')
 9451  format (/' ==== start and end indices for',a17,'====')
 9461  format (' j=',i3,5x,5(2i5,10x))
 9499  format (/' error => lseg too small for',a15,' indices'
@@ -434,6 +500,7 @@ c
 c
 #include "scalar.h"
 #include "switch.h"
+#include "ctmngr.h"
 #include "timelv.h"
 #include "slabs.h"
 #include "frees.h"
@@ -512,20 +579,40 @@ c      first initialise pointers
 c-----------------------------------------------------------------
 c
       if(.not.mxpas2)then
-        do 600 lt=1,ntbt
+        ntbtp0 = 0
+        c2dtbt = dtbt
+#ifdef free_eb
+        ntbt2 = ntbt
+#else
+        ntbt2 = 2*ntbt
+        do 230 jc=2,jmtm1
+        do 230 ic=2,imtm1
+        do 230 m=1,3
+          freeav(m,ic,jc)=c0
+ 230    continue
+#endif
+        do 600 itbt=1,ntbt2
           nnc0 = np0
           nnm0 = nc0
           nnp0 = nm0
           np0  = nnp0
           nc0  = nnc0
-          nm0  = nnc0
-          frpas1=.true.
+#ifdef free_eb
+          nm0 = nnc0
+#else
+          if(itbt.eq.1)then
+            nm0 = nnc0
+          else
+            nm0 = nnm0
+          endif
+#endif
 c
 c-----------------------------------------------------------------
-c      use an euler backward scheme. this requires two passes.
+c      On the first barotropic timestep or if "free_eb" is set
+c      use euler backward. this requires two passes.
 c-----------------------------------------------------------------
 c
-          do 500 lb=1,2
+          do 500 itbtp=ntbtp0,1
 c
 c-----------------------------------------------------------------
 c      main free surface model loop to carry out a
@@ -538,27 +625,52 @@ c
  300      continue
 c
 c-----------------------------------------------------------------
-c  set cyclic boundary conditions for the free surface model
+c  set boundary conditions for the free surface model
 c-----------------------------------------------------------------
 c
-          do 400 jc=2,jmt-1
+          do 400 jc=2,jmtm1
+#ifdef cyclic
             h0(  1,jc,np0) = h0(imtm1,jc,np0)
             h0(imt,jc,np0) = h0(    2,jc,np0)
             u0(  1,jc,np0) = u0(imum1,jc,np0)
             u0(imu,jc,np0) = u0(    2,jc,np0)
             v0(  1,jc,np0) = v0(imum1,jc,np0)
             v0(imu,jc,np0) = v0(    2,jc,np0)
+#else
+            h0(  1,jc,np0) = c0
+            h0(imt,jc,np0) = c0
+            u0(  1,jc,np0) = c0
+            u0(imu,jc,np0) = c0
+            v0(  1,jc,np0) = c0
+            v0(imu,jc,np0) = c0
+#endif
 400       continue
 c
 c-----------------------------------------------------------------
 c     reset pointers at end of first pass of the free surface model
 c------------------------------------------------------------------
 c
-          if(frpas1)then
-            frpas1 = .false.
+#ifdef free_eb
+          if(itbtp.eq.0)then
             nc0 = nnp0
             np0 = nnm0
+          else
+            nc0 = nnc0
+            nm0 = nnp0
           endif
+#else
+          if(itbt.eq.1)then
+            if(itbtp.eq.0)then
+              nc0 = nnp0
+              np0 = nnm0
+            else
+              nc0 = nnc0
+              nm0 = nnp0
+              ntbtp0 = 1
+              c2dtbt = c2*dtbt
+            endif
+          endif
+#endif
  500      continue
  600    continue
       endif
@@ -574,18 +686,30 @@ c
  700  continue
 c
 c-----------------------------------------------------------------
-c  set cyclic boundary conditions for the baroclinic model
+c  set boundary conditions for the baroclinic model
 c-----------------------------------------------------------------
 c
-      do 800 jc=2,jmt-1
+      do 800 jc=2,jmtm1
       do 800 k =1,km
+#ifdef cyclic
         u(k,  1,jc,np) = u(k,imum1,jc,np)
         u(k,imu,jc,np) = u(k,    2,jc,np)
         v(k,  1,jc,np) = v(k,imum1,jc,np)
         v(k,imu,jc,np) = v(k,    2,jc,np)
+#else
+        u(k,  1,jc,np) = c0
+        u(k,imu,jc,np) = c0
+        v(k,  1,jc,np) = c0
+        v(k,imu,jc,np) = c0
+#endif
         do 800 n=1,nt
+#ifdef cyclic
           t(k,  1,jc,n,np) = t(k,imtm1,jc,n,np)
           t(k,imt,jc,n,np) = t(k,    2,jc,n,np)
+#else
+          t(k,  1,jc,n,np) = t(k,    1,jc,n,nm)
+          t(k,imt,jc,n,np) = t(k,  imt,jc,n,nm)
+#endif
  800  continue
 c
 c-----------------------------------------------------------------
@@ -1259,6 +1383,10 @@ c  Webb, D.J. and Paterson, S.M. (1989).  A free surface
 c  Bryan-Cox-Semtner model.  Institute of Oceanographic
 c  Sciences, Report No. 270.  Wormley, Godlaming, U.K.. 184pp."
 c
+c  Later modified to use a leapfrog and time smoothing scheme,
+c  suggested by Semtner, to prevent aliasing instabilities
+c  near the equator
+c
 c=====================================================================
 c
 c---------------------------------------------------------------------
@@ -1292,13 +1420,56 @@ c---------------------------------------------------------------------
 c
       if(kmt(ic,jc).ne.0)then
         boxar = dxr*dyr*cstr(jc)
+#ifdef de_checkbd
+c
+c Calculate masks for the del-cross and del-plus operators
+c on selected time steps for free-surface calculation
+c
+       lchkbd = itbt.eq.2
+       if (lchkbd) then
+         m_N  = min(1,kmt(ic,jp))
+         m_S  = min(1,kmt(ic,jm))
+         m_E  = min(1,kmt(ip,jc))
+         m_W  = min(1,kmt(im,jc))
+         m_NE = min(1,kmu(ic,jc))
+         m_SE = min(1,kmu(ic,jm))
+         m_SW = min(1,kmu(im,jm))
+         m_NW = min(1,kmu(im,jc))
+c
+c Calculate the del-plus operator (x2 for inclusion within existing terms
+c of the dhdt expression)
+c
+         delplus = c2*(m_E*(h0(ip,jc,nm0) - h0(ic,jc,nm0))
+     &                -m_W*(h0(ic,jc,nm0) - h0(im,jc,nm0))
+     &                +m_N*(h0(ic,jp,nm0) - h0(ic,jc,nm0))
+     &                -m_S*(h0(ic,jc,nm0) - h0(ic,jm,nm0)))
+c
+c Calculate the del-cross operator (x2 for inclusion within existing terms
+c of the dhdt expression)
+c
+         delcross = ( m_NE*(h0(ip,jp,nm0) - h0(ic,jc,nm0))
+     &               -m_SW*(h0(ic,jc,nm0) - h0(im,jm,nm0))
+     &               +m_NW*(h0(im,jp,nm0) - h0(ic,jc,nm0))
+     &               -m_SE*(h0(ic,jc,nm0) - h0(ip,jm,nm0)))
+       endif
+c
+c Need a constant of the form: 
+c        WGHT = alpha*grav*Hmax*dtbt/(dphi*dlambda*radius*radius*cos(phi)) 
+c    i.e.WGHT = alpha*grav*Hmax*dtbt*boxar = dchkbd*boxar
+c
+# endif
         dhdt  = (dy*(u0(im,jm,nc0)*h(im,jm)+u0(im,jc,nc0)*h(im,jc)
      &              -u0(ic,jm,nc0)*h(ic,jm)-u0(ic,jc,nc0)*h(ic,jc))
      & +dx*(csu(jm)*(v0(im,jm,nc0)*h(im,jm)+v0(ic,jm,nc0)*h(ic,jm))
      &     -csu(jc)*(v0(im,jc,nc0)*h(im,jc)+v0(ic,jc,nc0)*h(ic,jc))
      &     ))*0.5*boxar
+# ifdef de_checkbd
+       if(lchkbd) then
+        dhdt=dhdt+dchkbd*(delplus-delcross)*0.5*boxar
+       endif
+# endif
 c
-        h0(ic,jc,np0) = h0(ic,jc,nm0) + dtbt*dhdt
+        h0(ic,jc,np0) = h0(ic,jc,nm0) + c2dtbt*dhdt
       endif
 c
 c---------------------------------------------------------------------
@@ -1307,8 +1478,6 @@ c  for the coriolis term.
 c---------------------------------------------------------------------
 c
       if(kmu(ic,jc).ne.0)then
-        fac1=fcor(jc)*dtbt*p5
-        fac2=c1/(c1+fac1*fac1)
 c
 c---------------------------------------------------------------------
 c    compute pressure gradients
@@ -1320,24 +1489,48 @@ c
         temp2 = h0(ic,jp,nc0) - h0(ip,jc,nc0)
         dpdx  = (temp1-temp2)*fxa
         dpdy  = (temp1+temp2)*fxb
+#ifdef free_eb
 c
 c---------------------------------------------------------------------
-c  calculate partial solutions
+c  initial euler backward scheme treats coriolis term implicitly
 c---------------------------------------------------------------------
 c
-        ustar = u0(ic,jc,nm0) + dtbt*(zu(ic,jc) - dpdx)
+        fac1=fcor(jc)*c2dtbt*p5
+        fac2=c1/(c1+fac1*fac1)
+        ustar = u0(ic,jc,nm0) + c2dtbt*(zu(ic,jc) - dpdx)
      &                        + fac1*v0(ic,jc,nm0)
-        vstar = v0(ic,jc,nm0) + dtbt*(zv(ic,jc) - dpdy)
+        vstar = v0(ic,jc,nm0) + c2dtbt*(zv(ic,jc) - dpdy)
      &                        - fac1*u0(ic,jc,nm0)
+        u0(ic,jc,np0) = (ustar + fac1*vstar)*fac2
+        v0(ic,jc,np0) = (vstar - fac1*ustar)*fac2
+#else
 c
 c---------------------------------------------------------------------
-c  final step of semi-implicit scheme
+c  leapfrog scheme (explicit euler-backward on mixing timestep)
 c---------------------------------------------------------------------
 c
-        u0(ic,jc,np0)= (ustar + fac1*vstar)*fac2
-        v0(ic,jc,np0)= (vstar - fac1*ustar)*fac2
+        u0(ic,jc,np0) = u0(ic,jc,nm0) + c2dtbt*(zu(ic,jc) - dpdx
+     &                        + fcor(jc)*v0(ic,jc,nc0) )
+        v0(ic,jc,np0) = v0(ic,jc,nm0) + c2dtbt*(zv(ic,jc) - dpdy
+     &                        - fcor(jc)*u0(ic,jc,nc0) )
+c
+c---------------------------------------------------------------------
+c  Calculate time averages (except for first pass of euler-backward)
+c---------------------------------------------------------------------
+c
+        if(itbtp.ne.0)then
+          freeav(1,ic,jc) = freeav(1,ic,jc) + h0(ic,jc,np0)
+          freeav(2,ic,jc) = freeav(2,ic,jc) + u0(ic,jc,np0)
+          freeav(3,ic,jc) = freeav(3,ic,jc) + v0(ic,jc,np0)
+          if(itbt.eq.ntbt2)then
+            fx = 0.5/ntbt
+            h0(ic,jc,np0) = freeav(1,ic,jc)*fx
+            u0(ic,jc,np0) = freeav(2,ic,jc)*fx
+            v0(ic,jc,np0) = freeav(3,ic,jc)*fx
+          endif
+        endif
+#endif
       endif
-c
       return
       end
 
@@ -1362,12 +1555,10 @@ c
 #include "timelv.h"
 #include "levind.h"
 c
-      dimension temp(km)
-c
       kmc = kmt(ic,jc)
       if(kmc.gt.0)then        
         call state (t(1,ic,jc,1,nc), t(1,ic,jc,2,nc),  
-     &              temp, kmt(ic,jc) ,0)
+     &              temp, kmc ,0)
         fxa = p5*grav
         do 100 k=1,kmc
           if(k.eq.1)then
@@ -1829,7 +2020,11 @@ c------------------------------------------------------------------
 c     generate topography over "t" points
 c------------------------------------------------------------------
 c
+#ifdef simple_world
       call topog
+#else
+      call read_kmt
+#endif
 c
 c------------------------------------------------------------------
 c     initialize t,s,u,v.
@@ -1878,6 +2073,56 @@ c
       return
       end
 
+      subroutine read_kmt
+c
+c------------------------------------------------------------------
+c     read array 'kmt' from file 'ocean.kmt'.  This is written as:
+c     write(56,15)'kmt     ',imt,jmt 
+c     do j=1,jmt
+c     write(56,16)(kmt(i,j),i=1,imt)
+c     continue
+c------------------------------------------------------------------
+c
+#include "param.h"
+#include "coord.h"
+#include "iounit.h"
+#include "levind.h"
+#include "switch.h"
+      character*8 string
+c
+c  if initial timestep read in kmt field
+c
+       open(iokmt,file=fnkmt,status='old',iostat = iostat)
+       if(iostat.ne.0)then
+         write(stdout,11)fnkmt,iostat
+         stop
+       endif
+       read(iokmt,15)string,imt1,jmt1
+c
+       if(imt1.ne.IMT.or.jmt1.ne.JMT.or.string.ne.'kmt     ')then
+         if(string.ne.'kmt     ')then
+           write(stdout,12)fnkmt,string
+         else
+           write(stdout,13)fnkmt,imt1,jmt1,IMT,JMT
+         endif
+         stop
+       endif
+       do 20 j=JMT,1,-1
+         read(iokmt,16)(kmt(i,j),i=1,IMT)
+ 20    continue
+       close(iokmt)
+c
+  11  format(1x,'Error opening file "',a,'".',/,'  iostat = ',i4,
+     &      '    Program stopping')
+  12  format(1x,'Error opening file "',a,'".',/,'  File type faulty',
+     &      ' File type = ',a8,/,' Program stopping')
+  13  format(1x,'Error opening file "',a,'".',/,'  File dimensions ',
+     &      'incompatable with current model.',/,
+     &      ' imt, jmt from file =',2i5,/,' imt, jmt of model  =',2i5,/,
+     &      ' Program stopping')
+  15  format(1x,a8,6i10)
+  16  format(1x,30i3)
+      end
 
       subroutine topog
 c
@@ -2273,7 +2518,8 @@ c
       diagts = tmnset (dgnstc, totday, dt)
       mixts  = (mod(itt,nmix) .eq. 1) 
       prntsi = tmnset (tsi, totday, dt)
-      snapts = tmnset (snaps, totday, dt) .and. .not. last
+      snapts = tmnset (snapd, totday, dt)
+      archts = tmnset (archd, totday, dt) .and. .not. last
 c
       return
       end
@@ -2291,6 +2537,17 @@ c==================================================================
 c
 #include "pconst.h"
       logical tmnset
+c
+c  return false if interval days is zero
+c
+      if(days.eq.c0)then
+        tmnset = .false.
+        return
+      endif
+c
+c  else return true if the elapsed time 'totday' is within half
+c  a timestep 'dt' of an integer multiple of the interval 'days'
+c
       close  = p5*dt
       i      = nint (totday/days)
       remain = (totday - i*days)*c60*c1440
@@ -2304,14 +2561,70 @@ c
       end
 
 
-      subroutine arch
+
+      subroutine snap
+c
+c==================================================================
+c     write snapshot file
+c     not currently implemented except for hdf option
+c==================================================================
+c
+#include "iounit.h"
+c
+      if(ftsnap.eq.'asc ')then
+        write(stdout,*) 'Snapshot write: file type "',
+     &                  ftsnap,'" not supported'
+#ifdef ncsa_hdf
+      elseif(ftsnap.eq.'hdf ')then
+        call snap_hdf
+#endif
+      else
+        write(stdout,*) 'Snapshot write: file type "',
+     &                  ftsnap,'" not supported'
+      endif
+      return
+      end
+
+      subroutine archrd
+c
+c==================================================================
+c     read archive file
+c==================================================================
+c
+#include "iounit.h"
+c
+      if(ftrest.eq.'rst'.or.ftrest.eq.'ufm')then
+        call archrd_std
+#ifdef ncsa_hdf
+      elseif(ftrest.eq.'hdf')then
+        call archrd_hdf
+#endif
+      else
+        write(stdout,*) 'Archive read: file type "',
+     &                  ftrest,'" not supported'
+      endif
+      return
+      end
+
+
+      subroutine archwr
 c
 c==================================================================
 c     write archive file
-c     NOTE - this version writes a standard restart file only
 c==================================================================
 c
-      call wrrest
+#include "iounit.h"
+c
+      if(ftarch.eq.'rst'.or.ftarch.eq.'ufm')then
+        call archwr_std
+#ifdef ncsa_hdf
+      elseif(ftarch.eq.'hdf')then
+        call archwr_hdf
+#endif
+      else
+        write(stdout,*) 'Archive write: file type "',
+     &                  ftarch,'" not supported'
+      endif
       return
       end
 
@@ -2428,11 +2741,190 @@ c
      &,', scaling=',1pg10.3)
       end
 
+            subroutine docmnt (nunit, wrdoc, wrc0, wrc1, wrc2)
+c
+c=======================================================================
+c
+c     This code arranges data to be written out as a form of
+c     documentation summarizing the model characteristics that
+c     uniquely define this run.
+c     In order to reap the full benefits of this feature, the user will
+c     need to review this routine when configuring a model run or adding
+c     new options to the code.
+c     We envision this feature as being beneficial to those setting up
+c     new model runs, comparing different model runs, and for analysis
+c     purposes (much of the information used in setting up mapping
+c     procedures and other analysis products are contained in the
+c     data written by this routine).
+c
+c     Five namelist writes are available.  Which ones are written
+c     is determined from the 4 logical variables passed into the
+c     subroutine (wrdoc, wrc0, wrc1, & wrc2).  The unit to which
+c     they are written is set by "nunit".
+c
+c     If "wrdoc" is true, then the "ndocs" & "docums" namelists
+c     are written...
+c       The 1st, "ndocs" simply contains one variable (ndoc); the
+c     dimension of "docum(ndoc)" found in the 2nd namelist write.
+c       The 2nd, "docums" consists of a series of 60 character-long
+c     lines of information the user should use to list the variables
+c     in the subsequent namelist writes, and to describe the model
+c     run in general.
+c
+c     If "wrc0" is true, then the "cntrl0" namelist is written...
+c       Namelist "cntrl0" contains the 2 variables needed to restart
+c     the model (itt, years).
+c
+c       The "cntrl1" and "cntrl2" namelists contain information
+c     describing the model's configuration and specifications.
+c
+c     If "wrc1" is true, then the "cntrl1" namelist is written...
+c       "cntrl1" contains variables (non-dimensioned) that will be
+c     common to most, if not all, incarnations of the model code.
+c
+c     If "wrc2" is true, then the "cntrl2" namelist is written...
+c       "cntrl2" is intended to contain the larger (dimensioned)
+c     data that will help identify the model specifics to users
+c     and analysis programs alike.
+c
+c=======================================================================
+c  This routine is based on the corresponding mom routine but
+c  contains only a few of the standard features
+c=======================================================================
+c
+#include "param.h"
+#include "switch.h"
+#include "versno.h"
+      parameter (ndocum = 16, ifdmax = 50)
+c
+      character*60 expnam
+      character*12 cifdef(ifdmax), blnk12
+      logical wrdoc, wrc0, wrc1, wrc2
+      namelist /conrl0/ itt,years
+      namelist /cntrl1/ expnam
+c
+      expnam = model(1)(1:60)
+c
+c-----------------------------------------------------------------------
+c     list options that are in effect on first timestep
+c-----------------------------------------------------------------------
+c
+      if (first) then
+c
+        do 200 n=1,ifdmax
+          cifdef(n) = blnk12
+ 200    continue
+        nifdef = 0
+        cifdef(1) = '0 ifdefs set'
+c
+#ifdef cyclic
+        nifdef = nifdef + 1
+        cifdef(nifdef) = 'cyclic      '
+#endif
+#ifdef simple_world
+        nifdef = nifdef + 1
+        cifdef(nifdef) = 'simple_world'
+#endif
+#ifdef oldav
+        nifdef = nifdef + 1
+        cifdef(nifdef) = 'oldav       '
+#endif
+#ifdef presetp
+        nifdef = nifdef + 1
+        cifdef(nifdef) = 'presetp     '
+#endif
+#ifdef free_eb
+        nifdef = nifdef + 1
+        cifdef(nifdef) = 'free_eb     '
+#endif
+#ifdef de_checkbd
+        nifdef = nifdef + 1
+        cifdef(nifdef) = 'de_checkbd  '
+#endif
+#ifdef ncsa_hdf
+        nifdef = nifdef + 1
+        cifdef(nifdef) = 'ncsa_hdf    '
+#endif
+        write (stdout,'(/,a45)')
+     $   ' The following "ifdef" options are in effect:'
+        nn = (nifdef+4)/5
+        do 300 i=1,nn
+          ns = 1+(5*(i-1))
+          ne = ns + 4
+          if (ne .gt. nifdef) ne = nifdef
+          write (stdout,9101) (cifdef(n),n=ns,ne)
+300     continue
+        write (stdout,'(a21,/)') ' end of options list.'
+      endif
+      return
+9101  format(5(3x,a12))
+      end
+
+
+      subroutine checks
+c
+c==================================================================
+c     do consistency checks
+c==================================================================
+c
+#include "param.h"
+#include "scalar.h"
+#include "switch.h"
+#include "iounit.h"
+c
+c   check timesteps
+c
+      if( dtuv.ne.dtts)then
+        write (stdout,9000)
+     $  '==> Warning: use of unequal time steps implies the transient '
+     $, '             response is unimportant and multiple equilibria '
+     $, '             do not exist.                                   '
+      endif
+c
+c   check archive and restart file formats
+c
+      if(ftrest.ne.'rst'.and.ftrest.ne.'ufm'.and.
+     &   ftrest.ne.'hdf '.and.init)then
+        print *,' ftrest has invalid value'
+        print *,' Program stopping... '
+        stop
+      endif
+      if(ftsnap.ne.'hdf'.and.snapd.ne.0.0)then
+        print *,' ftsnap has invalid value'
+        print *,' Program stopping... '
+        stop
+      endif
+      if(ftarch.ne.'rst'.and.ftarch.ne.'ufm'.and.
+     &   ftarch.ne.'hdf '.and.archd.ne.0.0)then
+        print *,' ftarch has invalid value'
+        print *,' Program stopping... '
+        stop
+      endif
+#ifndef ncsa_hdf
+      if(ftrest.eq.'hdf'.and.init)then
+        print *,' hdf restart file not supported.  "ncsa_hdf" not set'
+        print *,' Program stopping... '
+        stop
+      endif
+      if(ftsnap.eq.'hdf'.and.snapd.ne.0.0)then
+        print *,' hdf snapshot file not supported.  "ncsa_hdf" not set'
+        print *,' Program stopping... '
+        stop
+      endif
+      if(ftarch.eq.'hdf'.and.(archd.ne.0.0.or.restrt))then
+        print *,' hdf restart file not supported.  "ncsa_hdf" not set'
+        print *,' Program stopping... '
+        stop
+      endif
+#endif
+      return
+9000  format (/,(1x,a80))
+      end
+
 
       subroutine restio
 c
 c==================================================================
-c
 c     read and write restart file
 c     NOTE - this version only saves and restores the current
 c     timestep.  The model must therefore be restarted with
@@ -2480,12 +2972,9 @@ c------------------------------------------------------------------
 c     read restart data set from archive for timesteps itt 
 c------------------------------------------------------------------
 c
-      entry rdrest
+      entry archrd_std
 c  check np equals 3
-      if(np.ne.3)then
-        write(stdout,21) np, nc, nm
-        stop
-      endif
+      if(np.ne.3)goto 900
 c
 c------------------------------------------------------------------
 c     initialize t,s,u,v.
@@ -2524,59 +3013,116 @@ c
       open(iorest, file=fnrest, form='UNFORMATTED', 
      &       access='SEQUENTIAL')
       else
-        open(iorest, form='UNFORMATTED', access='SEQUENTIAL')
+        open(iorest, form='UNFORMATTED', access='SEQUENTIAL',err=920)
       endif
-      read(iorest) itt, totsec, totday, years, kmt
-      read(iorest) h03,  u03,  v03
-      read(iorest) t3,   u3,   v3
+      if(ftrest.eq.'rst')then
+        read(iorest,err=920) itt, totsec, totday, years, kmt
+        read(iorest,err=920) h03,  u03,  v03
+        read(iorest,err=920) t3,   u3,   v3
+      elseif(ftrest.eq.'ufm')then
+        read(iorest,err=920) itt, totsec, totday, years
+        read(iorest,err=920) kmt
+        read(iorest,err=920) h03
+        read(iorest,err=920) u03
+        read(iorest,err=920) v03
+        do 210 j=1,JMT
+ 210    read(iorest,err=920)((t(k,i,j,1,3),k=1,km),i=1,imt)
+        do 220 j=1,JMT
+ 220    read(iorest,err=920)((t(k,i,j,2,3),k=1,km),i=1,imt)
+        do 230 j=1,JMT
+ 230    read(iorest,err=920)((u(k,i,j,3),k=1,km),i=1,imt)
+        do 240 j=1,JMT
+ 240    read(iorest,err=920)((v(k,i,j,3),k=1,km),i=1,imt)
+      endif
       close(iorest)
-      write (stdout,22) iorest, itt
-      if(mod(itt,nmix).ne.0)then
-        write(stdout,23) itt, nmix
-        stop
-      endif
+      write (stdout,21) iorest, itt
+      if(mod(itt,nmix).ne.0)goto 900
       return
 c
-  21  format(' Routine restio.',/,
-     &       ' Trying to restart with np not equal to 3.',/,
-     &       ' np, nc, nm  =',3i5,/,' Programme stopped.')
-  22  format(' Routine restio',/,
+c  error
+c
+ 900  write(stdout,22) np, nc, nm
+      stop
+ 910  write(stdout,23) itt, nmix
+      stop
+ 920  write(stdout,24)
+      stop
+c
+  21  format(1x,/,' Routine restio',/,
      &       ' Restart file read from unit ',i2,'.  timestep =',i7)
-  23  format(' Routine restio - RESTART ERROR!',/,
+  22  format(' Routine restio - error.',/,
+     &       ' Trying to restart with np not equal to 3.',/,
+     &       ' np, nc, nm  =',3i5,/,' Programme stopping ...')
+  23  format(' Routine restio - error',/,
      &       ' Trying to restart without forward timestep,',/,
      &       ' i.e. mod(itt,nmix).ne.0.    itt, nmix =',2i5,/,
-     &       ' Programme stopped.')
+     &       ' Programme stopping ...')
+  24  format(' Routine restio',/,
+     &       ' error while reading restart dataset,',/,
+     &       ' Programme stopping ...')
 c
 c------------------------------------------------------------------
 c     write restart data set to archive.
 c------------------------------------------------------------------
 c
-      entry wrrest
+      entry archwr_std
 c
 c------------------------------------------------------------------
 c  create archive file name
 c------------------------------------------------------------------
 c
       write (file,'(i10.10)')nint(totday)
-      file = 'd'//file(7:10)//'.restart'
+      file = 'd'//file(7:10)//'.'//ftarch
       open(iorest, file=file, form='UNFORMATTED',
-     &       access='SEQUENTIAL')
+     &       access='SEQUENTIAL',err=950)
 c
-      write (stdout,24) itt, file, iorest
-      write(iorest) itt, totsec, totday, years, kmt
-      if(np0.eq.1) write(iorest)  h01, u01, v01
-      if(np0.eq.2) write(iorest)  h02, u02, v02
-      if(np0.eq.3) write(iorest)  h03, u03, v03
-c
-      if(np.eq.1) write(iorest)  t1, u1, v1
-      if(np.eq.2) write(iorest)  t2, u2, v2
-      if(np.eq.3) write(iorest)  t3, u3, v3
-c
+      write (stdout,31) itt, file, iorest
+      if(ftarch.eq.'rst')then
+        write(iorest) itt, totsec, totday, years, kmt
+        if(np0.eq.1) write(iorest,err=950)  h01, u01, v01
+        if(np0.eq.2) write(iorest,err=950)  h02, u02, v02
+        if(np0.eq.3) write(iorest,err=950)  h03, u03, v03
+        if(np.eq.1)  write(iorest,err=950)  t1, u1, v1
+        if(np.eq.2)  write(iorest,err=950)  t2, u2, v2
+        if(np.eq.3)  write(iorest,err=950)  t3, u3, v3
+      elseif(ftarch.eq.'ufm')then
+        write(iorest) itt, totsec, totday, years
+        write(iorest) kmt
+        if(np0.eq.1) then
+          write(iorest,err=950)  h01
+          write(iorest,err=950)  u01
+          write(iorest,err=950)  v01
+        elseif(np0.eq.2)then
+          write(iorest,err=950)  h02
+          write(iorest,err=950)  u02
+          write(iorest,err=950)  v02
+        else
+          write(iorest,err=950)  h03
+          write(iorest,err=950)  u03
+          write(iorest,err=950)  v03
+        endif
+        do 310 j=1,JMT
+ 310    write(iorest,err=950)((t(k,i,j,1,np),k=1,km),i=1,imt)
+        do 320 j=1,JMT
+ 320    write(iorest,err=950)((t(k,i,j,2,np),k=1,km),i=1,imt)
+        do 330 j=1,JMT
+ 330    write(iorest,err=950)((u(k,i,j,np),k=1,km),i=1,imt)
+        do 340 j=1,JMT
+ 340    write(iorest,err=950)((v(k,i,j,np),k=1,km),i=1,imt)
+      endif
       close(iorest, status = 'KEEP')
       return
 c
-  24  format('  Writing restart file for itt = ',i7,/,
+c error
+c
+ 950  write(stdout,32)
+      stop
+c
+  31  format('  Writing restart file for itt = ',i7,/,
      &       '  filename = ',a,'  unit = ',i2) 
+  32  format(' Routine restio',/,
+     &       ' error while writing restart dataset',/,
+     &       ' Programme stopping ...')
       end
 
 

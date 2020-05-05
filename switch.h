@@ -1,7 +1,7 @@
 c====================== include file "switch.h" =========================
 #ifdef hcomments
 c
-c     @(#) SCCS module: switch.h, version 1.14
+c     @(#) SCCS module: switch.h, version 1.15
 c
 c     all time dependent decisions are made in time manager
 c     "tmngr.F" and communicated elsewhere in the model via 
@@ -20,7 +20,8 @@ c     acor    = (>0, 0) = (implicit, explicit) treatment of coriolis
 c               term
 c     tsi     = number of days between printing of time step info
 c     dgnstc  = number of days between diagnostic calculations:
-c     snaps   = number of days between saving an archive dataset
+c     snapd   = number of days between saving an archive dataset
+c     archd   = number of days between saving an archive dataset
 c     restrt  = true if a restart data set is to be written
 c               at the end of this run
 c
@@ -34,6 +35,7 @@ c     mixts   = true if this is a mixing time step
 c     prntsi  = true if time step info to be printed
 c     diagts  = true if diagnostics are to be printed
 c     snapts  = true if this is an archive timestep
+c     archts  = true if this is an archive timestep
 c
 c     the following switches are set within the main program
 c
@@ -41,12 +43,23 @@ c     first   = true if this is the first timestep of a run
 c     eots    = end of a time step. always true except for first
 c               pass of an euler backward time step
 c     mxpas2  = second pass of mixing timestep
-c     frpas1  = first pass of a free surface model timestep
+# ifdef de_checkbd
+c     lchkbd  = logical variable used within the barotropic
+c               time loop to decide whether or not to apply
+c               the del-cross-del-plus filter
+# endif
 c
 #endif
-      logical init, restrt, eb, first, last, mixts, eots,
-     &        mxpas2, frpas1, prntsi, diagts, snapts 
-      common /switch/ days, init, nmix, eb, acor, tsi, dgnstc,  
-     &        snaps, restrt, first, last, mixts, eots, mxpas2,  
-     &        frpas1, prntsi, diagts, snapts 
+      LOGICAL_N init, restrt, eb, first, last, mixts, eots
+     &,       mxpas2, prntsi, diagts, snapts, archts 
+#ifdef de_checkbd
+     &,       lchkbd
+#endif
+      common /switchl/ init, eb, restrt, first, last, mixts, eots  
+     &,       mxpas2, prntsi, diagts, snapts, archts 
+#ifdef de_checkbd
+     &,       lchkbd
+#endif
+      common /switchr/days,acor,tsi,dgnstc,snapd,archd
+      common /switchi/nmix,idebug
 
