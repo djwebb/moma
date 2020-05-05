@@ -1,13 +1,13 @@
 
  File 'ocean.in'.  Input file for MOMA model. 
- **** version for MOM-A code
- **** test.  Short test run.   
+ ****    version for MOM-A code
+ ****    Two day test run.   
 
 
 
  &contrl
      init=.true.,       fnrest=' '
-     days = 2.00  ,   restrt=.false.,
+     days = 2.00,       restrt=.true.,
      nmix=24,           eb=.true.,      ncon=1,
      tsi   = 0.08333333,dgnstc= 2.00, snaps = 1.0,
  &end
