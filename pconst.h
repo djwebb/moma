@@ -1,8 +1,8 @@
 c====================== include file "pconst.h" ========================
 #ifdef hcomments
 c
-c @(#) SCCS module: pconst.h  version: 1.6
-c     Creation date: 04/13/95
+c @(#) SCCS module: pconst.h  version: 1.7
+c     Creation date: 06/30/95
 c
 c-----------------------------------------------------------------------
 c     Rules for parameter constants
@@ -32,13 +32,3 @@ c
 #endif
       integer stdin, stdout, stderr
       parameter (stdin = 5, stdout = 6, stderr = 6)
-#ifdef hcomments
-c
-c     define length of words on different machines
-c
-#endif
-#ifdef cray-t3d
-# define LOGICAL_N logical*8
-#else
-# define LOGICAL_N logical*4
-#endif

@@ -1,7 +1,7 @@
       subroutine state (t, s, rho, kk, ind)
 c
-c @(#) SCCS module: state.F  version: 1.6
-c     Creation date: 04/13/95
+c @(#) SCCS module: state.F  version: 1.7
+c     Creation date: 06/30/95
 c
 c=============================================================
 c

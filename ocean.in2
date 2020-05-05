@@ -1,5 +1,5 @@
 ****
-****  @(#) SCCS module: ocean.in2  version: 1.6 Creation date: 04/13/95
+****  @(#) SCCS module: ocean.in2  version: 1.7 Creation date: 06/30/95
 ****
 ****   3 day test run.
 ****
@@ -7,7 +7,7 @@ INIT      FNREST
 .true.    'd0002.hdf'
 **
 DAYS      RESTRT   
-3.00      .true.  
+3.0       .false.  
 **
 NMIX      EB         NCON       ACOR
 24        .true.     1          0.6
@@ -19,7 +19,10 @@ FTREST     FTSNAP    FTARCH
 'hdf'      'hdf'     'hdf'
 **
 DGNSTC     DCHKBD
-10.0       0.1
+0.0        0.1
+**
+STATMS     STATIS
+20.0       10.0
 **
 AM      AH      FKPM    FKPH     CDBOT   
 1.0E9   2.0E7   1.0     20.0     0.001

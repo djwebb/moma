@@ -1,7 +1,7 @@
      	program masterslave
 c
-c @(#) SCCS module: masterslave.F  version: 1.6
-c     Creation date: 04/13/95
+c @(#) SCCS module: masterslave.F  version: 1.7
+c     Creation date: 06/30/95
 c
 c==================================================================
 c     top level routine for running moma.pvm on a multiprocessor
@@ -18,13 +18,12 @@ c
 #include "levind.h"
 #ifdef cray-t3d
       	intrinsic my_pe
-        me=my_pe()
-	time_start=rtc()
-	utime(3)=time_start
+        me = my_pe()
+	time_start=rtc()*6.6e-9
+        intime = time_start
 #else
 	integer time
-	itime_start=time()
-	utime(3)=dtime(utime)
+	intime = time()
 #endif	
 	call getmyid(mytid)
 #ifdef cray-t3d
@@ -40,34 +39,33 @@ c
 	mytid=me
 
         if (me .eq. 0) then
-		write(stdout,*)'calling master ', me
-                write(stdout,*)'PVM_MAX_PACK = ', imaxpack
-                call flush(stdout)
-		call master
-                call flush(stdout)
+	  write(stdout,*)'processor ', me,' calling subroutine master'
+          write(stdout,*)'PVM_MAX_PACK = ', imaxpack
+          call flush(stdout)
+	  call master
+          call flush(stdout)
         else
-		mtid=0
-		write(stdout,*)'calling slave ', me
-                call flush(stdout)
-		call slave
-                call flush(stdout)
+          mtid=0
+	  write(stdout,*)'processor ', me,' calling subroutine slave'
+          call flush(stdout)
+	  call slave
+          call flush(stdout)
         endif
-	time_end=rtc()
-	total_time=(time_end-time_start)*6.6667e-09
+        total_time=rtc()*6.6e-9-time_start
 	print*,'total elapsed time for ',me,' is ',total_time
 #else
 	call getmasterid(mtid)
 	if (mtid .lt. 0) then
-		print*,'calling master'
-		call master
+	  write(stdout,*)'processor ', me,' calling subroutine master'
+	  call master
 	else
-		print*,'calling slave'
-		call slave
+	  write(stdout,*)'processor ', me,' calling subroutine slave'
+	  call slave
 	endif
-	itime_end=time()
-	utime(3)=dtime(utime)+utime(3)
-	itotal_time=itime_end-itime_start
-	print*,'total elapsed time for ',me,' is ',itotal_time,utime(3)
+	utime(3) = etime(utime)
+	itotal_time = time() - intime
+	print * ,'total elapsed time for ',me,' is ',
+     &            itotal_time,utime(3)
 #endif
         end
 

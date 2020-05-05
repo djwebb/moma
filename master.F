@@ -5,8 +5,8 @@
 #endif
 c
 c=======================================================================
-c @(#) SCCS module: master.F  version: 1.6
-c      Creation date: 04/13/95
+c @(#) SCCS module: master.F  version: 1.7
+c      Creation date: 06/30/95
 c=======================================================================
 c
 c  This program and the corresponding master program make up  
@@ -83,29 +83,23 @@ c
      &,                 dchkbd
 # endif
      &,         ftrest, ftsnap, ftarch, ispvar, isplev
+     &,         statms, statis
       namelist /tsteps/ dtts, dtuv, dtbt
       namelist /eddy/   am, ah, fkpm, fkph, cdbot
 #endif
-c
-c  start timing and choose number of processors
-c
-#ifndef Masterslave
-      utime(3) = etime(utime)
-#endif
-c
-      intime   = time()
-      iotime   = intime
-      model(1) =' Stripped down MOM code for array processor.'
-      model(2) =' Module: master.F.  Version: 1.00. '//
-     &          ' Date:        16:10'
 c
 c=======================================================================
 c     begin introductory section
 c     open input file and write version information
 c=======================================================================
 c
+#ifndef masterslave
+      intime   = time()
+#endif
 c
-c
+      model(1) =' Stripped down MOM code for array processor.'
+      model(2) =' Module: master.F.  Version: 1 '//
+     &          ' Date: 06/30/95'
 #ifdef no_namelist
       open (stdin,file='ocean.in2')
 #else
@@ -140,6 +134,8 @@ c
       ftarch = 'hdf'
       iorest = 21
       iosnap = 22
+      statms = 10
+      statis = 10
       idebug = 3
 c
       dtts = 10800d0
@@ -204,7 +200,11 @@ c
 c
       read (stdin,'( )')
       read (stdin,*) invar
-      read (stdin,*) dgnsts, dchkbd
+      read (stdin,*) dgnstc, dchkbd
+c
+      read (stdin,'( )')
+      read (stdin,*) invar
+      read (stdin,*) statms, statis
 c
       read (stdin,'( )')
       read (stdin,*) invar
@@ -216,7 +216,7 @@ c
 c
       write(stdout,1450) init,fnrest,days,restrt,nmix,eb,ncon,acor,
      &                   tsi,snapd,archd,idebug,ftrest,ftsnap,ftarch,
-     &                   dgnstc,dchkbd
+     &                   dgnstc,dchkbd,statms,statis
       write(stdout,1451) am,ah,fkpm,fkph,cdbot
       write(stdout,1452) dtts,dtuv,dtbt
 # ifdef de_checkbd
@@ -231,7 +231,8 @@ c
      &       ' tsi   = ',g10.4,' snapd = ',g10.4,' archd = ',g10.4,
      &       ' idebug= ',i10,/,
      &       ' ftrest = ',a,' ftsnap = ',a,' ftarch = ',a,/,
-     &       ' dgnstc= ',g10.4,' dchkbd = ',g10.4)
+     &       ' dgnstc = ',g10.4,' dchkbd = ',g10.4,/,
+     &       ' statms = ',g10.4,' statis = ',g10.4)
 1451  format(' am    = ',g10.4,' ah    = ',g10.4,/,' fkpm  = ',g10.4,
      &       ' fkph  = ',g10.4,/,' cdbot = ',g10.4)
 1452  format(' dtts  = ',g10.4,' dtuv  = ',g10.4,' dtbt  = ',g10.4)
@@ -255,12 +256,6 @@ c
         write(stdout,'(a)') ' dtuv not integer multiple of dtbt.'
         write(stdout,'(a,i5)') ' dtbt now set to set to:', dtbt
       endif
-#ifdef de_checkbd
-c
-c scale the checkerboard filter weighting factor
-c
-      dchkbd = dchkbd*grav*dtbt*zw(KM)
-#endif
 c
 c------------------------------------------------------------------
 c     list code options chosen by user for this model run
@@ -283,6 +278,12 @@ c
       call m_grids
       call init_kmt
       call init_kpn
+#ifdef de_checkbd
+c
+c scale the checkerboard filter weighting factor
+c
+      dchkbd = dchkbd*grav*dtbt*zw(KM)
+#endif
 c
 c-----------------------------------------------------------------------
 c    start up slave processes
@@ -383,6 +384,7 @@ c  checkpoint - wait for all slaves to check in and then start.
 c-----------------------------------------------------------------------
 c
       call mchkpnt(10)
+      call prininfo(1)
 c
 c-----------------------------------------------------------------------
 c  enter timestepping loop
@@ -436,7 +438,7 @@ c  print information arrays every few seconds while waiting
 c-----------------------------------------------------------------------
 c
       call m_recv(MSG_ANY)
-      call prininfo(1)
+      call prininfo(3)
 c +->
 c |
   25  if((prntsn .and. ltsip) .or. (snaptn .and. lsnapp)
@@ -448,7 +450,7 @@ c |
         call sleep(1)
 #endif
         call m_recv(MSG_ANY)
-        call prininfo(0)
+        call prininfo(4)
 c |
 c-|----------------------------------------------------------------
 c | if an archive is in progress and if previous, partial archive request 
@@ -474,6 +476,7 @@ c  end timestepping loop
 c-----------------------------------------------------------------------
 c
       if(last)goto 3401
+      call prininfo(2)
 3400  continue
 3401  continue
 c 
@@ -494,8 +497,12 @@ c     leave PVM before exiting
 c-----------------------------------------------------------------------
 c
       call closedown(info) 
-      write (stdout,9603) 
+      write (stdout,9603)
+#ifdef Masterslave
+      return
+#else 
       stop
+#endif
 9603  format(1x,' ==> END of model run.',//)
       end
 

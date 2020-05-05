@@ -1,7 +1,7 @@
             subroutine docmnt (nunit, wrdoc, wrc0, wrc1, wrc2)
 c
-c @(#) SCCS module: docmnt.F  version: 1.6
-c     Creation date: 04/13/95
+c @(#) SCCS module: docmnt.F  version: 1.7
+c      Creation date: 06/30/95
 c
 c=======================================================================
 c
@@ -57,13 +57,8 @@ c
 #include "versno.h"
       parameter (ndocum = 16, ifdmax = 50)
 c
-      character*60 expnam
       character*16 cifdef(ifdmax)
       logical wrdoc, wrc0, wrc1, wrc2
-      namelist /conrl0/ itt,years
-      namelist /cntrl1/ expnam
-c
-      expnam = model(1)(1:60)
 c
 c-----------------------------------------------------------------------
 c     list options that are in effect on first timestep
@@ -101,6 +96,10 @@ c
         nifdef = nifdef + 1
         cifdef(nifdef) = 'presetp         '
 #endif
+#ifdef inline
+        nifdef = nifdef + 1
+        cifdef(nifdef) = 'inline          '
+#endif
 #ifdef free_eb
         nifdef = nifdef + 1
         cifdef(nifdef) = 'free_eb         '
@@ -109,10 +108,13 @@ c
         nifdef = nifdef + 1
         cifdef(nifdef) = 'de_checkbd      '
 #endif
-c  ncsa_hdf not implemented
 #ifdef ncsa_hdf
         nifdef = nifdef + 1
         cifdef(nifdef) = 'ncsa_hdf        '
+#endif
+#ifdef DOUBLE
+        nifdef = nifdef + 1
+        cifdef(nifdef) = 'DOUBLE          '
 #endif
 #ifdef cray-t3d
         nifdef = nifdef + 1

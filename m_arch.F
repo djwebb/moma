@@ -1,7 +1,7 @@
       subroutine archrd(ncntl)
 c
-c @(#) SCCS module: m_arch.F  version: 1.6
-c     Creation date: 04/13/95
+c @(#) SCCS module: m_arch.F  version: 1.7
+c     Creation date: 06/30/95
 c
 c=======================================================================
 c subroutine to read restart data and send to slaves
@@ -233,7 +233,7 @@ c
 #include "param.h"
 #include "levind.h"
 #include "mesdta.h"
-      logical*4 tgrid
+      logical tgrid
 c
 c Initialise register to false but set land points true, since these 
 c won't be sent by the slaves
@@ -342,7 +342,7 @@ c
 #include "ctmngr.h"
 #include "mesdta.h"
       character*40 rsfile
-      logical*4 around
+      logical around
 c
 c------------------------------------------------------------------
 c  create archive file and write base data

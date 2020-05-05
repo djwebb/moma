@@ -1,8 +1,8 @@
 c===================== include file "switch.h" =========================
 #ifdef hcomments
 c
-c @(#) SCCS module: switch.h  version: 1.6
-c     Creation date: 04/13/95
+c @(#) SCCS module: switch.h  version: 1.7
+c     Creation date: 06/30/95
 c
 c-----------------------------------------------------------------------
 c
@@ -25,6 +25,10 @@ c     tsi     = number of days between printing of time step info
 c     dgnstc  = number of days between extra idagnostic printing
 c     snapd   = number of days between saving a snapshot dataset
 c     archd   = number of days between saving an archive dataset
+c     statms  = number of seconds between master printing status data
+c               in main loop.  0.0 = no printing
+c     statis  = number of seconds between master printing status data
+c               while waiting in idling loop.  0.0 = no printing
 c     restrt  = true if a restart data set is to be written
 c               at the end of this run
 c     idebug  =  controls printing of debug information
@@ -67,9 +71,9 @@ c               the del-cross-del-plus filter
 c-----------------------------------------------------------------------
 c
 #endif
-      LOGICAL_N init, restrt, eb, first, last, mixts, eots
-     &,         mxpas2, frpas1, prntsi, diagts, snapts, archts
-     &,         lastn , prntsn, snaptn, archtn 
+      logical init, restrt, eb, first, last, mixts, eots
+     &,       mxpas2, frpas1, prntsi, diagts, snapts, archts
+     &,       lastn , prntsn, snaptn, archtn 
 #ifdef de_checkbd
      &,       lchkbd
 #endif
@@ -79,6 +83,6 @@ c
 #ifdef de_checkbd
      &,       lchkbd
 #endif
-      common /switchr/days,acor,tsi,dgnstc,snapd,archd
+      common /switchr/days,acor,tsi,dgnstc,snapd,archd,statms,statis
       common /switchi/nmix,idebug
 

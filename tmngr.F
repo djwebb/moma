@@ -1,7 +1,7 @@
       subroutine tmngr (dt)
 c
-c @(#) SCCS module: tmngr.F  version: 1.6
-c     Creation date: 04/13/95
+c @(#) SCCS module: tmngr.F  version: 1.7
+c     Creation date: 06/30/95
 c
 c==================================================================
 c
@@ -34,7 +34,7 @@ c
 #include "ctmngr.h"
 #include "switch.h"
 #include "timelv.h"
-      logical*4 tmnset
+      logical tmnset
 c
 c------------------------------------------------------------------
 c     increment time step counters

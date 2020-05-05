@@ -1,8 +1,8 @@
       subroutine setp (ic, jc)
 #ifdef presetp
 c
-c @(#) SCCS module: setp.F  version: 1.6
-c     Creation date: 04/13/95
+c @(#) SCCS module: setp.F  version: 1.7
+c     Creation date: 06/30/95
 c
 c==================================================================
 c
@@ -37,11 +37,6 @@ c
           endif
  100    continue
       endif
-c      if(ic.eq.1.or.ic.eq.it)then
-c        write(outstr,*)' setp 3 ',ic,jc, kmc, temp(1),grav,
-c     &                          dzw(0),p(1,ic,jc)
-c        call s_send(MSG_OUTSTR)
-c      endif
 #endif
       return
       end

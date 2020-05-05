@@ -1,8 +1,8 @@
       subroutine m_initmess
 c
 c=======================================================================
-c @(#) SCCS module: m_msg.F  version: 1.6
-c     Creation date: 04/13/95
+c @(#) SCCS module: m_msg.F  version: 1.7
+c     Creation date: 06/30/95
 c=======================================================================
 c
 c
@@ -61,10 +61,10 @@ c
 #include "ctmngr.h"
 #include "mesdta.h"
 c
-c  set time and position
+c  set position
 c
-c     utime(3) = etime(utime)
       iposn = iposn0
+      call prininfo(3)
 c
 c  receive and process all waiting messages
 c
@@ -87,7 +87,7 @@ c  use sleep routine to sleep (really we want to wait for a few
 c  seconds before reprinting status arrays or until data arrives).
 c
   40  continue
-      call prininfo(0)
+      call prininfo(4)
 #ifndef cray-t3d
       call sleep(1)
 #endif
@@ -110,10 +110,10 @@ c
 #include "ctmngr.h"
 #include "mesdta.h"
 c
-c  set time and position
+c  set position
 c
-c     utime(3) = etime(utime)
       iposn = iposn0
+      call prininfo(3)
 c
 c  receive and process all waiting messages
 c
@@ -143,7 +143,7 @@ c  use sleep routine to sleep (really we want to wait for a few
 c  seconds before reprinting status arrays or until data arrives).
 c
   40  continue
-      call prininfo(0)
+      call prininfo(4)
 #ifndef cray-t3d
       call sleep(0)
 #endif
@@ -244,26 +244,48 @@ c
       end
 
 
-      subroutine prininfo(iforce)
+      subroutine prininfo(iopt)
 c
 c=======================================================================
 c  subroutine to print position information
-c  if  iforce = 0 print every 30 sec
-c             = 1 print anyway
+c  if  iopt = 1 - reset main loop time flag
+c           = 2 - main loop, print every statms sec
+c           = 3 - reset waiting loop time flag
+c           = 4 - waiting loop, print every statis sec
 c=======================================================================
-
+c
 #include "param.h"
 #include "mesdta.h"
+#include "switch.h"
 c
-      integer time,lapse
-      data lapse /30/
+      data tmain,twait /0.0,0.0/
 c
-      now = time()
-      if(now-iotime.gt.lapse .or. iforce.eq.1)then
-        iotime = now
-        now = mod(now-intime,100000)
-        print 33, now
-        print 31
+#ifdef cray-t3d
+      tnow = rtc()*6.6e-9-time_start
+#else
+      tnow = time()-intime
+#endif
+      if(iopt.eq.1)then
+        tmain = tnow
+        return
+      elseif(iopt.eq.3)then
+        twait = tnow
+        return
+      endif
+c  
+      if((iopt.eq.2.and.statms.gt.0.0.and.tnow-tmain.gt.statms).or.
+     &   (iopt.eq.4.and.statis.gt.0.0.and.tnow-twait.gt.statis))then
+        if(iopt.eq.2)then
+          now = mod(tnow,100000.0)
+          tmain = tnow
+          print 31, now
+        else
+          now = mod(tnow,100000.0)
+          tmain = tnow
+          twait = tnow
+          print 32, now
+        endif
+        print 33
         do 40 i=1,nproc
         ii = infoa(1,i)
         if(ii.ge.0.and.ii.le.40)then
@@ -271,16 +293,19 @@ c
         else
           mposmg = 0
         endif
-        print 32, i, infoa(1,i), infoa(2,i), infoa(3,i), messtr(mposmg)
+        print 34, i, infoa(1,i), infoa(2,i), infoa(3,i), messtr(mposmg)
   40    continue
-        print 34
-        call flush(stdout)
+        print 35
+        call flush(stderr)
       endif
-  33  format(' ',/,' Status arrays at time =', i6,' s.')
-  31  format(' slave,  posn,  slave itt,  slave itbt,',
+  31  format(' ',/,' Status arrays at time =', i6,' s.',
+     &             '  Master in main loop')
+  32  format(' ',/,' Status arrays at time =', i6,' s.'
+     &             '  Master waiting for slaves')
+  33  format(' slave,  posn,  slave itt,  slave itbt,',
      &       '  Last reported: ')
-  32  format(i5,i8,i10,i12,7x,a30)
-  34  format(' ',/)
+  34  format(i5,i8,i10,i12,7x,a30)
+  35  format(' ',/)
       return
       end
 
@@ -348,7 +373,7 @@ c
         call pvmfmcast( nproc, itida, MSG_IDS, info )
 #endif
         if(idebug.gt.2)then
-          write(stdout,*)' Master:  Message MSG_IDS sent to all slaves.'
+          write(stderr,*)' Master:  Message MSG_IDS sent to all slaves.'
         endif
 c
 c=======================================================================
@@ -391,8 +416,7 @@ c
 c
         call pvmfmcast( nproc, itida, MSG_CONTROL, info )
         if(idebug.gt.2)then
-          print *,
-     &    ' Master:  Message MSG_CONTROL sent to all slaves.'
+          print *,' Master:  Message MSG_CONTROL sent to all slaves.'
         endif
 c
 c=======================================================================
@@ -401,36 +425,86 @@ c=======================================================================
 c
       elseif(msgtype.eq.MSG_TOPOG) then
        do 20 n=1,nproc
-        call pvmfinitsend( PVMDEFAULT, info )
-        call pvmfpack( INTEGER_PVM,  it_l(n),        1, 1, info )
-        call pvmfpack( INTEGER_PVM,  jt_l(n),        1, 1, info )
-        call pvmfpack( INTEGER_PVM,  icycl_M(n),        1, 1, info )
-        call pvmfpack( INTEGER_PVM,  iswm1_M(n),        1, 1, info )
-        call pvmfpack( INTEGER_PVM,  jswm1_M(n),        1, 1, info )
-        call pvmfpack( REAL_PVM,     swlo(n),        1, 1, info )
-        call pvmfpack( REAL_PVM,     swla(n),        1, 1, info )
-       do 10 j=jt_s(n),jt_e(n)
-       do 10 i=it_s(n),it_e(n)
-        ii = mod(i-1,IMT_M) + 1
-        call pvmfpack(INTEGER_PVM , kmt(ii,j),  1, 1, info )
- 10    continue
-       do 15 j=jt_s(n),jt_e(n)
-       do 15 i=it_s(n),it_e(n)
-         ii = mod(i-1,IMT_M) + 1
-         call pvmfpack(INTEGER_PVM , kmu(ii,j),  1, 1, info )
- 15    continue
-       do 18 j=jt_s(n),jt_e(n)
-       do 18 i=it_s(n),it_e(n)
-         ii = mod(i-1,IMT_M) + 1
-         call pvmfpack(INTEGER_PVM , kpn(ii,j),  1, 1, info )
- 18    continue
+         if(idebug.gt.5)then
+           print *,' Master:  Sending MSG_TOPOG to slave:',n
+         endif
+         call pvmfinitsend( PVMDEFAULT, info )
+#ifdef pvm_buffer
+         bufout(2) = it_l(n)
+         bufout(3) = jt_l(n)
+         bufout(4) = icycl_M(n)
+         bufout(5) = iswm1_M(n)
+         bufout(6) = jswm1_M(n)
+         bufout(7) = swlo(n)
+         bufout(8) = swla(n)
+         lbuff = 8
+#else
+         call pvmfpack( INTEGER_PVM,  it_l(n),        1, 1, info )
+         call pvmfpack( INTEGER_PVM,  jt_l(n),        1, 1, info )
+         call pvmfpack( INTEGER_PVM,  icycl_M(n),        1, 1, info )
+         call pvmfpack( INTEGER_PVM,  iswm1_M(n),        1, 1, info )
+         call pvmfpack( INTEGER_PVM,  jswm1_M(n),        1, 1, info )
+         call pvmfpack( REAL_PVM,     swlo(n),        1, 1, info )
+         call pvmfpack( REAL_PVM,     swla(n),        1, 1, info )
+#endif
+         do 10 j=jt_s(n),jt_e(n)
+         do 10 i=it_s(n),it_e(n)
+          ii = mod(i-1,IMT_M) + 1
+#ifdef pvm_buffer
+             lbuff = lbuff+1
+             if(lbuff+1.gt.LENBUF)then
+               print *, ' error T1 in m_send while packing',
+     &             ' MSG_TOPOG for slave: ',n,itida(n)
+               print *, ' buffer overflow: lbuff =',lbuff,
+     &                    ' ii = ',ii,' j = ',j
+             endif
+             bufout(lbuff) = kmt(ii,j)
+#else
+           call pvmfpack(INTEGER_PVM , kmt(ii,j),  1, 1, info )
+#endif
+ 10      continue
+         do 15 j=jt_s(n),jt_e(n)
+         do 15 i=it_s(n),it_e(n)
+           ii = mod(i-1,IMT_M) + 1
+#ifdef pvm_buffer
+             lbuff = lbuff+1
+             if(lbuff+1.gt.LENBUF)then
+               print *, ' error T2 in m_send while packing',
+     &             ' MSG_TOPOG for slave: ',n,itida(n)
+               print *, ' buffer overflow:  lbuff =',lbuff,
+     &                    ' ii = ',ii,' j = ',j
+             endif
+             bufout(lbuff) = kmu(ii,j)
+#else
+           call pvmfpack(INTEGER_PVM , kmu(ii,j),  1, 1, info )
+#endif
+ 15      continue
+         do 18 j=jt_s(n),jt_e(n)
+         do 18 i=it_s(n),it_e(n)
+           ii = mod(i-1,IMT_M) + 1
+#ifdef pvm_buffer
+             lbuff = lbuff+1
+             if(lbuff+1.gt.LENBUF)then
+               print *, ' error T3 in m_send while packing',
+     &             ' MSG_TOPOG for slave: ',n,itida(n)
+               print *, ' buffer overflow: lbuff =',lbuff,
+     &                    ' ii = ',ii,' j = ',j
+             endif
+             bufout(lbuff) = kpn(ii,j)
+#else
+           call pvmfpack(INTEGER_PVM , kpn(ii,j),  1, 1, info )
+#endif
+ 18        continue
+#ifdef pvm_buffer
+         bufout(1) = lbuff
+         call pvmfpack(REAL_PVM, bufout, lbuff, 1, info)
+#endif
 c
-        call pvmfsend( itida(n), msgtype, info )
- 20   continue
-        if(idebug.gt.2)then
-          print *,
-     &    ' Master:  Message MSG_TOPOG sent to all slaves.'
-        endif
+         call pvmfsend( itida(n), msgtype, info )
+ 20      continue
+       if(idebug.gt.2)then
+         print *,' Master:  Message MSG_TOPOG sent to all slaves.'
+       endif
 c
 c=======================================================================
 c  entry point to send restart time variables to all slaves
@@ -458,15 +532,32 @@ c
          jlow=max(jarchl,jt_s(n))
          jupp=min(jarchu,jt_e(n))
          call pvmfinitsend( PVMDEFAULT, info )
+#ifdef pvm_buffer
+           bufout(2) = idvar
+           bufout(3) = jlow
+           bufout(4) = jupp
+           lbuff = 4
+#else
          call pvmfpack( INTEGER_PVM, idvar, 1, 1, info )
          call pvmfpack( INTEGER_PVM, jlow , 1, 1, info )
          call pvmfpack( INTEGER_PVM, jupp , 1, 1, info )
+#endif
 c
          if(idvar.le.NUM2D) then
           do 60 j=jlow,jupp
           do 60 i=it_s(n),it_e(n)
            ii = mod(i-1,IMT_M) + 1
+#ifdef pvm_buffer
+           lbuff = lbuff+1
+           if(lbuff+1.gt.LENBUF)then
+               print *, ' error in m_send while packing',
+     &             ' MSG_RESTART for slave: ',n,itida(n)
+               print *, ' buffer overflow:  lbuff =',lbuff
+           endif
+           bufout(lbuff) = rest2d(ii,j)
+#else
            call pvmfpack(REAL_PVM, rest2d(ii,j), 1, 1, info)
+#endif
 60        continue
 c
          elseif(vartgrd(idvar)) then
@@ -475,8 +566,22 @@ c
            jj=j-joff
           do 70 i=it_s(n),it_e(n)
            ii = mod(i-1,IMT_M) + 1
-           if(kmt(ii,j).ne.0) call pvmfpack(REAL_PVM,  
-     &                        rest3d(1,ii,jj),kmt(ii,j), 1, info) 
+           if(kmt(ii,j).ne.0) then
+#ifdef pvm_buffer
+             if(lbuff+kmt(ii,j)+1.gt.LENBUF)then
+               print *, ' error in m_send while packing',
+     &             ' MSG_RESTART for slave: ',n,itida(n)
+               print *, ' buffer overflow:  lbuff =',lbuff
+             endif
+             do 61 k=1,kmt(ii,j)
+               lbuff = lbuff+1
+               bufout(lbuff) = rest3d(k,ii,jj)
+  61         continue
+#else
+             call pvmfpack(REAL_PVM,  
+     &                        rest3d(1,ii,jj),kmt(ii,j), 1, info)
+#endif
+           endif 
 70        continue
          else
 c
@@ -485,11 +590,29 @@ c
            jj=j-joff
           do 80 i=it_s(n),it_e(n)
            ii = mod(i-1,IMT_M) + 1
-           if(kmu(ii,j).ne.0) call pvmfpack(REAL_PVM,  
-     &                        rest3d(1,ii,jj),kmu(ii,j), 1, info) 
+           if(kmu(ii,j).ne.0) then
+#ifdef pvm_buffer
+             if(lbuff+kmu(ii,j)+1.gt.LENBUF)then
+               print *, ' error in m_send while packing',
+     &             ' MSG_RESTART for slave: ',n,itida(n)
+               print *, ' buffer overflow:  lbuff =',lbuff
+             endif
+             do 62 k=1,kmu(ii,j)
+               lbuff = lbuff+1
+               bufout(lbuff) = rest3d(k,ii,jj)
+  62         continue
+#else
+             call pvmfpack(REAL_PVM,  
+     &                        rest3d(1,ii,jj),kmu(ii,j), 1, info)
+#endif
+            endif 
 80        continue
          endif
-         call pvmfsend( iarcha(nn), MSG_RESTART, info )
+#ifdef pvm_buffer
+         bufout(1) = lbuff
+         call pvmfpack(REAL_PVM, bufout, lbuff, 1, info)
+#endif
+         call pvmfsend(iarcha(nn), MSG_RESTART, info )
 50      continue
         if(idebug.gt.2)then
           print *,' Master:  Message MSG_RESTART sent to',
@@ -565,11 +688,11 @@ c
       endif
 c
 c=======================================================================
-c  flush stdout to ensure debug messages are received
+c  flush stderr to ensure debug messages are received
 c=======================================================================
 c
       if(idebug.gt.2)then
-          call flush(stdout)
+          call flush(stderr)
       endif
       return
       end
@@ -630,7 +753,7 @@ c  read name of slave and check it corresponds to the tid
 c
       call pvmfunpack( INTEGER_PVM, mes,  1, 1, info )
       if(mes.lt.1.or.mes.gt.MXSLAVE)then
-        write(stdout,*) ' Error: Message ',msgtag,' from tid ',itid,
+        write(stderr,*) ' Error: Message ',msgtag,' from tid ',itid,
      &     ' has slave number ',mes,' out of range 0 - ',MXSLAVE
       elseif(itid.ne.itida(mes))then
         write(6,*) ' Error: Message ',msgtag,' from slave ',mes,
@@ -642,8 +765,8 @@ c  process abort request message (MSG_BYE)
 c=======================================================================
 c
       if(msgtag.eq.MSG_BYE)then
-        write(stdout,*) ' Abort request received from slave: ',mes
-        write(stdout,*) ' Closing down all slaves'
+        write(stderr,*) ' Abort request received from slave: ',mes
+        write(stderr,*) ' Closing down all slaves'
         call m_send(MSG_ABORT)
 c
 c=======================================================================
@@ -656,7 +779,7 @@ c
         call pvmfunpack( INTEGER_PVM, infoa(2,mes),  1, 1, info )
         call pvmfunpack( INTEGER_PVM, infoa(3,mes),  1, 1, info )
         if(idebug.gt.2)then
-          write(stdout,*) ' Master:  Message MSG_POSN received: ',
+          write(stderr,*) ' Master:  Message MSG_POSN received: ',
      &    mes, infoa(1,mes),infoa(2,mes),infoa(3,mes)
         endif
 c
@@ -668,10 +791,10 @@ c
       elseif(msgtag.eq.MSG_OUTSTR) then
         call pvmfunpack( STRING,   outstr,80, 1, info )
         if(idebug.gt.2)then
-          write(stdout,*) ' Master:  Message MSG_OUTSTR received ',
+          write(stderr,*) ' Master:  Message MSG_OUTSTR received ',
      &                      'from slave ',mes,' ',outstr
         else
-          write(stdout,921)mes,outstr
+          write(stderr,921)mes,outstr
  921  format(' msg from',i4,':  ',a)
         endif
 c
@@ -689,19 +812,19 @@ c
 c  checks
 c
         if(.not.ltsip)
-     &    write(stdout,*) ' Error: Message MSG_RY_TSI from slave ',mes,
+     &    write(stderr,*) ' Error: Message MSG_RY_TSI from slave ',mes,
      &                  ' sent when tsi processing inactive.' 
         if(itts.ne.itttsi)then
-          write(stdout,*) ' Error: Message MSG_RY_TSI from slave ',mes,
+          write(stderr,*) ' Error: Message MSG_RY_TSI from slave ',mes,
      &                    ' has wrong time flag'
-          write(stdout,*) '     : itt from slave is ',itts,
+          write(stderr,*) '     : itt from slave is ',itts,
      &                    ' should be ', itttsi
         endif          
         if(ltsia(mes))
-     &    write(stdout,*) ' Error: Message MSG_RY_TSI from slave ',mes,
+     &    write(stderr,*) ' Error: Message MSG_RY_TSI from slave ',mes,
      &                    ' sent twice'
         if(idebug.gt.2)then
-          write(stdout,*) ' Master:  Message MSG_RY_TSI received: ',
+          write(stderr,*) ' Master:  Message MSG_RY_TSI received: ',
      &                      mes,vols,ektots,dtemps,dsalts
         endif
 c
@@ -723,12 +846,20 @@ c
           dtabs(1) = dtabs(1)/volume
           dtabs(2) = dtabs(2)/volume
 c
+#ifdef cray-t3d
+          total_time=rtc()*6.6e-9-time_start
+          write(stderr,9602) itts,timetsi,ektot,dtabs(1),dtabs(2),
+     &                       total_time
+9602      format(1x,'ts=',i7,1x,a32,' ke=', 1pe13.6,
+     &    ' dtemp=',1pe13.6,' dsalt=',1pe13.6,' time=',0pf10.4)
+#else
           itime = time()-intime
-          write(stdout,9602) itts,timetsi,ektot,dtabs(1),dtabs(2),
+          write(stderr,9602) itts,timetsi,ektot,dtabs(1),dtabs(2),
      &                       itime
-          call flush(stdout)
 9602      format(1x,'ts=',i7,1x,a32,' ke=', 1pe13.6,
      &    ' dtemp=',1pe13.6,' dsalt=',1pe13.6,' time=',i6)
+#endif
+          call flush(stderr)
           ltsip = .false.
         endif
 c
@@ -737,132 +868,194 @@ c  process archive replies (MSG_RY_ARC)
 c=======================================================================
 c
       elseif(msgtag.eq.MSG_RY_ARC)then
-        call pvmfunpack( INTEGER_PVM,ittsav,    1, 1, info )
+#ifdef pvm_buffer
+        call pvmfunpack (REAL_PVM, bufout(1), 1, 1, info)
+        lbuff = nint(bufout(1))
+        if(lbuff.gt.LENBUF)then
+           write(stderr,*) ' error in m_recv when receiving ',
+     &                      ' MSG_RY_SNAP'
+           write(stderr,*) ' buffer overflow'
+        endif
+        call pvmfunpack (REAL_PVM, bufout(2), lbuff-1, 1, info)
+        ittsav  = nint(bufout(2))
+        idvar2  = nint(bufout(3))
+        lbuff   = 3
+#else
+        call pvmfunpack(INTEGER_PVM,ittsav,    1, 1, info )
+        call pvmfunpack(INTEGER_PVM,idvar2, 1, 1, info)
+#endif
 c
 c check for expected timestep
 c
-        if(.not.larchp)
-     &    write(stdout,*) ' Error: Message MSG_RY_ARC from slave ',mes,
+        if(.not.larchp) write(stderr,*)
+     &                  ' Error: Message MSG_RY_ARC from slave ',mes,
      &                  ' sent when archive processing inactive.'
         if(ittsav.ne.ittarch) then
-          write(stdout,*) ' Error: Message MSG_RY_ARC from slave ',mes,
+          write(stderr,*) ' Error: Message MSG_RY_ARC from slave ',mes,
      &                    ' has wrong time flag'
-          write(stdout,*) '     : itt from slave is ',ittsav,
+          write(stderr,*) '     : itt from slave is ',ittsav,
      &                    ' should be ', ittarch
         endif
 c
-       call pvmfunpack(INTEGER_PVM, idvar2, 1, 1, info)
 c
 c check this is the expected variable type
 c
-       if(.not.lidvra(idvar2))     
-     &    write(stdout,*) ' Error: Message MSG_RY_ARC from slave ',mes,
-     &                    ' contains wrong variable type'
-
- 55    call pvmfunpack(INTEGER_PVM, imast, 1, 1, info)
+       if(.not.lidvra(idvar2))write(stderr,*)     
+     &                ' Error: Message MSG_RY_ARC from slave ',mes,
+     &                ' contains wrong variable type'
+#ifdef pvm_buffer
+ 55    imast = nint(bufout(lbuff+1))
+#else
+ 55    call pvmfunpack(INTEGER_PVM,imast, 1, 1, info)
+#endif
 c
 c check for "end of message" marker
 c
        if(imast.gt.0) then
-c
-        call pvmfunpack(INTEGER_PVM, jmast, 1, 1, info)
+#ifdef pvm_buffer
+         lbuff = lbuff+2
+         jmast = nint(bufout(lbuff))
+#else
+         call pvmfunpack(INTEGER_PVM, jmast, 1, 1, info)
+#endif
 c
 c check for corrupted message
 c
-        if(imast.gt.IMT_M.or.jmast.gt.JMT_M) then
-          write(stdout,*) ' Invalid master indices: ',imast,jmast
-          write(stdout,*) ' currently unpacking ',nseapt,'th sea-point'
-          call m_send(MSG_ABORT)
-        endif
+          if(imast.gt.IMT_M.or.jmast.gt.JMT_M) then
+            write(stderr,*) ' Invalid master indices: ',imast,jmast
+            write(stderr,*) ' currently unpacking ',nseapt,
+     &                      'th sea-point'
+            call m_send(MSG_ABORT)
+          endif
 c
 c check this reply is unique
 c
-        if(lregra(imast,jmast)) then
-          write(stdout,*) ' Error: Message MSG_RY_ARC from slave ',mes,
-     &                    ' is overwriting previously received ',
-     &                    ' data or land points'
-        else
+          if(lregra(imast,jmast)) then
+            write(stderr,*) ' Error: Message MSG_RY_ARC from slave ',
+     &                   mes, ' is overwriting previously received ',
+     &                        ' data or land points'
+          else
 c
 c Increment a sea-point counter
 c
-          nseapt = nseapt + 1
-          lregra(imast,jmast) = .true.
-        endif
+            nseapt = nseapt + 1
+            lregra(imast,jmast) = .true.
+          endif
 c 
 c Now unpack requested variable(s) for this point 
 c 
-        if(idvar2.le.NUM2D) then 
-         call pvmfunpack(REAL_PVM, rest2d(imast,jmast), 1, 1, info) 
-        elseif(vartgrd(idvar2)) then
+          if(idvar2.le.NUM2D) then 
+#ifdef pvm_buffer
+            lbuff = lbuff+1
+            rest2d(imast,jmast) = bufout(lbuff)
+#else
+            call pvmfunpack(REAL_PVM, rest2d(imast,jmast), 1, 1, info) 
+#endif
+          elseif(vartgrd(idvar2)) then
 c
 c convert jmast to sub-volume index
 c
-         jzon = jmast - ((jmast-1)/JSUB_M)*JSUB_M 
-         call pvmfunpack(REAL_PVM, rest3d(1,imast,jzon), 
+            jzon = jmast - ((jmast-1)/JSUB_M)*JSUB_M
+#ifdef pvm_buffer
+            do 56 k=1,kmt(imast,jmast)
+              lbuff = lbuff+1
+              rest3d(k,imast,jzon) = bufout(lbuff)
+  56        continue
+#else
+            call pvmfunpack(REAL_PVM, rest3d(1,imast,jzon), 
      &                               kmt(imast,jmast), 1, info)
-        else
+#endif
+          else
 c
 c convert jmast to sub-volume index
 c
-         jzon = jmast - ((jmast-1)/JSUB_M)*JSUB_M 
-         call pvmfunpack(REAL_PVM, rest3d(1,imast,jzon), 
+           jzon = jmast - ((jmast-1)/JSUB_M)*JSUB_M 
+#ifdef pvm_buffer
+           do 57 k=1,kmu(imast,jmast)
+             lbuff = lbuff+1
+             rest3d(k,imast,jzon) = bufout(lbuff)
+  57       continue
+#else
+           call pvmfunpack(REAL_PVM, rest3d(1,imast,jzon), 
      &                               kmu(imast,jmast), 1, info)
-        endif   
-        goto 55
+#endif
+         endif   
+         goto 55
        endif
 c
        if(nseapt.ge.nseachk) call archwr       
 c
-        if(idebug.gt.2)then
+       if(idebug.gt.2)then
           print *,' Master:  Message MSG_RY_ARC from slave ',
      &            mes,'  idvar, itt, nseapt, nseachk = ',
      &                   idvar,ittsav,nseapt,nseachk
-        endif
+       endif
 c
 c=======================================================================
 c  process snapshot replies (MSG_RY_SNAP)
 c=======================================================================
 c
       elseif(msgtag.eq.MSG_RY_SNAP)then
-        call pvmfunpack( INTEGER_PVM,ittsnap2,    1, 1, info )
+#ifdef pvm_buffer
+        call pvmfunpack (REAL_PVM, bufout(1), 1, 1, info)
+        lbuff = nint(bufout(1))
+        if(lbuff.gt.LENBUF)then
+           write(stderr,*) ' error in m_recv when receiving ',
+     &                      ' MSG_RY_SNAP'
+           write(stderr,*) ' buffer overflow'
+        endif
+        call pvmfunpack (REAL_PVM, bufout(2), lbuff-1, 1, info)
+        ittsnap2  = nint(bufout(2))
+        idsnp2    = nint(bufout(3))
+        lbuff     = 3
+#else
+        call pvmfunpack(INTEGER_PVM,ittsnap2,    1, 1, info )
+        call pvmfunpack(INTEGER_PVM, idsnp2, 1, 1, info)
+#endif
 c
-c check for expected timestep
+c check for expected timestep and variable type
 c
-        if(.not.lsnapp)  
-     &    write(stdout,*) ' Error: Message MSG_RY_SNAP from slave '
+        if(.not.lsnapp) then 
+          write(stderr,*)' Error: Message MSG_RY_SNAP from slave '
      &              ,mes,' sent when snapshot processing inactive.'
+        endif
         if(ittsnap2.ne.ittsnap) then 
-          write(stdout,*) ' Error: Message MSG_RY_SNAP from slave ',
+          write(stderr,*) ' Error: Message MSG_RY_SNAP from slave ',
      &                      mes,' has wrong time flag'
-          write(stdout,*) '      : itt from slave is ',ittsnap2,
+          write(stderr,*) '      : itt from slave is ',ittsnap2,
      &                    ' should be ', ittsnap
         endif
-c
-       call pvmfunpack(INTEGER_PVM, idsnp2, 1, 1, info)
-c
-c check this is the expected variable type
-c
-       if(idsnp2.ne.idsnp) 
-     &   write(stdout,*) ' Error: Message MSG_RY_SNAP from slave ',
-     &                   mes,' contains wrong variable type'
-
- 65    call pvmfunpack(INTEGER_PVM, imast, 1, 1, info)
-c
-c check for "end of message" marker
-c
-       if(imast.gt.0) then
-        call pvmfunpack(INTEGER_PVM, jmast, 1, 1, info)
+        if(idsnp2.ne.idsnp) then
+          write(stderr,*) ' Error: Message MSG_RY_SNAP from slave ',
+     &                      mes,' contains wrong variable type'
+        endif
+#ifdef pvm_buffer
+ 65      imast = nint(bufout(lbuff+1))
+#else
+ 65      call pvmfunpack(INTEGER_PVM, imast, 1, 1, info)
+#endif
+         if(imast.gt.0)then
+#ifdef pvm_buffer
+           jmast = nint(bufout(lbuff+2))
+#else
+           call pvmfunpack(INTEGER_PVM, jmast, 1, 1, info)
+#endif
 c
 c check for corrupted message
 c
-        if(imast.gt.IMT_M.or.jmast.gt.JMT_M) then
-          write(stderr,*) ' Invalid master indices: ',imast,jmast
-          write(stderr,*) ' currently unpacking ',idsnp,'th snapshot'
+          if(imast.gt.IMT_M.or.jmast.gt.JMT_M) then
+            write(stderr,*) ' Invalid master indices: ',imast,jmast
+            write(stderr,*) ' currently unpacking ',idsnp,'th snapshot'
+            call m_send(MSG_ABORT)
+          endif
+#ifdef pvm_buffer
+          snap2d(imast,jmast) = bufout(lbuff+3)
+          lbuff = lbuff+3
+#else
+          call pvmfunpack(REAL_PVM, snap2d(imast,jmast), 1, 1, info)
+#endif
+          goto 65
         endif
-c
-        call pvmfunpack(REAL_PVM, snap2d(imast,jmast), 1, 1, info)
-        goto 65
-       endif
 c
 c Decrement the reply counter
 c
@@ -886,11 +1079,11 @@ c
       endif
 c
 c=======================================================================
-c  flush stdout to ensure debug messages are received
+c  flush stderr to ensure debug messages are received
 c=======================================================================
 c
       if(idebug.gt.2)then
-          call flush(stdout)
+          call flush(stderr)
       endif
       if(msgtype.ne.msgtag)goto 10
       return

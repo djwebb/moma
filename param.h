@@ -1,8 +1,8 @@
 c====================== include file "param.h" =========================
 #ifdef hcomments
 c
-c @(#) SCCS module: param.h  version: 1.6
-c     Creation date: 04/13/95
+c @(#) SCCS module: param.h  version: 1.7
+c     Creation date: 06/30/95
 c
 c-----------------------------------------------------------------------
 c     Main parameter file which sets ocean characteristics:
@@ -31,7 +31,7 @@ c
 c snapshot parameters:
 c     NSNAPS   = total number of horizontal snapshots
 c
-c  buffer parameters
+c  pvm parameters
 c     LENBUFF  = size of buffer used with pvm
 c-----------------------------------------------------------------------
 c
@@ -46,12 +46,11 @@ c
      &            IMTM1_S=IMT_S-1,      JMTM1_S=JMT_S-1)
       parameter  (MXSLAVE=255, IBOUND=4*(IMT_S+JMT_S))
 #ifdef pvm_buffer
-      parameter (LENBUF=IMT_S*JMT_S+10)
-#endif
-#ifdef defined DOUBLE || defined cray-t3d
-      parameter (NBYTER = 8)
-#else
-      parameter (NBYTER = 4)
+      parameter (LENBUF1=3*IMT_S*JMT_S+10           )
+      parameter (LENBUF2=IMT_S*(JSUB_M+2)*KM+10     )
+      parameter (LENBUF3=LENBUF1/LENBUF2            )
+      parameter (LENBUF4=LENBUF3/(LENBUF3-0.1)      )
+      parameter (LENBUF =LENBUF2+LENBUF3*(LENBUF1-LENBUF2) )
 #endif
 #ifdef hcomments
 c

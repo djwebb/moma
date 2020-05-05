@@ -1,8 +1,8 @@
 #ifdef ncsa_hdf
       subroutine archrd_hdf(ncntl)
 c
-c @(#) SCCS module: hdf.F  version: 1.6
-c     Creation date: 04/13/95
+c @(#) SCCS module: hdf.F  version: 1.7
+c     Creation date: 06/30/95
 c
 c=======================================================================
 c  subroutine to read hdf version of the restart file
@@ -20,12 +20,12 @@ c
 c
 c  hdf '.h' files
 c
-#include "constant.i"
+#include "hdf.inc"
 #include "hdf.h"
 c
 c  local variables
 c
-      logical*4 around
+      logical   around
       integer*4 file_id,sds_id,ret,
      &          start(MAXDIMS),stride(MAXDIMS),edge(MAXDIMS)
 c
@@ -217,12 +217,12 @@ c=======================================================================c
 c
 c  hdf '.h' files
 c
-# include "constant.i"
+# include "hdf.inc"
 # include "hdf.h"
 c
 c  local variables
 c
-      logical*4 around
+      logical   around
       integer*4 write_id,sdsid,dimid1,dimid2,dimid3,ret,ret2,
      &          srcdims(MAXDIMS),stride(MAXDIMS),edge(MAXDIMS),
      &          irank
@@ -612,12 +612,12 @@ c=======================================================================c
 c
 c using multi-file interface HDF3.3r3
 c
-# include "constant.i"
+# include "hdf.inc"
 # include "hdf.h"
 c
 c  local variables
 c
-      logical*4 around
+      logical   around
       integer*4 write_id,sdsid,dimid1,dimid2,ret,ret2,
      &          srcdims(MAXDIMS),stride(MAXDIMS),irank
 c

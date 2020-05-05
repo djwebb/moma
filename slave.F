@@ -4,8 +4,8 @@
       subroutine slave
 #endif
 c
-c @(#) SCCS module: slave.F  version: 1.6
-c     Creation date: 04/13/95
+c @(#) SCCS module: slave.F  version: 1.7
+c     Creation date: 06/30/95
 c
 c======================================================================
 c
@@ -179,7 +179,7 @@ c
 c=======================================================================
 c
 #ifndef Masterslave
-      utime(3)=dtime(utime)
+      intime=time()
 #endif
       call initmess
 c
@@ -210,8 +210,8 @@ c
  57   continue
 #ifdef cray-t3d
       if(me .gt. nproc) then
-        write(stdout,*)'PE no ',me,' closing down - not needed '
-        write(stdout,*)'PE no ',me,' nproc = ',nproc
+        write(stdout,*)'PE no ',me,' closing down - not needed.',
+     &                 ' nproc = ',nproc
         call closedown(info,me)
         return
       endif
@@ -270,7 +270,7 @@ c
       write(ioslave,1451) dtts,dtuv,dtbt
       write(ioslave,1450) am,ah,fkpm,fkph,cdbot
 #ifdef de_checkbd
-      write(stdout,1448) dchkbd
+      write(ioslave,1448) dchkbd
 1448  format(' dchkbd = ',g10.4 )
 #endif
 c
@@ -489,6 +489,7 @@ c
 c
 c  report to master and wait
 c
+      call flush(ioslave)
       call schkpnt(10)
 c
 c-----------------------------------------------------------------------
@@ -550,28 +551,31 @@ c
        goto 25 
       endif
 c
+      if (prntsi)then
 #ifdef cray-t3d
-      time_now=rtc()
-      utime(1)=time_now-utime(2)
-      utime(2) = time_now
-      time_elapsed =(time_now-utime(3))/1.5e8
-      if (prntsi) write (ioslave,9602) itt, stamp, ektot/volume,
-     &        dtabs(1)/volume, dtabs(2)/volume,time_elapsed
+        utime(3) =rtc()*6.6e-9-time_start
+        write (ioslave,9602) itt, stamp, ektot/volume,
+     &        dtabs(1)/volume, dtabs(2)/volume,utime(3)
 #else
-      utime(3)=dtime(utime)+utime(3)
-      if (prntsi) write (ioslave,9602) itt, stamp, ektot/volume,
-     &        dtabs(1)/volume, dtabs(2)/volume,utime(1),utime(3)
+c
+c  get total elapsed time and user time since last call
+c
+        utime(3) = etime(utime)
+        tempzz   = dtime(utime)
+        write (ioslave,9602) itt, stamp, ektot/volume,
+     &        dtabs(1)/volume, dtabs(2)/volume,tempzz,utime(3)
 #endif
-      call flush(ioslave)
+        call flush(ioslave)
+      endif
 c
       if (diagts) call pdiag
       if (archts) then
-       call wrrest
-       larchp = .true.
+        call wrrest
+        larchp = .true.
       endif
       if (snapts) then
-       call snap
-       lsnapp = .true.
+        call snap
+        lsnapp = .true.
       endif
 c
 c------------------------------------------------------------------

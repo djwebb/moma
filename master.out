@@ -1,15 +1,15 @@
 
                           Stripped down MOM code for array processor.                                    
-                          Module: master.F.  Version: 1.00.  Date:        16:10                          
+                          Module: master.F.  Version: 1  Date: 06/30/95                                     
 
 
  &contrl  init=  T, fnrest=
  'd0002.hdf                                                                       '
  , days=    3.00000, restrt=  F, nmix=  24, eb=  T, ncon=  1, tsi=    8.33333E-02
- , dgnstc=   10.00000, snapd=    1.00000, archd=    2.00000, acor=   0.600000
- , idebug=  0, dchkbd=    1.00000E-01, ftrest='hdf ', ftsnap='hdf ', ftarch=
- 'hdf ', ispvar=  1  2  3  4  5  6  7  4  5  6  7, isplev=  1  1  1  1  1  1  1
-   8  8  8  8
+ , dgnstc=  0., snapd=    1.00000, archd=    2.00000, acor=   0.600000, idebug=
+   0, dchkbd=    1.00000E-01, ftrest='hdf ', ftsnap='hdf ', ftarch='hdf '
+ , ispvar=  1  2  3  4  5  6  7  4  5  6  7, isplev=  1  1  1  1  1  1  1  8  8
+   8  8, statms=    20.0000, statis=   10.00000
  &end
  &eddy  am=    1.00000E+09, ah=    2.00000E+07, fkpm=    1.00000, fkph=    20.0000
  , cdbot=    1.00000E-03
@@ -18,7 +18,8 @@
  &end
 
  The following "ifdef" options are in effect:
-   cyclic_master      presetp            de_checkbd         ncsa_hdf           pvm_buffer      
+   cyclic_master      presetp            inline             de_checkbd         ncsa_hdf        
+   pvm_buffer      
  end of options list.
 
 
@@ -202,350 +203,56 @@
   on architecture: *       
  tid  1  786433 info:   2
  tid  2  1048577 info:   2
- 
- Status arrays at time =     7 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      10         0           0       waiting before main loop      
-    2      11         0           0       at top of main loop           
- 
-
- ts=      1 totday =    0.08,years =   0.000 ke= 2.683430E-01 dtemp= 4.458604E-08 dsalt= 6.674953E-13 time=    36
- 
- Status arrays at time =    36 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      11         1           0       at top of main loop           
-    2      14         2           0       entering clinic-tracer loop   
- 
-
- ts=      2 totday =    0.17,years =   0.000 ke= 2.683504E-01 dtemp= 4.458891E-08 dsalt= 6.674996E-13 time=    62
- 
- Status arrays at time =    62 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      11         2           0       at top of main loop           
-    2      14         3           0       entering clinic-tracer loop   
- 
-
- 
- Status arrays at time =    93 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      20         3           0       entering free-surface loop    
-    2      20         3           0       entering free-surface loop    
- 
-
- ts=      3 totday =    0.25,years =   0.001 ke= 5.015628E-01 dtemp= 5.144908E-08 dsalt= 6.664670E-13 time=    98
- 
- Status arrays at time =    98 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      11         3           0       at top of main loop           
-    2      14         4           0       entering clinic-tracer loop   
- 
-
- 
- Status arrays at time =   130 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      20         4           0       entering free-surface loop    
-    2      20         4           0       entering free-surface loop    
- 
-
- ts=      4 totday =    0.33,years =   0.001 ke= 5.357560E-01 dtemp= 4.534867E-08 dsalt= 6.655634E-13 time=   136
- 
- Status arrays at time =   136 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      14         5           0       entering clinic-tracer loop   
-    2      14         5           0       entering clinic-tracer loop   
- 
-
- ts=      5 totday =    0.42,years =   0.001 ke= 5.179441E-01 dtemp= 3.708355E-08 dsalt= 6.634970E-13 time=   161
- 
- Status arrays at time =   161 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      35         5           0       processing master requests    
-    2      14         6           0       entering clinic-tracer loop   
- 
-
- 
- Status arrays at time =   192 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      20         6           0       entering free-surface loop    
-    2      20         6           0       entering free-surface loop    
- 
-
- ts=      6 totday =    0.50,years =   0.001 ke= 5.331056E-01 dtemp= 3.713472E-08 dsalt= 6.606456E-13 time=   208
- 
- Status arrays at time =   209 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      14         7           0       entering clinic-tracer loop   
-    2      14         7           0       entering clinic-tracer loop   
- 
-
- ts=      7 totday =    0.58,years =   0.002 ke= 5.223133E-01 dtemp= 3.713081E-08 dsalt= 6.579903E-13 time=   236
- 
- Status arrays at time =   236 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      14         8           0       entering clinic-tracer loop   
-    2      14         8           0       entering clinic-tracer loop   
- 
-
- ts=      8 totday =    0.67,years =   0.002 ke= 4.859950E-01 dtemp= 3.706923E-08 dsalt= 6.564041E-13 time=   257
- 
- Status arrays at time =   257 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      11         8           0       at top of main loop           
-    2      14         9           0       entering clinic-tracer loop   
- 
-
- ts=      9 totday =    0.75,years =   0.002 ke= 4.398304E-01 dtemp= 3.649850E-08 dsalt= 6.561418E-13 time=   280
- 
- Status arrays at time =   280 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      14        10           0       entering clinic-tracer loop   
-    2      14        10           0       entering clinic-tracer loop   
- 
-
- ts=     10 totday =    0.83,years =   0.002 ke= 4.019178E-01 dtemp= 3.512638E-08 dsalt= 6.566103E-13 time=   302
- 
- Status arrays at time =   302 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      14        11           0       entering clinic-tracer loop   
-    2      14        11           0       entering clinic-tracer loop   
- 
-
- ts=     11 totday =    0.92,years =   0.003 ke= 3.957101E-01 dtemp= 3.379795E-08 dsalt= 6.571664E-13 time=   324
+ ts=      1 totday =    0.08,years =   0.000 ke= 2.683430E-01 dtemp= 4.458604E-08 dsalt= 6.674953E-13 time=    24
+ ts=      2 totday =    0.17,years =   0.000 ke= 2.683504E-01 dtemp= 4.458891E-08 dsalt= 6.674996E-13 time=    40
+ ts=      3 totday =    0.25,years =   0.001 ke= 5.015619E-01 dtemp= 5.144891E-08 dsalt= 6.664670E-13 time=    57
+ ts=      4 totday =    0.33,years =   0.001 ke= 5.357541E-01 dtemp= 4.534839E-08 dsalt= 6.655632E-13 time=    76
+ ts=      5 totday =    0.42,years =   0.001 ke= 5.179388E-01 dtemp= 3.708290E-08 dsalt= 6.634969E-13 time=    93
+ ts=      6 totday =    0.50,years =   0.001 ke= 5.330985E-01 dtemp= 3.713387E-08 dsalt= 6.606456E-13 time=   109
+ ts=      7 totday =    0.58,years =   0.002 ke= 5.223027E-01 dtemp= 3.712994E-08 dsalt= 6.579902E-13 time=   122
+ ts=      8 totday =    0.67,years =   0.002 ke= 4.859821E-01 dtemp= 3.706823E-08 dsalt= 6.564047E-13 time=   135
+ ts=      9 totday =    0.75,years =   0.002 ke= 4.398197E-01 dtemp= 3.649771E-08 dsalt= 6.561421E-13 time=   148
+ ts=     10 totday =    0.83,years =   0.002 ke= 4.019089E-01 dtemp= 3.512561E-08 dsalt= 6.566106E-13 time=   165
+ ts=     11 totday =    0.92,years =   0.003 ke= 3.957012E-01 dtemp= 3.379734E-08 dsalt= 6.571668E-13 time=   180
   Writing hdf file for itt =      12
   hdf filename = s0001.hdf                               
- 
- Status arrays at time =   325 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      14        12           0       entering clinic-tracer loop   
-    2      20        12           0       entering free-surface loop    
- 
-
- ts=     12 totday =    1.00,years =   0.003 ke= 4.202129E-01 dtemp= 3.362112E-08 dsalt= 6.572875E-13 time=   347
- 
- Status arrays at time =   347 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      14        13           0       entering clinic-tracer loop   
-    2      20        13           0       entering free-surface loop    
- 
-
- ts=     13 totday =    1.08,years =   0.003 ke= 4.420792E-01 dtemp= 3.320172E-08 dsalt= 6.567849E-13 time=   369
- 
- Status arrays at time =   369 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      14        14           0       entering clinic-tracer loop   
-    2      20        14           0       entering free-surface loop    
- 
-
- ts=     14 totday =    1.17,years =   0.003 ke= 4.533054E-01 dtemp= 3.194149E-08 dsalt= 6.554954E-13 time=   393
- 
- Status arrays at time =   394 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      14        15           0       entering clinic-tracer loop   
-    2      20        15           0       entering free-surface loop    
- 
-
- 
- Status arrays at time =   425 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      20        15           0       entering free-surface loop    
-    2      20        15           0       entering free-surface loop    
- 
-
- ts=     15 totday =    1.25,years =   0.003 ke= 4.594250E-01 dtemp= 3.172769E-08 dsalt= 6.535837E-13 time=   438
- 
- Status arrays at time =   438 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      14        16           0       entering clinic-tracer loop   
-    2      20        16           0       entering free-surface loop    
- 
-
- ts=     16 totday =    1.33,years =   0.004 ke= 4.718421E-01 dtemp= 3.258872E-08 dsalt= 6.512923E-13 time=   460
- 
- Status arrays at time =   460 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      14        17           0       entering clinic-tracer loop   
-    2      20        17           0       entering free-surface loop    
- 
-
- ts=     17 totday =    1.42,years =   0.004 ke= 4.733666E-01 dtemp= 3.288147E-08 dsalt= 6.491699E-13 time=   483
- 
- Status arrays at time =   483 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      14        18           0       entering clinic-tracer loop   
-    2      20        18           0       entering free-surface loop    
- 
-
- ts=     18 totday =    1.50,years =   0.004 ke= 4.570695E-01 dtemp= 3.256867E-08 dsalt= 6.475606E-13 time=   507
- 
- Status arrays at time =   507 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      14        19           0       entering clinic-tracer loop   
-    2      20        19           0       entering free-surface loop    
- 
-
- ts=     19 totday =    1.58,years =   0.004 ke= 4.350822E-01 dtemp= 3.218565E-08 dsalt= 6.467426E-13 time=   529
- 
- Status arrays at time =   529 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      14        20           0       entering clinic-tracer loop   
-    2      20        20           0       entering free-surface loop    
- 
-
- ts=     20 totday =    1.67,years =   0.005 ke= 4.259002E-01 dtemp= 3.241662E-08 dsalt= 6.465544E-13 time=   552
- 
- Status arrays at time =   552 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      14        21           0       entering clinic-tracer loop   
-    2      20        21           0       entering free-surface loop    
- 
-
- ts=     21 totday =    1.75,years =   0.005 ke= 4.313529E-01 dtemp= 3.296421E-08 dsalt= 6.467841E-13 time=   573
- 
- Status arrays at time =   573 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      14        22           0       entering clinic-tracer loop   
-    2      20        22           0       entering free-surface loop    
- 
-
- ts=     22 totday =    1.83,years =   0.005 ke= 4.390107E-01 dtemp= 3.356988E-08 dsalt= 6.469882E-13 time=   598
+ ts=     12 totday =    1.00,years =   0.003 ke= 4.202000E-01 dtemp= 3.362048E-08 dsalt= 6.572872E-13 time=   192
+ ts=     13 totday =    1.08,years =   0.003 ke= 4.420634E-01 dtemp= 3.320093E-08 dsalt= 6.567849E-13 time=   213
+ ts=     14 totday =    1.17,years =   0.003 ke= 4.532921E-01 dtemp= 3.194091E-08 dsalt= 6.554950E-13 time=   232
+ ts=     15 totday =    1.25,years =   0.003 ke= 4.594130E-01 dtemp= 3.172718E-08 dsalt= 6.535837E-13 time=   253
+ ts=     16 totday =    1.33,years =   0.004 ke= 4.718243E-01 dtemp= 3.258803E-08 dsalt= 6.512926E-13 time=   272
+ ts=     17 totday =    1.42,years =   0.004 ke= 4.733441E-01 dtemp= 3.288061E-08 dsalt= 6.491704E-13 time=   285
+ ts=     18 totday =    1.50,years =   0.004 ke= 4.570521E-01 dtemp= 3.256815E-08 dsalt= 6.475616E-13 time=   301
+ ts=     19 totday =    1.58,years =   0.004 ke= 4.350693E-01 dtemp= 3.218510E-08 dsalt= 6.467435E-13 time=   312
+ ts=     20 totday =    1.67,years =   0.005 ke= 4.258890E-01 dtemp= 3.241626E-08 dsalt= 6.465539E-13 time=   326
+ ts=     21 totday =    1.75,years =   0.005 ke= 4.313398E-01 dtemp= 3.296369E-08 dsalt= 6.467843E-13 time=   338
+ ts=     22 totday =    1.83,years =   0.005 ke= 4.389914E-01 dtemp= 3.356924E-08 dsalt= 6.469883E-13 time=   352
  snap_hdf:  hdf snapshot written
- 
- Status arrays at time =   604 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      20        23           0       entering free-surface loop    
-    2      20        23           0       entering free-surface loop    
- 
-
+ ts=     23 totday =    1.92,years =   0.005 ke= 4.371014E-01 dtemp= 3.342757E-08 dsalt= 6.469043E-13 time=   365
  Snapshot complete
- ts=     23 totday =    1.92,years =   0.005 ke= 4.371246E-01 dtemp= 3.342836E-08 dsalt= 6.469042E-13 time=   617
   Writing hdf file for itt =      24
   hdf filename = s0002.hdf                               
   Writing hdf archive file for itt =      24
   hdf filename = d0002.hdf                               
- 
- Status arrays at time =   618 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      14        24           0       entering clinic-tracer loop   
-    2      20        24           0       entering free-surface loop    
- 
-
- ts=     24 totday =    2.00,years =   0.005 ke= 4.322647E-01 dtemp= 3.286298E-08 dsalt= 6.462003E-13 time=   645
- 
- Status arrays at time =   646 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      20        25           0       entering free-surface loop    
-    2      20        25           0       entering free-surface loop    
- 
-
- ts=     25 totday =    2.08,years =   0.006 ke= 4.315990E-01 dtemp= 3.228666E-08 dsalt= 6.428914E-13 time=   669
- 
- Status arrays at time =   669 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      14        26           0       entering clinic-tracer loop   
-    2      20        26           0       entering free-surface loop    
- 
-
- ts=     26 totday =    2.17,years =   0.006 ke= 4.314758E-01 dtemp= 3.222187E-08 dsalt= 6.428920E-13 time=   694
- 
- Status arrays at time =   694 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      20        27           0       entering free-surface loop    
-    2      20        27           0       entering free-surface loop    
- 
-
- ts=     27 totday =    2.25,years =   0.006 ke= 4.314957E-01 dtemp= 3.186878E-08 dsalt= 6.407128E-13 time=   717
- 
- Status arrays at time =   718 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      20        28           0       entering free-surface loop    
-    2      20        28           0       entering free-surface loop    
- 
-
- ts=     28 totday =    2.33,years =   0.006 ke= 4.296682E-01 dtemp= 3.135662E-08 dsalt= 6.387105E-13 time=   737
- 
- Status arrays at time =   737 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      20        29           0       entering free-surface loop    
-    2      20        29           0       entering free-surface loop    
- 
-
- ts=     29 totday =    2.42,years =   0.007 ke= 4.271752E-01 dtemp= 3.098835E-08 dsalt= 6.373759E-13 time=   758
- 
- Status arrays at time =   758 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      20        30           0       entering free-surface loop    
-    2      20        30           0       entering free-surface loop    
- 
-
- ts=     30 totday =    2.50,years =   0.007 ke= 4.253538E-01 dtemp= 3.090363E-08 dsalt= 6.369214E-13 time=   775
- 
- Status arrays at time =   775 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      14        31           0       entering clinic-tracer loop   
-    2      20        31           0       entering free-surface loop    
- 
-
- ts=     31 totday =    2.58,years =   0.007 ke= 4.225447E-01 dtemp= 3.067978E-08 dsalt= 6.372565E-13 time=   801
- 
- Status arrays at time =   801 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      20        32           0       entering free-surface loop    
-    2      20        32           0       entering free-surface loop    
- 
-
- ts=     32 totday =    2.67,years =   0.007 ke= 4.202513E-01 dtemp= 3.063626E-08 dsalt= 6.379459E-13 time=   821
- 
- Status arrays at time =   821 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      20        33           0       entering free-surface loop    
-    2      20        33           0       entering free-surface loop    
- 
-
- ts=     33 totday =    2.75,years =   0.008 ke= 4.184836E-01 dtemp= 3.082533E-08 dsalt= 6.384426E-13 time=   842
- 
- Status arrays at time =   842 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      20        34           0       entering free-surface loop    
-    2      20        34           0       entering free-surface loop    
- 
-
- ts=     34 totday =    2.83,years =   0.008 ke= 4.179753E-01 dtemp= 3.099441E-08 dsalt= 6.382678E-13 time=   859
+ ts=     24 totday =    2.00,years =   0.005 ke= 4.322387E-01 dtemp= 3.286227E-08 dsalt= 6.461994E-13 time=   375
+ ts=     25 totday =    2.08,years =   0.006 ke= 4.315682E-01 dtemp= 3.228638E-08 dsalt= 6.428910E-13 time=   393
+ ts=     26 totday =    2.17,years =   0.006 ke= 4.314466E-01 dtemp= 3.222153E-08 dsalt= 6.428924E-13 time=   405
+ ts=     27 totday =    2.25,years =   0.006 ke= 4.314658E-01 dtemp= 3.186846E-08 dsalt= 6.407130E-13 time=   412
+ ts=     28 totday =    2.33,years =   0.006 ke= 4.296341E-01 dtemp= 3.135627E-08 dsalt= 6.387111E-13 time=   433
+ ts=     29 totday =    2.42,years =   0.007 ke= 4.271399E-01 dtemp= 3.098791E-08 dsalt= 6.373761E-13 time=   442
+ ts=     30 totday =    2.50,years =   0.007 ke= 4.253176E-01 dtemp= 3.090335E-08 dsalt= 6.369222E-13 time=   450
+ ts=     31 totday =    2.58,years =   0.007 ke= 4.225074E-01 dtemp= 3.067945E-08 dsalt= 6.372568E-13 time=   463
+ ts=     32 totday =    2.67,years =   0.007 ke= 4.202111E-01 dtemp= 3.063601E-08 dsalt= 6.379458E-13 time=   476
+ ts=     33 totday =    2.75,years =   0.008 ke= 4.184401E-01 dtemp= 3.082500E-08 dsalt= 6.384428E-13 time=   485
+ ts=     34 totday =    2.83,years =   0.008 ke= 4.179280E-01 dtemp= 3.099406E-08 dsalt= 6.382674E-13 time=   492
  snap_hdf:  hdf snapshot written
- 
- Status arrays at time =   865 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      20        35           0       entering free-surface loop    
-    2      20        35           0       entering free-surface loop    
- 
-
+ ts=     35 totday =    2.92,years =   0.008 ke= 4.163956E-01 dtemp= 3.070193E-08 dsalt= 6.372533E-13 time=   504
  Snapshot complete
- ts=     35 totday =    2.92,years =   0.008 ke= 4.164449E-01 dtemp= 3.070220E-08 dsalt= 6.372526E-13 time=   881
   Writing hdf file for itt =      36
   hdf filename = s0003.hdf                               
- 
- Status arrays at time =   882 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      20        36           0       entering free-surface loop    
-    2      20        36           0       entering free-surface loop    
- 
-
- ts=     36 totday =    3.00,years =   0.008 ke= 4.140668E-01 dtemp= 3.008622E-08 dsalt= 6.355197E-13 time=   904
- 
- Status arrays at time =   913 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      40        36           0       closing down                  
-    2      40        36           0       closing down                  
- 
-
+ ts=     36 totday =    3.00,years =   0.008 ke= 4.140170E-01 dtemp= 3.008605E-08 dsalt= 6.355200E-13 time=   519
  archwr_hdf:  hdf archive file written
  Archive complete
- 
- Status arrays at time =   944 s.
- slave,  posn,  slave itt,  slave itbt,  Last reported: 
-    1      40        36           0       closing down                  
-    2      40        36           0       closing down                  
- 
-
  snap_hdf:  hdf snapshot written
  Snapshot complete
   ==> END of model run.

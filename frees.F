@@ -1,7 +1,11 @@
+#ifndef inline1
       subroutine frees(ic,jc)
+#endif
+#if defined inline1 || !defined inline
+#ifndef inline1
 c
-c @(#) SCCS module: frees.F  version: 1.6
-c     Creation date: 04/13/95
+c @(#) SCCS module: frees.F  version: 1.7
+c      Creation date: 06/30/95
 c
 c====================================================================
 c
@@ -32,6 +36,10 @@ c
 #include "switch.h"
 #include "timelv.h"
 #include "mesdta.h"
+#else
+      ic=ia(l)
+      jc=ja(l)
+#endif
 c
 c---------------------------------------------------------------------
 c  set indices
@@ -115,8 +123,8 @@ c
         fxb = grav*dy2r
         temp1 = h0(ip,jp,nc0) - h0(ic,jc,nc0)
         temp2 = h0(ic,jp,nc0) - h0(ip,jc,nc0)
-        dpdx  = (temp1-temp2)*fxa
-        dpdy  = (temp1+temp2)*fxb
+        dpdx0 = (temp1-temp2)*fxa
+        dpdy0 = (temp1+temp2)*fxb
 #ifdef free_eb
 c
 c---------------------------------------------------------------------
@@ -125,9 +133,9 @@ c---------------------------------------------------------------------
 c
         fac1=fcor(jc)*c2dtbt*p5
         fac2=c1/(c1+fac1*fac1)
-        ustar = u0(ic,jc,nm0) + c2dtbt*(zu(ic,jc) - dpdx)
+        ustar = u0(ic,jc,nm0) + c2dtbt*(zu(ic,jc) - dpdx0)
      &                        + fac1*v0(ic,jc,nm0)
-        vstar = v0(ic,jc,nm0) + c2dtbt*(zv(ic,jc) - dpdy)
+        vstar = v0(ic,jc,nm0) + c2dtbt*(zv(ic,jc) - dpdy0)
      &                        - fac1*u0(ic,jc,nm0)
         u0(ic,jc,np0) = (ustar + fac1*vstar)*fac2
         v0(ic,jc,np0) = (vstar - fac1*ustar)*fac2
@@ -137,9 +145,9 @@ c---------------------------------------------------------------------
 c  leapfrog scheme (explicit euler-backward on mixing timestep)
 c---------------------------------------------------------------------
 c
-        u0(ic,jc,np0) = u0(ic,jc,nm0) + c2dtbt*(zu(ic,jc) - dpdx
+        u0(ic,jc,np0) = u0(ic,jc,nm0) + c2dtbt*(zu(ic,jc) - dpdx0
      &                        + fcor(jc)*v0(ic,jc,nc0) )
-        v0(ic,jc,np0) = v0(ic,jc,nm0) + c2dtbt*(zv(ic,jc) - dpdy
+        v0(ic,jc,np0) = v0(ic,jc,nm0) + c2dtbt*(zv(ic,jc) - dpdy0
      &                        - fcor(jc)*u0(ic,jc,nc0) )
 c
 c---------------------------------------------------------------------
@@ -160,5 +168,8 @@ c
 #endif
       endif
 c
+#endif
+#ifndef inline1
       return
       end
+#endif

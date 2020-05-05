@@ -1,6 +1,6 @@
 #
-# @(#) SCCS module: makefile.sun  version: 1.6
-#      Creation date: 04/13/95
+# @(#) SCCS module: makefile.sun  version: 1.7
+#      Creation date: 06/30/95
 #
 #     Moma.pvm make file for Sun4
 #
@@ -39,7 +39,7 @@ HFILES=archive.h cdiag.h chmix.h coord.h                     \
 DOPTNS=	-Dpvm_buffer \
         -Dcyclic_master \
 	-Dde_checkbd \
-        -Dpresetp -Dncsa_hdf
+        -Dpresetp -Dncsa_hdf -Dinline
 
 FC =	f77   
 INCLUDE= -I$(PVM_ROOT)/include -I$(HDF_ROOT)/include/$(PVM_ARCH)

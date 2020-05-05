@@ -1,7 +1,7 @@
       subroutine snapreq
 c
-c @(#) SCCS module: m_snap.F  version: 1.6
-c     Creation date: 04/13/95
+c @(#) SCCS module: m_snap.F  version: 1.7
+c     Creation date: 06/30/95
 c
 c==================================================================
 c subroutine to prepare for the next snapshot request
@@ -14,7 +14,6 @@ c
 #include "iounit.h"
 #include "varinfo.h"
 c
-      real vmask(4)
       data vmask/1.e7,2.e7,3.e7,4.e7/
 c
       idsnp = idsnp + 1
@@ -28,7 +27,7 @@ c
 c  initialise snap2d array
 c
       if(ftsnap.eq.'asc')then
-        call initsnp(vmask)
+        call initsnp
       else
 c
 c Initialise temperature to -2. everywhere
@@ -63,7 +62,7 @@ c
       return
       end
 
-      subroutine initsnp(vmsk)
+      subroutine initsnp
 c
 c==================================================================
 c subroutine to initialise the snapshot array to produce
@@ -77,16 +76,15 @@ c
 #include "levind.h"
 #include "varinfo.h"
 #include "mesdta.h"
-      real vmsk(4)
 c
       idsvar=ispvar(idsnp)
       do 10 j=1,JMT_M
       do 10 i=1,IMT_M
-       snap2d(i,j)=vmsk(2)
+       snap2d(i,j)=vmask(2)
        if(vartgrd(idsvar)) then
-        if(kmt(i,j).eq.0) snap2d(i,j)=vmsk(1)
+        if(kmt(i,j).eq.0) snap2d(i,j)=vmask(1)
        else
-        if(kmu(i,j).eq.0) snap2d(i,j)=vmsk(1)
+        if(kmu(i,j).eq.0) snap2d(i,j)=vmask(1)
        endif
  10   continue
       return
@@ -94,8 +92,8 @@ c
 
       subroutine snapwr
 c
-c @(#) SCCS module: m_snap.F  version: 1.6
-c     Creation date: 04/13/95
+c @(#) SCCS module: m_snap.F  version: 1.7
+c     Creation date: 06/30/95
 c
 c------------------------------------------------------------------
 c  subroutine to write out the next snapshot field
@@ -127,8 +125,8 @@ c
 #include "varinfo.h"
 #include "mesdta.h"
       character*40 spfile
-      logical*4 around
-      character*2 opform,namrun*50
+      logical      around
+      character*2  opform,namrun*50
 c Load some strings used by the header routine
       data namrun/'FF Occam pvm model'/opform/'CD'/
 c

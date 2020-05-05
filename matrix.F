@@ -1,7 +1,7 @@
       subroutine matrix (array, irdim, istrt, im, jstrt, jm, scale)
 c
-c @(#) SCCS module: matrix.F  version: 1.6
-c     Creation date: 04/13/95
+c @(#) SCCS module: matrix.F  version: 1.7
+c     Creation date: 06/30/95
 c
 c==================================================================
 c
@@ -23,6 +23,7 @@ c
 c==================================================================
 c
 #include "param.h"
+#include "iounit.h"
 c
       dimension array(irdim,1000)
 c
@@ -46,22 +47,22 @@ c
       if (scale .eq. c0) then
         do 100 is=istrt,im,10
           ie = min(is + 9,im)
-          write (stdout,9001) (i, i=is,ie)
+          write (ioslave,9001) (i, i=is,ie)
           do 90 l=js,je,jinc
-            write (stdout,9002) l, (array(i,l),i=is,ie)
+            write (ioslave,9002) l, (array(i,l),i=is,ie)
 90        continue
-          write (stdout,'(//)')
+          write (ioslave,'(//)')
 100     continue
 c
       else
         scaler = c1/scale
         do 200 is=istrt,im,20
           ie = min(is + 19,im)
-          write (stdout,9003) (i, i=is,ie)
+          write (ioslave,9003) (i, i=is,ie)
           do 190 l=js,je,jinc
-            write (stdout,9004) l, (array(i,l)*scaler,i=is,ie)
+            write (ioslave,9004) l, (array(i,l)*scaler,i=is,ie)
 190       continue
-          write (stdout,'(//)')
+          write (ioslave,'(//)')
 200     continue
       endif
 c

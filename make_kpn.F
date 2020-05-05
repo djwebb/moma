@@ -1,7 +1,7 @@
       program make_kpn
 c
-c @(#) SCCS module: make_kpn.F  version: 1.6
-c     Creation date: 04/13/95
+c @(#) SCCS module: make_kpn.F  version: 1.7
+c     Creation date: 06/30/95
 c
 c==================================================================
 c
@@ -88,8 +88,14 @@ c
         goto 30
       endif
 c
+c  allocate equally in i and j directions 
+c   - but because the top and bottom rows need no work do not
+c     include them when balancing workload
+c   - for a rectangular ocean the same should be done in the x 
+c     direction
+c
       dx = float(imt)/float(npx)
-      dy = float(jmt)/float(npy)
+      dy = float(jmt-2)/float(npy)
 c
       do 40 j=jmt,1,-1
       do 40 i=1,imt
@@ -97,7 +103,7 @@ c
           kpn(i,j)=0
         else
           ii = 1+(i-0.5)/dx
-          jj = 1+(j-0.5)/dy
+          jj = max(1,min(npy,1+(j-1.5)/dy))
           kpn(i,j) = (jj-1)*npx+ii
         endif
   40  continue

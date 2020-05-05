@@ -1,8 +1,8 @@
 c====================== include file "slabs.h" =========================
 #ifdef hcomments
 c
-c @(#) SCCS module: slabs.h  version: 1.6
-c     Creation date: 04/13/95
+c @(#) SCCS module: slabs.h  version: 1.7
+c     Creation date: 06/30/95
 c
 c-----------------------------------------------------------------------
 c     This defines the basic array storage scheme.  In the MOM

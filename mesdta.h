@@ -1,8 +1,8 @@
 c======================include file: mesdta.h==========================
 #ifdef hcomments
 c
-c @(#) SCCS module: mesdta.h  version: 1.6
-c     Creation date: 04/13/95
+c @(#) SCCS module: mesdta.h  version: 1.7
+c      Creation date: 06/30/95
 c
 c-----------------------------------------------------------------------
 c Common storage for miscellaneous message handling data
@@ -86,9 +86,8 @@ c  others:
 c
 c  utime     - array holding elasped execution time (master and slave)
 c              1 = process, 2 = system, 3 = sum 
-c  iotime    - time (in seconds since Jan 1st 1970) when status arrays 
-c              last printed
-c  intime    - time when master started
+c  intime    - time (in seconds since Jan 1st 1970) when master or 
+c              slave started
 c  iposn     - in slave last reporting position 
 c  lbrkpt    - in slave true when permission received to proceed 
 c              from breakpoint (slave)
@@ -180,10 +179,15 @@ c  np02      = pointer to np0 value into which 2-D data to be received
 c
 #endif
 #include "fpvm3.h"
-#ifdef DOUBLE 
-# define REAL_PVM REAL8 
+#ifdef REAL_PVM
+# undef REAL_PVM
+#endif
+#ifdef DOUBLE || defined cray-t3d
+# define REAL_PVM REAL8
+# define NBYTER 8
 #else 
 # define REAL_PVM REAL4 
+# define NBYTER 4
 #endif 
 #ifdef cray-t3d
 # define INTEGER_PVM INTEGER8
@@ -192,11 +196,11 @@ c
 #endif
       character*80    outstr
       character*32    timetsi
-      logical*4       ltsia(MXSLAVE), lsnapa(MXSLAVE), lfluxa(MXSLAVE),
+      logical         ltsia(MXSLAVE), lsnapa(MXSLAVE), lfluxa(MXSLAVE),
      &                ltsip, ltsiw, lsnapp, lsnapq, lbrkpt, 
      &                larchp, larchq, lidvra(NARCHV)
       common /mesdti/ itida(MXSLAVE),nproc,mtid,mytid,me,iposn,
-     &                infoa(3,MXSLAVE),iotime,intime,itime_start,
+     &                infoa(3,MXSLAVE),iotime,intime,
      &                itttsi,ittsnap,ittarch,nstsi,nssnap,nsarch,
      &                nseat,nseau,idvar,idsnp,jarchl,jarchu
       common /mesdta/ outstr,timetsi
@@ -209,7 +213,7 @@ c
 #ifdef Master
 c
       character*30    messtr(0:12)
-      logical*4       lregra(IMT_M,JMT_M)
+      logical         lregra(IMT_M,JMT_M)
       common /masdtal/lregra
       common /masdtai/it_s(MXSLAVE), jt_s(MXSLAVE),
      &                it_e(MXSLAVE), jt_e(MXSLAVE),
@@ -223,7 +227,7 @@ c
       common /masdtaa/messtr
 #else
 c
-      logical*4       iota(IMT_S,JMT_S,2), bclnflg(MXSLAVE),
+      logical         iota(IMT_S,JMT_S,2), bclnflg(MXSLAVE),
      &                btrpflg(MXSLAVE), lbcln, lbtrp
       common /slvdtal/iota, bclnflg, btrpflg, lbcln, lbtrp
       common /slvdtai/ia(IMT_S*JMT_S), ja(IMT_S*JMT_S), isd(IBOUND,3), 

@@ -1,8 +1,8 @@
 c====================== include file "snaps.h" =========================
 #ifdef hcomments
 c
-c @(#) SCCS module: snaps.h  version: 1.6
-c     Creation date: 04/13/95
+c @(#) SCCS module: snaps.h  version: 1.7
+c     Creation date: 06/30/95
 c
 c-----------------------------------------------------------------------
 c Temporary storage for snapshot data. Each slave
@@ -49,6 +49,7 @@ c
 #ifdef Masterslave
      &         ,buffss(LBUF_M5)
 #endif
+     &         ,vmask(4)
 #else
       common /snapr/ snap2d(IMT_S,JMT_S,NSNAPS)
 #ifdef Masterslave

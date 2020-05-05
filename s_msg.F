@@ -1,7 +1,7 @@
       subroutine initmess
 c
-c @(#) SCCS module: s_msg.F  version: 1.6
-c     Creation date: 04/13/95
+c @(#) SCCS module: s_msg.F  version: 1.7
+c     Creation date: 06/30/95
 c
 c=======================================================================
 c  slave subroutine to initialise message passsing logic
@@ -293,8 +293,14 @@ c
             if(nchk.eq.0 .and.(vartgrd(idvar).or.kmu(i,j).ne.0))then
               call pvmfinitsend( PVMDEFAULT, info )
               call pvmfpack(INTEGER_PVM,    me, 1, 1, info )
+#ifdef pvm_buffer
+              bufout(2) = ittsav
+              bufout(3) = idvar
+              lbuff = 3
+#else
               call pvmfpack(INTEGER_PVM,ittsav, 1, 1, info)
               call pvmfpack(INTEGER_PVM, idvar, 1, 1, info)
+#endif
             endif
 c
 c convert to master indices and pack values
@@ -307,26 +313,84 @@ c
 c
             if(idvar.le.NUM2D.and.vartgrd(idvar)) then
               nchk =nchk + 1
+#ifdef pvm_buffer
+              lbuff = lbuff+3
+              if(lbuff+1.gt.LENBUF)then
+                write(ioslave,*) ' error in s_send while packing',
+     &                           ' MSG_RY_ARC:'
+                write(ioslave,*) ' buffer overflow.  m =',m
+                call msgbye
+              endif
+              bufout(lbuff-2) = imast
+              bufout(lbuff-1) = jmast
+              bufout(lbuff  ) = hsave(i,j,idvar)
+#else
               call pvmfpack(INTEGER_PVM, imast, 1, 1, info)
               call pvmfpack(INTEGER_PVM, jmast, 1, 1, info)
               call pvmfpack(REAL_PVM, hsave(i,j,idvar), 1, 1, info)
+#endif
             elseif(idvar.le.NUM2D.and.kmu(i,j).ne.0) then
               nchk =nchk + 1
+#ifdef pvm_buffer
+              lbuff = lbuff+3
+              if(lbuff+1.gt.LENBUF)then
+                write(ioslave,*) ' error in s_send while packing',
+     &                           ' MSG_RY_ARC:'
+                write(ioslave,*) ' buffer overflow.  m =',m
+                call msgbye
+              endif
+              bufout(lbuff-2) = imast
+              bufout(lbuff-1) = jmast
+              bufout(lbuff  ) = hsave(i,j,idvar)
+#else
               call pvmfpack(INTEGER_PVM, imast, 1, 1, info)
               call pvmfpack(INTEGER_PVM, jmast, 1, 1, info)
               call pvmfpack(REAL_PVM, hsave(i,j,idvar), 1, 1, info)
+#endif
             elseif(vartgrd(idvar)) then
               nchk =nchk + 1
+#ifdef pvm_buffer
+              if(lbuff+3+kmt(i,j).gt.LENBUF)then
+                write(ioslave,*) ' error in s_send while packing',
+     &                           ' MSG_RY_ARC:'
+                write(ioslave,*) ' buffer overflow.  m =',m
+                call msgbye
+              endif
+              bufout(lbuff+1) = imast
+              bufout(lbuff+2) = jmast
+              lbuff = lbuff+2
+              do 48 k = 1,kmt(i,j)
+                lbuff = lbuff+1
+                bufout(lbuff) = tsave(k,i,j,idvar-NUM2D)
+  48          continue
+#else
               call pvmfpack(INTEGER_PVM, imast, 1, 1, info)
               call pvmfpack(INTEGER_PVM, jmast, 1, 1, info)
               call pvmfpack(REAL_PVM, tsave(1,i,j,idvar-NUM2D), 
      &                        kmt(i,j), 1, info)
+#endif
             elseif(kmu(i,j).ne.0) then
               nchk =nchk + 1
+#ifdef pvm_buffer
+              if(lbuff+3+kmu(i,j).gt.LENBUF)then
+                write(ioslave,*) ' error in s_send while packing',
+     &                           ' MSG_RY_ARC:'
+                write(ioslave,*) ' buffer overflow.  m =',m
+                call msgbye
+              endif
+              bufout(lbuff+1) = imast
+              bufout(lbuff+2) = jmast
+              lbuff = lbuff+2
+              do 49 k = 1,kmu(i,j)
+                lbuff = lbuff+1
+                bufout(lbuff) = tsave(k,i,j,idvar-NUM2D)
+  49          continue
+#else
               call pvmfpack(INTEGER_PVM, imast, 1, 1, info)
               call pvmfpack(INTEGER_PVM, jmast, 1, 1, info)
               call pvmfpack(REAL_PVM, tsave(1,i,j,idvar-NUM2D), 
      &                        kmu(i,j), 1, info)
+#endif
             endif
           endif
   50    continue
@@ -337,7 +401,14 @@ c
 c
 c Pack a negative integer to indicate "end of message"
 c
-          call pvmfpack(INTEGER_PVM,  -999, 1, 1, info)
+#ifdef pvm_buffer
+           lbuff = lbuff + 1
+           bufout(lbuff) = -999
+           bufout(1) = lbuff
+           call pvmfpack(REAL_PVM, bufout, lbuff, 1, info)
+#else
+           call pvmfpack(INTEGER_PVM,  -999, 1, 1, info)
+#endif
           call pvmfsend( mtid, MSG_RY_ARC, info )
           if(idebug.gt.3) then
             write(ioslave,*)' Slave - message MSG_RY_ARC sent',
@@ -378,8 +449,14 @@ c
               nchk = 1
               call pvmfinitsend( PVMDEFAULT, info )
               call pvmfpack(INTEGER_PVM,    me, 1, 1, info )
+#ifdef pvm_buffer
+              bufout(2) = ittsnap
+              bufout(3) = idsnp
+              lbuff = 3
+#else
               call pvmfpack(INTEGER_PVM,ittsnap, 1, 1, info)
               call pvmfpack(INTEGER_PVM, idsnp, 1, 1, info)
+#endif
             endif
 c
 c convert to master indices and pack values
@@ -389,16 +466,36 @@ c
 c
 c Now pack requested variable(s) for this point
 c
+#ifdef pvm_buffer
+            lbuff = lbuff+3
+            if(lbuff+1.gt.LENBUF)then
+              write(ioslave,*) ' error in s_send while packing',
+     &                         ' MSG_RY_SNAP:'
+              write(ioslave,*) ' buffer overflow.  m =',me
+              call msgbye
+            endif
+            bufout(lbuff-2) = imast
+            bufout(lbuff-1) = jmast
+            bufout(lbuff  ) = snap2d(i,j,idsnp)
+#else
             call pvmfpack(INTEGER_PVM, imast, 1, 1, info)
             call pvmfpack(INTEGER_PVM, jmast, 1, 1, info)
             call pvmfpack(REAL_PVM, snap2d(i,j,idsnp), 1, 1, info)
+#endif
           endif
   60     continue
          if(nchk.ne.0)then
 c
 c Pack a negative integer to indicate "end of message"
 c
+#ifdef pvm_buffer
+           lbuff = lbuff + 1
+           bufout(lbuff) = -999
+           bufout(1) = lbuff
+           call pvmfpack(REAL_PVM, bufout, lbuff, 1, info)
+#else
            call pvmfpack(INTEGER_PVM,  -999, 1, 1, info)
+#endif
            call pvmfsend( mtid, MSG_RY_SNAP, info )
            if(idebug.gt.3) then
              write(ioslave,*)' Slave . snapshot reply sent to',
@@ -609,10 +706,11 @@ c=======================================================================
 c
       else
 c
-       write(outstr,901) msgtype
+       write(ioslave,901) msgtype
  901  format(' Slave - trying to send message type: ',i5,
      &                 '.    Not yet implemented.')
-       write(ioslave,*) outstr
+#ifndef crayt3d
+       write(outstr,901) msgtype
        call pvmfinitsend( PVMDEFAULT, info )
        call pvmfpack( INTEGER_PVM,     me, 1, 1, info )
        call pvmfpack( STRING,   outstr, 80, 1, info )
@@ -621,6 +719,7 @@ c
          write(ioslave,*)' Slave - message MSG_OUTSTR indicating',
      &                   ' error sent'
        endif
+#endif
       endif
       return
       end
@@ -784,6 +883,39 @@ c
 c-----------------------------------------------------------------------
 c receive and unpack kmt and grid information from the master
 c-----------------------------------------------------------------------
+#ifdef pvm_buffer
+          call pvmfunpack (REAL_PVM, bufout(1), 1, 1, info)
+          lbuff = nint(bufout(1))
+          if(lbuff.gt.LENBUF)then
+            write(ioslave,*) ' error in m_recv when receiving ',
+     &                      ' MSG_RY_SNAP'
+            write(ioslave,*) ' buffer overflow'
+          endif
+          call pvmfunpack (REAL_PVM, bufout(2), lbuff-1, 1, info)
+          it    = nint(bufout(2))
+          jt    = nint(bufout(3))
+          icycl = nint(bufout(4))
+          iswm1 = nint(bufout(5))
+          jswm1 = nint(bufout(6))
+          stlon =      bufout(7)
+          stlat =      bufout(8)
+          lbuff   = 8
+          do 20 j=1,jt
+          do 20 i=1,it
+            lbuff = lbuff+1
+            kmt(i,j) = bufout(lbuff)
+ 20       continue
+          do 30 j=1,jt
+          do 30 i=1,it
+            lbuff = lbuff+1
+            kmu(i,j) = bufout(lbuff)
+ 30       continue
+          do 40 j=1,jt
+          do 40 i=1,it
+            lbuff = lbuff+1
+            kpn(i,j) = bufout(lbuff)
+ 40       continue
+#else
           call pvmfunpack( INTEGER_PVM,    it,   1, 1, info )
           call pvmfunpack( INTEGER_PVM,    jt,   1, 1, info )
           call pvmfunpack( INTEGER_PVM, icycl,   1, 1, info )
@@ -803,6 +935,7 @@ c-----------------------------------------------------------------------
           do 40 i=1,it
            call pvmfunpack( INTEGER_PVM, kpn(i,j),  1, 1, info )
  40       continue
+#endif
           if(idebug.gt.3)then
             write(ioslave,*)' Slave - message MSG_TOPOG received'
           endif
@@ -831,10 +964,11 @@ c
           call pvmfunpack( INTEGER_PVM, jarchl , 1, 1, info )
           call pvmfunpack( INTEGER_PVM, jarchu , 1, 1, info )
           if(idebug.gt.3)then
-            write(ioslave,*)' Slave - message MSG_RQ_ARC received,',
-     &                      ' idvar = ',idvar
-            write(outstr,900) idvar
+            write(ioslave,900)idvar
+#ifndef cray-t3d
+            write(outstr,900)idvar
             call s_send(MSG_OUTSTR)
+#endif
   900  format(' Slave - message MSG_RQ_ARC received, idvar = ',I10)
           endif
 c 
@@ -846,8 +980,11 @@ c
         elseif(msgtag.eq.MSG_ARC_CLR)then 
           call pvmfunpack( INTEGER_PVM, ittarch, 1, 1, info )
           if(ittarch.ne.ittsav) then
+            write(ioslave,901) ittarch, ittsav
+#ifndef cray-t3d
             write(outstr,901) ittarch, ittsav
             call s_send(MSG_OUTSTR)
+#endif
  901  format(' Slave . Archive clear timestep mis-match',2i10)
           endif
 c unset archive flag (in case next master request arrives early)
@@ -877,9 +1014,24 @@ c 10.  Receive message type MSG_RESTART containing restart data
 c=======================================================================
 c
         elseif(msgtag.eq.MSG_RESTART)then
+#ifdef pvm_buffer
+          call pvmfunpack (REAL_PVM, bufout(1), 1, 1, info)
+          lbuff = nint(bufout(1))
+          if(lbuff.gt.LENBUF)then
+            write(ioslave,*) ' error in m_recv when receiving ',
+     &                      ' MSG_RY_SNAP'
+            write(ioslave,*) ' buffer overflow'
+          endif
+          call pvmfunpack (REAL_PVM, bufout(2), lbuff-1, 1, info)
+          idvar  = nint(bufout(2))
+          jarchl = nint(bufout(3))
+          jarchu = nint(bufout(4))
+          lbuff   = 4
+#else
           call pvmfunpack( INTEGER_PVM,  idvar, 1, 1, info )
           call pvmfunpack( INTEGER_PVM, jarchl, 1, 1, info )
           call pvmfunpack( INTEGER_PVM, jarchu, 1, 1, info )
+#endif
 c
 c convert master indices to slave indices
 c
@@ -889,19 +1041,42 @@ c
          if(idvar.le.NUM2D) then 
            do 60 j=jarchl,jarchu
            do 60 i=1,it
+#ifdef pvm_buffer
+            lbuff = lbuff+1
+            hsave(i,j,idvar) = bufout(lbuff)
+#else
              call pvmfunpack(REAL_PVM, hsave(i,j,idvar),  1, 1, info) 
+#endif
 60         continue 
          elseif(vartgrd(idvar)) then 
            do 70 j=jarchl,jarchu
            do 70 i=1,it
-             if(kmt(i,j).ne.0) call pvmfunpack(REAL_PVM, 
-     &                     tsave(1,i,j,idvar-NUM2D), kmt(i,j), 1, info)
+             if(kmt(i,j).ne.0) then
+#ifdef pvm_buffer
+               do 71 k=1,kmt(i,j)
+                 lbuff = lbuff+1
+                 tsave(k,i,j,idvar-NUM2D) = bufout(lbuff)
+  71           continue
+#else
+               call pvmfunpack(REAL_PVM, 
+     &                   tsave(1,i,j,idvar-NUM2D), kmt(i,j), 1, info)
+#endif
+             endif
 70         continue
          else
            do 80 j=jarchl,jarchu
            do 80 i=1,it
-             if(kmu(i,j).ne.0) call pvmfunpack(REAL_PVM, 
-     &                     tsave(1,i,j,idvar-NUM2D), kmu(i,j), 1, info)
+             if(kmu(i,j).ne.0) then
+#ifdef pvm_buffer
+               do 81 k=1,kmu(i,j)
+                 lbuff = lbuff+1
+                 tsave(k,i,j,idvar-NUM2D) = bufout(lbuff)
+  81           continue
+#else
+               call pvmfunpack(REAL_PVM, 
+     &                    tsave(1,i,j,idvar-NUM2D), kmu(i,j), 1, info)
+#endif
+             endif
 80         continue
          endif 
 c
@@ -924,9 +1099,11 @@ c
           call pvmfunpack( INTEGER_PVM, idsnp  , 1, 1, info )
 c
           if(idebug.gt.3)then
+            write(ioslave,902)idsnp
+#ifndef cray-t3d
             write(outstr,902) idsnp
             call s_send(MSG_OUTSTR)
-            write(ioslave,*)' Slave - message MSG_RQ_SNAP received'
+#endif
  902  format(' Slave . Message MSG_RQ_SNAP received, idsnp = ',i10)
           endif
 c
@@ -940,7 +1117,8 @@ c
         call pvmfunpack (REAL_PVM, bufout(1), 1, 1, info)
         lbuff = nint(bufout(1))
         if(lbuff.gt.LENBUF)then
-           write(ioslave,*) ' error in s_when receiving MSG_BOUND2'
+           write(ioslave,*) ' error in s_recv when receiving',
+     &                      ' MSG_BOUND2'
            write(ioslave,*) ' buffer overflow'
            call msgbye
         endif
@@ -1242,9 +1420,11 @@ c 16.  error
 c=======================================================================
 c
         else
+          write(ioslave,903)msgtag
+#ifndef cray-t3d
           write(outstr,903)msgtag
-          write(stderr,*) outstr
           call s_send(MSG_OUTSTR)
+#endif
  903  format( ' Slave . Message type: ',i5,' not yet implemented')
       endif
 c

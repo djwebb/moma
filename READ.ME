@@ -1,7 +1,7 @@
 
 =======================================================================
-   @(#) SCCS module: READ.ME  version: 1.6
-        Creation date: 04/13/95
+   @(#) SCCS module: READ.ME  version: 1.7
+        Creation date: 06/30/95
 =======================================================================
 
 README file for moma.pvm 
@@ -171,7 +171,9 @@ The main differences from the modular ocean model code are:
               de_checkbd  -  use the de-checkerboarding scheme for the free
                              surface height field.
               ncsa_hdf    -  include the NCSA hdf subroutines.
-              REAL8       -  if the real variables are 64 bits long.   
+              DOUBLE      -  Used to inform PVM and HDF if the real variables 
+                             are 64 bits long (i.e. -r8 option has been used
+                             with    
       
               pvm_buffer  -  use a buffer to reduce the number of calls to
                              the PVM pack and unpack routines.
@@ -179,6 +181,9 @@ The main differences from the modular ocean model code are:
                              direction.
       
               cray_t3d    -  to turn cray-t3d specific code on
+              no_namelist -  read input from file 'ocean.in2' using
+                             formatted read statements.  Used for compilers
+                             that do not support namelist. 
               SYNC_2      -  to synchronise slaves while in the barotropic 
                              timestep loop.
               SYNC_3      -  to synchronise slaves while in the baroclinic 
@@ -529,6 +534,53 @@ v1.6  Minor corrections suggested by Hugo Embrechets (Hugo.Embrechts@
       cc.kuleuven.ac.be), affect i/o and compilation without presetp
       but otherwise not affecting results.
 
-      On an IBM RS6000 system, calls to system routines dtime, flush,
-      and lnblnk may have to be replaced with calls to dtime_, flush_ 
-      and lnblnk_. 
+v1.7  1.  Additional minor corrections (Ivan Walton/David Webb).
+ 
+      2.  Precompiler option 'inline' added.  This replaces the call to
+          subroutine frees in subroutine step by inline code.  Change
+          increases the efficiency of the code. 
+
+      3.  Precompiler option 'DOUBLE.  On a workstation the code will 
+          usually compile using 4 byte real variables or 8 bytes if 
+          the -r8 option is used when calling the compiler.  In the
+          latter case the PVM and HDF flags have to be set correctly.
+          This is done by setting the DOUBLE precompiler option.  On 
+          the Cray T3D, the cray-t3d precompiler option has the same 
+          effect.
+
+      4.  Printing of machine status arrays.  File 'ocean.in' contains
+          two new variables 'statms' and 'statis'. If 'statms' is
+          non-zero and positive then the master program prints out
+          the status information every statms seconds.  If 'statis'
+          is non-zero and positive then the status arrays are printed
+          whenever the master has to wait 'statis' seconds without
+          receiving any messages from the slaves.
+
+      5.  HDF constants file.  The name of the hdf constants file has
+          been changed from 'constant.i' to 'hdf.inc'.  (Both files
+          are produced when installing HDF but hdf.inc appears to be
+          the correct one to use for fortran programs).
+
+      6.  Precompiler option 'pvm_buffer'.  If set, buffering is now
+          used to send all large arrays between master and slave.  Used
+          for initialising, sending snapshots and archiving.
+
+      7.  Program timing.  Precompiler option 'cray-t3d' now uses cray
+          routine rtc().  Elsewhere routines time(), etime() and dtime()
+          are used.  These are vendor specific.  They work with SUN and 
+          SGI.  IBM requires a trailing '_' to be added. (see above).
+
+      8.  IBM RS6000 system.  Calls to system routines dtime, etime,
+          time, sleep, flush and lnblnk have to be replaced with calls
+          to dtime_, etime_, time_, sleep_, flush_ and lnblnk_. The
+          statements defining time to be a integer must be changed
+          to refer to time_.
+
+          On the RS6000 system the specification of 'fnslave' may have
+          to be changed so that it points to an absolute directory.
+          On the SUNs and Siulicon graphics the default directory for
+          the slave files is the home directory.  On the cray-t3d it
+          is the current directry.
+
+          An aix makefile developed by Hugo Embrechets is included.
+

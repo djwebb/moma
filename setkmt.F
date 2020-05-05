@@ -1,8 +1,8 @@
       subroutine setkmt (alat1, slon1, elon1,
      &                   alat2, slon2, elon2, num)
 c
-c @(#) SCCS module: setkmt.F  version: 1.6
-c     Creation date: 04/13/95
+c @(#) SCCS module: setkmt.F  version: 1.7
+c     Creation date: 06/30/95
 c
 c------------------------------------------------------------------
 c     set the topography mask "kmt(i,j)" = "num" within the area of 
@@ -35,14 +35,14 @@ c
 c
       is = is1
       ie = ie1
-      print *
-      print *, xt
-      print *, yt
-      print *,'alat1, slon1, elon1 = ',alat1, slon1, elon1
-      print *,'alat2, slon2, elon2 = ',alat2, slon2, elon2
-      print *,' num =',num
-      print *,'js, is1, is2 = ',js, is1, is2
-      print *,'je, ie1, ie2 = ',je, ie1, ie2
+c     print *
+c     print *, xt
+c     print *, yt
+c     print *,'alat1, slon1, elon1 = ',alat1, slon1, elon1
+c     print *,'alat2, slon2, elon2 = ',alat2, slon2, elon2
+c     print *,' num =',num
+c     print *,'js, is1, is2 = ',js, is1, is2
+c     print *,'je, ie1, ie2 = ',je, ie1, ie2
 c
 c     fill in the area bounded by (js,is1), (js,ie1), 
 c                                 (je,is2), (je,ie2)

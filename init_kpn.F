@@ -1,7 +1,7 @@
       subroutine init_kpn
 c
-c @(#) SCCS module: init_kpn.F  version: 1.6
-c      Creation date: 04/13/95
+c @(#) SCCS module: init_kpn.F  version: 1.7
+c      Creation date: 06/30/95
 c
 c==================================================================
 c
@@ -63,6 +63,8 @@ c
       ierr2 = 0
       ierr3 = 0
       ierr4 = 0
+      ierr5 = 0
+      nproc1 = -999
       do 100 j=1,JMT_M
       do 100 i=1,IMT_M
         if(kmt(i,j).lt.0.or.kmt(i,j).gt.km)then
@@ -90,9 +92,9 @@ c
      &       i,j,kmt(i,j),kpn(i,j)
           endif
         endif
-       nproc1 = max(kpn(i,j),nproc1)
+      nproc1 = max(nproc1,kpn(i,j))
  100  continue
-      if(ierr1+ierr2+ierr3+ierr4.ne.0)then
+      if(ierr1+ierr2+ierr3+ierr4.ne.0.or.nproc.ne.nproc1)then
         write(stdout,*)' Routine init_kpn:'
         if(ierr1.ne.0)write(stdout,*)
      &    '  Number of kmt points out of range = ',ierr1
@@ -102,6 +104,13 @@ c
      &    '  Number of kmt points set where kpn is zero = ',ierr3
         if(ierr4.ne.0)write(stdout,*)
      &    '  Number of kpn points set where kmt is zero = ',ierr4
+        write(stdout,*) ' Program stopping '
+        if(nproc.ne.nproc1)then
+          write(stdout,*)'  nproc in ocean.kpn file header ',
+     &    'inconsistant with array values'
+          write(stdout,*)'  nproc =',nproc
+          write(stdout,*)'  maximum value of kpn(i,j) = ',nproc1
+        endif
         write(stdout,*) ' Program stopping '
         stop
       endif

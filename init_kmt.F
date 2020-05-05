@@ -1,7 +1,7 @@
       subroutine init_kmt
 c
-c @(#) SCCS module: init_kmt.F  version: 1.6
-c     Creation date: 04/13/95
+c @(#) SCCS module: init_kmt.F  version: 1.7
+c     Creation date: 06/30/95
 c
 c==================================================================
 c
@@ -90,17 +90,21 @@ c------------------------------------------------------------------
 c       print map of "kmt" levels.
 c------------------------------------------------------------------
 c
-      write (stdout,401)
-      do 410 ibk=1,IMT_M,40
-        isp  = ibk  
-        iept = ibk + 40 - 1
-        if(iept.gt.IMT_M) iept=IMT_M
-        write (stdout,'(/, 4x, 40i3)') (ii, ii=isp,iept)
-        do 400 jrev=1,JMT_M
-          j=JMT_M-jrev+1
-          write (stdout,'(1x,i3, 40i3)')j,(kmt(i,j),i=isp,iept)
- 400    continue    
- 410  continue 
+      if(IMT_M*JMT_M.le.8000)then
+        write (stdout,401)
+        do 410 ibk=1,IMT_M,40
+          isp  = ibk  
+          iept = ibk + 40 - 1
+          if(iept.gt.IMT_M) iept=IMT_M
+          write (stdout,'(/, 4x, 40i3)') (ii, ii=isp,iept)
+          do 400 jrev=1,JMT_M
+            j=JMT_M-jrev+1
+            write (stdout,'(1x,i3, 40i3)')j,(kmt(i,j),i=isp,iept)
+ 400      continue    
+ 410    continue 
+      else
+        write(stdout,402)
+      endif
 c
 c------------------------------------------------------------------
 c    check kmt for consistency
@@ -175,4 +179,6 @@ c
      &,/,' the total ocean surface area (t grid)=',1pe15.8,'cm**2'
      &,/,' the total ocean volume (t grid)      =',1pe15.8,'cm**3')
  401  format(/t50,'number of levels on "t,s" grid')
+ 402  format(/t50,'number of levels on "t,s" grid',
+     &             ' - array too large for listing')
       end

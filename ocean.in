@@ -1,15 +1,16 @@
 
-   @(#) SCCS module: ocean.in  version: 1.6 Creation date: 04/13/95
+   @(#) SCCS module: ocean.in  version: 1.7 Creation date: 06/30/95
 
    3 day test run.
 
  &contrl
-     init=.true.,       fnrest='d0002.hdf', 
-     days = 3.0,         restrt=.false.,     
-     nmix=  24,          eb=.true.,      ncon=1,         acor = 0.6,
-     tsi=0.0833333,      snapd=1.0,      archd= 2.0,     idebug = 0,
-     ftrest = 'hdf',     ftsnap = 'hdf', ftarch = 'hdf',
-     dgnstc=10.0,        dchkbd = 0.1
+     init = .true.,      fnrest = 'd0002.hdf', 
+     days = 3.0,         restrt = .false.,     
+     nmix = 24,          eb     = .true.,   ncon  =  1,      acor   = 0.6,
+     tsi  = 0.0833333,   snapd  = 1.0,      archd = 2.0,     idebug = 0,
+     ftrest = 'hdf',     ftsnap = 'hdf',    ftarch = 'hdf',
+     dgnstc = 0.0,       dchkbd = 0.1,
+     statms = 20.0,      statis = 10.0
  &end
  &eddy
       am    = 1.0e9,   ah    = 2.0e7,

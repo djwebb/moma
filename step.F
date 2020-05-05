@@ -1,7 +1,7 @@
       subroutine step 
 c
-c @(#) SCCS module: step.F  version: 1.6
-c     Creation date: 04/13/95
+c @(#) SCCS module: step.F  version: 1.7
+c      Creation date: 06/30/95
 c
 c=======================================================================
 c
@@ -25,6 +25,11 @@ c
 c
 #include "cdiag.h"
 #include "levind.h"
+#ifdef inline
+# include "chmix.h"
+# include "grdvar.h"
+# define inline1
+#endif
 c
 c-----------------------------------------------------------------------
 c    update pointers for new value of itt.  
@@ -191,7 +196,11 @@ c
               call s_send(MSG_CLR_BD2)
             endif
 #endif
+#ifdef inline
+#         include "frees.F"
+#else
           call frees(ia(l),ja(l))
+#endif
  400      continue
           if(nproc.gt.1) then
 #ifdef SYNC_2
@@ -389,3 +398,6 @@ c
 c
       return
       end
+#ifdef inline1
+# undef inline1
+#endif
