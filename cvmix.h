@@ -1,20 +1,40 @@
-c====================== include file "cvmix.h" =========================
 #ifdef hcomments
-c
-c     @(#) SCCS module: cvmix.h, version 1.17
-c
-c     variables used for vertical diffusion
-c
-c     inputs: (set through namelist)
-c
-c     fkph   = vertical diffusion coefficient (cm**2/sec)
-c     fkpm   = vertical viscosity coefficient (cm**2/sec)
-c
-c     derived quantities:
-c
-c     vvc  = vertical viscosity coeff
-c     vdc  = vertical diffusion coeff
-c
+!
+!======================================================================
+!
+!    File:  XXXXX
+!    Copyright 1992-1997, 2020  David J. Webb
+!
+!    This file is part of the Moma ocean model code.
+!    Released under licence GPL-3.0-or-later
+!
+!    Moma is free software: you can redistribute it and/or modify
+!    it under the terms of the GNU General Public License as published by
+!    the Free Software Foundation, either version 3 of the License, or
+!    (at your option) any later version.
+!
+!    Moma is distributed in the hope that it will be useful,
+!    but WITHOUT ANY WARRANTY; without even the implied warranty of
+!    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+!    GNU General Public License for more details.
+!
+!    You should have received a copy of the GNU General Public License
+!    along with Moma.  If not, see <https://www.gnu.org/licenses/>.
+!
+!======================================================================
+!
+!     variables used for vertical diffusion
+!
+!     inputs: (set through namelist)
+!
+!     fkph   = vertical diffusion coefficient (cm**2/sec)
+!     fkpm   = vertical viscosity coefficient (cm**2/sec)
+!
+!     derived quantities:
+!
+!     vvc  = vertical viscosity coeff
+!     vdc  = vertical diffusion coeff
+!
 #endif
       common /cvmix/  fkph, fkpm, vvc(km), vdc(km)
 

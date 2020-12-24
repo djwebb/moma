@@ -1,16 +1,37 @@
 #
-# @(#) SCCS module: makefile.sun  version: 1.17
-#      Creation date: 09 Aug 1996
+#======================================================================
+#
+#    File:  makefile.sun
+#    Copyright 1992-1997, 2020  David J. Webb
+#
+#    This file is part of the Moma ocean model code.
+#    Released under licence GPL-3.0-or-later
+#
+#    Moma is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    Moma is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with Moma.  If not, see <https://www.gnu.org/licenses/>.
+#
+#======================================================================
+#
 #
 #     Moma make file for Sun4
 #
-#  If HDF is used, environment variable HDF_ROOT needs to  
+#  If HDF is used, environment variable HDF_ROOT needs to
 #  point to the HDF root directory
 #
 
 DOPTNS=	-Dcyclic -Dsimple_world -Dde_checkbd -Dncsa_hdf -Dfree_av
- 
-FC =	f77   
+
+FC =	f77
 INCLUDE= -I$(HDF_ROOT)/include/SUN4
 LDR = f77
 HDFLIBS = $(HDF_ROOT)/lib/SUN4/libnetcdf.a $(HDF_ROOT)/lib/SUN4/libdf.a
@@ -19,18 +40,18 @@ HDFLIBS = $(HDF_ROOT)/lib/SUN4/libnetcdf.a $(HDF_ROOT)/lib/SUN4/libdf.a
 
 .SCCS_GET:
 
-.F.o :  
+.F.o :
 	$(FC) $(DOPTNS) -r8 -c $(INCLUDE) $<
 
-moma : moma.o hdf.o	
+moma : moma.o hdf.o
 	$(LDR) moma.o hdf.o -o moma $(HDFLIBS)
 
-clean :	
+clean :
 	rm *%
 
-cleaner : 
+cleaner :
 	rm moma *.o *%
 
-#	
+#
 
-	
+

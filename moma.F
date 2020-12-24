@@ -1,140 +1,154 @@
       program moma
-c
-c==================================================================
-c  Program MOMA,     Version 1.17
-c
-c  Free surface ocean model for use with array processors.
-c
-c  Copyright 1993.  D.J. Webb,  
-c                   Institute of Oceanographic Sciences,
-c                   Godalming, Surrey GU8 5UB, U.K..
-c  
-c @(#) SCCS information - module:  moma.F     
-c @(#)                    version: 1.17    date: 09 Aug 1996
-c
-c
-c  This code is a free surface version of the Bryan-Cox-Semtner
-c  code reorganised for efficient running on array processor
-c  computers.  The basic finite difference scheme used in the
-c  model is described in Bryan (1969), Semtner (1974) and
-c  Cox (1984).  The present code follows most closely
-c  the format of the GFDL Modular Ocean Model (Pacanowski et al,
-c  1990), and makes use of many of the subroutines and include
-c  files of that model.  More detailed information about the 
-c  present code is given in Webb (1993, 1996).
-c
-c  The code may be freely adapted and used without charge.  For 
-c  further information on the model contact the author.
-c
-c     Copyright 1993, 1994, 1995, 1996
-c     D.J. Webb,  
-c     Southampton Oceanography Centre
-c     Empress Dock, Southampton SO14 3ZH, U.K..
-c
-c     e-mail  David.Webb@soc.soton.ac.uk 
-c  
-c  The main differences from the modular ocean model code are:
-c
-c  1.  Collection of all 'array processor' loops (i.e. loops over the
-c      horizontal indices ic and jc) in subroutine step.  When an array
-c      processor is used, code should be added to this subroutine to 
-c      partition the horizontal index (ic, jc) ranges between the
-c      different processors so that they each have a similar workload.
-c  2.  Revised common block structures.  All variables are stored
-c      in core.
-c  3.  Removal of all 'slab' optimisation code in the program and
-c      the introduction of code designed to optimise inner loop 
-c      calculations using the vertical index k.
-c  4.  To simplify the development and testing of the array processor
-c      code the following features of the moma code were removed:
-c        (a) Diagnostic calculations in routines clinic and tracer.
-c        (b) Moma code options.
-c      It should now be straightforward (but possibly time consuming)
-c      to add the features back into the present code if they are 
-c      required:
-c  5.  The stream function code is removed and replaced by a free-
-c      surface code.  The latter is similar to Killworth, Stainforth
-c      Webb and Patterson (1989).  For efficiency, the mean horizontal
-c      velocity is now used instead of horizontal transport and
-c      the viscous terms are calculated in routine clinic.  
-c      A leapfrog timestepping scheme is used with averaging over each
-c      baroclinic timestep to prevent aliasing problems in the tropics.
-c  6.  In the baroclinic momentum equation, a revised horizontal
-c      advection scheme option is included.  The old scheme can still be 
-c      used by specifying the flag 'oldadv'
-c  7.  Near topography, in the baroclinic momentum equation, a revised
-c      vertical advection scheme option is included.
-c  8.  An option to precalculate the baroclinic part of the 
-c      pressure filed is included using flag 'presetp'.
-c  9.  Snapshot and archive functions separated.  Input 'snapd' and 'archd'.
-c
-c
-c  cpp precompiler options:
-c
-c     'oldadv'    - use the origonal scheme for the horizontal
-c                   advection velocity at velocity points.
-c     'presetp'   - precalculate the baroclinic pressure field
-c                   before calling clinic
-c     'hcomments' - include comments from '*.h' files
-c     'cyclic'    - invoke cyclic boundary conditions
-c     'simple_world' - use routine topog to construct kmt, this generates
-c                   a simplified version of the global ocean.
-c     'free_eb'   - use the euler backward timestepping scheme without
-c                   averaging for the free surface equations.
-c                   NOTE: The default is to use a leapfrog scheme
-c                   with time averaging.
-c     'de_checkbd'- use filter to remove checkerboarding in free
-c                   surface height field.
-c     'ncsa_hdf'  - produce hdf versions of archive files.
-c
-c  Compilation:
-c
-c      Without 'ncsa_hdf' the program can be compiled with a command
-c      of the form
-c             f77 -o moma moma.F
-c      This assumes that the fortran compiler also calls the cpp
-c      preprocessor.  With 'ncsa_hdf' the hdf include files and
-c      subroutines are also needed.  These require commands like:
-c             
-c             set HDFROOT = /users/occam/hdf/sunos2
-c             f77 -Dncsa_hdf -I$HDFROOT/include -o moma moma.F 
-c                  $HDFROOT/lib/libnetcdf.a $HDFROOT/lib/libdf.a
-c
-c      where the third line is really a continuation of the f77 command line
-c      and HDFROOT is set to point to the hdf root directory.
-c
-c  References:
-c
-c  Bryan, K., 1969:  A numerical method for the circulation of the
-c  World Ocean.  Journal of Computational Physics, 4, 347-  .
-c
-c  Semtner, A.J., 1974:  A general circulation model for the 
-c  World Ocean.  UCLA Department of Meteorology Technical Report
-c  No. 8, 99pp.
-c
-c  Cox, M.D., 1984:  A primitive equation, 3-dimensional model of
-c  the ocean.  GFDL Ocean Technical Report No.1, Geophysical
-c  Fluid Dynamics Laboratory/NOAA, Princeton University, 
-c  Princeton N.J., U.S.A..
-c
-c  Killworth, P.D., Stainforth, D., Webb, D.J. and Paterson, P.M.,
-c  1989:  A free surface Bryan-Cox-Semtner model.  Report No. 270,  
-c  Institute of Oceanographic Sciences, Wormley, U.K..
-c
-c  Pacanowski, R.C., Dixon, K., Rosati, A., 1990:  The GFDL Modular
-c  Ocean Model 1.0.  Geophysical Fluid Dynamics Laboratory/NOAA, 
-c  Princeton University, Princeton, N.J., U.S.A..  (Unpublished 
-c  manuscript).
-c
-c  Webb, D.J., 1993:  An ocean model code for array processor
-c  computers.  Internal Document No.324, Institute of Oceanographic 
-c  Sciences, Wormley, U.K..
-c
-c  Webb, D.J., 1993:  An ocean model code for array processor
-c  computers.  Computers and Geosciences, 22(5), 569-578. 
-c
-c==================================================================
-c
+!
+!======================================================================
+!
+!    File:  moma.F
+!    Copyright 1992-1997, 2020  David J. Webb
+!
+!    This file is part of the Moma ocean model code.
+!    Released under licence GPL-3.0-or-later
+!
+!    Moma is free software: you can redistribute it and/or modify
+!    it under the terms of the GNU General Public License as published by
+!    the Free Software Foundation, either version 3 of the License, or
+!    (at your option) any later version.
+!
+!    Moma is distributed in the hope that it will be useful,
+!    but WITHOUT ANY WARRANTY; without even the implied warranty of
+!    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+!    GNU General Public License for more details.
+!
+!    You should have received a copy of the GNU General Public License
+!    along with Moma.  If not, see <https://www.gnu.org/licenses/>.
+!
+!======================================================================
+!
+!  Program MOMA,     Version 1.17
+!
+!  Free surface ocean model for use with array processors.
+!
+!  This code is a free surface version of the Bryan-Cox-Semtner
+!  code reorganised for efficient running on array processor
+!  computers.  The basic finite difference scheme used in the
+!  model is described in Bryan (1969), Semtner (1974) and
+!  Cox (1984).  The present code follows most closely
+!  the format of the GFDL Modular Ocean Model (Pacanowski et al,
+!  1990), and makes use of many of the subroutines and include
+!  files of that model.  More detailed information about the
+!  present code is given in Webb (1993, 1996).
+!
+!  The code may be freely adapted and used without charge.  For
+!  further information on the model contact the author.
+!
+!     Copyright 1993, 1994, 1995, 1996
+!     D.J. Webb,
+!     Southampton Oceanography Centre
+!     Empress Dock, Southampton SO14 3ZH, U.K..
+!
+!     e-mail  David.Webb@soc.soton.ac.uk
+!
+!  The main differences from the modular ocean model code are:
+!
+!  1.  Collection of all 'array processor' loops (i.e. loops over the
+!      horizontal indices ic and jc) in subroutine step.  When an array
+!      processor is used, code should be added to this subroutine to
+!      partition the horizontal index (ic, jc) ranges between the
+!      different processors so that they each have a similar workload.
+!  2.  Revised common block structures.  All variables are stored
+!      in core.
+!  3.  Removal of all 'slab' optimisation code in the program and
+!      the introduction of code designed to optimise inner loop
+!      calculations using the vertical index k.
+!  4.  To simplify the development and testing of the array processor
+!      code the following features of the moma code were removed:
+!        (a) Diagnostic calculations in routines clinic and tracer.
+!        (b) Moma code options.
+!      It should now be straightforward (but possibly time consuming)
+!      to add the features back into the present code if they are
+!      required:
+!  5.  The stream function code is removed and replaced by a free-
+!      surface code.  The latter is similar to Killworth, Stainforth
+!      Webb and Patterson (1989).  For efficiency, the mean horizontal
+!      velocity is now used instead of horizontal transport and
+!      the viscous terms are calculated in routine clinic.
+!      A leapfrog timestepping scheme is used with averaging over each
+!      baroclinic timestep to prevent aliasing problems in the tropics.
+!  6.  In the baroclinic momentum equation, a revised horizontal
+!      advection scheme option is included.  The old scheme can still be
+!      used by specifying the flag 'oldadv'
+!  7.  Near topography, in the baroclinic momentum equation, a revised
+!      vertical advection scheme option is included.
+!  8.  An option to precalculate the baroclinic part of the
+!      pressure filed is included using flag 'presetp'.
+!  9.  Snapshot and archive functions separated.  Input 'snapd' and 'archd'.
+!
+!
+!  cpp precompiler options:
+!
+!     'oldadv'    - use the origonal scheme for the horizontal
+!                   advection velocity at velocity points.
+!     'presetp'   - precalculate the baroclinic pressure field
+!                   before calling clinic
+!     'hcomments' - include comments from '*.h' files
+!     'cyclic'    - invoke cyclic boundary conditions
+!     'simple_world' - use routine topog to construct kmt, this generates
+!                   a simplified version of the global ocean.
+!     'free_eb'   - use the euler backward timestepping scheme without
+!                   averaging for the free surface equations.
+!                   NOTE: The default is to use a leapfrog scheme
+!                   with time averaging.
+!     'de_checkbd'- use filter to remove checkerboarding in free
+!                   surface height field.
+!     'ncsa_hdf'  - produce hdf versions of archive files.
+!
+!  Compilation:
+!
+!      Without 'ncsa_hdf' the program can be compiled with a command
+!      of the form
+!             f77 -o moma moma.F
+!      This assumes that the fortran compiler also calls the cpp
+!      preprocessor.  With 'ncsa_hdf' the hdf include files and
+!      subroutines are also needed.  These require commands like:
+!
+!             set HDFROOT = /users/occam/hdf/sunos2
+!             f77 -Dncsa_hdf -I$HDFROOT/include -o moma moma.F
+!                  $HDFROOT/lib/libnetcdf.a $HDFROOT/lib/libdf.a
+!
+!      where the third line is really a continuation of the f77 command line
+!      and HDFROOT is set to point to the hdf root directory.
+!
+!  References:
+!
+!  Bryan, K., 1969:  A numerical method for the circulation of the
+!  World Ocean.  Journal of Computational Physics, 4, 347-  .
+!
+!  Semtner, A.J., 1974:  A general circulation model for the
+!  World Ocean.  UCLA Department of Meteorology Technical Report
+!  No. 8, 99pp.
+!
+!  Cox, M.D., 1984:  A primitive equation, 3-dimensional model of
+!  the ocean.  GFDL Ocean Technical Report No.1, Geophysical
+!  Fluid Dynamics Laboratory/NOAA, Princeton University,
+!  Princeton N.J., U.S.A..
+!
+!  Killworth, P.D., Stainforth, D., Webb, D.J. and Paterson, P.M.,
+!  1989:  A free surface Bryan-Cox-Semtner model.  Report No. 270,
+!  Institute of Oceanographic Sciences, Wormley, U.K..
+!
+!  Pacanowski, R.C., Dixon, K., Rosati, A., 1990:  The GFDL Modular
+!  Ocean Model 1.0.  Geophysical Fluid Dynamics Laboratory/NOAA,
+!  Princeton University, Princeton, N.J., U.S.A..  (Unpublished
+!  manuscript).
+!
+!  Webb, D.J., 1993:  An ocean model code for array processor
+!  computers.  Internal Document No.324, Institute of Oceanographic
+!  Sciences, Wormley, U.K..
+!
+!  Webb, D.J., 1993:  An ocean model code for array processor
+!  computers.  Computers and Geosciences, 22(5), 569-578.
+!
+!==================================================================
+!
 #include "param.h"
 
 #include "scalar.h"
@@ -153,11 +167,11 @@ c
 #include "frees.h"
 #include "iounit.h"
 #include "versno.h"
-c==================================================================
-c
+!==================================================================
+!
       real*4 utime(3)
-c
-      namelist /contrl/ init, fnrest, fnkmt, days, restrt, nmix, eb 
+!
+      namelist /contrl/ init, fnrest, fnkmt, days, restrt, nmix, eb
      &,                 ncon, tsi, dgnstc, snapd, archd, acor
 # ifdef de_checkbd
      &,                 dchkbd
@@ -165,14 +179,14 @@ c
      &,                 ftrest, ftsnap, ftarch
       namelist /tsteps/ dtts, dtuv, dtbt
       namelist /eddy/   am, ah, fkpm, fkph, cdbot
-c
-c  start timing
-c 
+!
+!  start timing
+!
       call dtime(utime)
       utime(3)=0.0
-c
-c     constants usually initialised in block data
-c
+!
+!     constants usually initialised in block data
+!
       model(1) =' Stripped down MOM code for array processor.'
       model(2) =' Module: moma.F.  Version: 1.17. '//
      &          ' Date: 09 Aug 1996'
@@ -180,7 +194,7 @@ c
       stlat = -72.0
       dxdeg = 4.0
       dydeg = 4.0
-c
+!
       dz( 1) = 30.00e2
       dz( 2) = 46.15e2
       dz( 3) = 68.93e2
@@ -196,7 +210,7 @@ c
       dz(13) = 742.41e2
       dz(14) = 799.65e2
       dz(15) = 836.10e2
-c
+!
       init = .true.
       first= .true.
       days = 2.0
@@ -215,12 +229,12 @@ c
       ftsnap = 'hdf'
       ftarch = 'hdf'
       iorest = 21
-c
+!
       dtts = 10800d0
       dtuv = 10800d0
       dtbt = 100d0
-c
-      am    = 1.0e9 
+!
+      am    = 1.0e9
       ah    = 2.0e7
       fkph  = 20.0
       fkpm  = 1.0
@@ -228,26 +242,26 @@ c
 #ifdef de_checkbd
       dchkbd = 0.1
 #endif
-c
-c==================================================================
-c     begin introductory section
-c     open input file and write MOM version information
-c==================================================================
-c
+!
+!==================================================================
+!     begin introductory section
+!     open input file and write MOM version information
+!==================================================================
+!
       open (stdin,file='ocean.in')
       write (stdout,'(/2(25x,a80/)/)') model
-c
-c------------------------------------------------------------------
-c     initialize various quantities and
-c     read in run parameters
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!     initialize various quantities and
+!     read in run parameters
+!------------------------------------------------------------------
+!
       pi     = c4*atan(c1)
       radian = c360/(c2*pi)
       omega  = pi/43082.0
       grav =980.6
       radius =6370.e5
-c
+!
       read  (stdin, contrl)
       write (stdout,contrl)
       read  (stdin, eddy)
@@ -255,11 +269,11 @@ c
       read  (stdin, tsteps)
       write (stdout,tsteps)
       close (unit=stdin,status='keep')
-c
-c------------------------------------------------------------------
-c     calculate free surface model (barotropic) timestep
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!     calculate free surface model (barotropic) timestep
+!------------------------------------------------------------------
+!
       ntbt = max(1,nint(dtuv/dtbt))
       if(dtuv.ne.dtbt*ntbt)then
         write(stdout,'(a)') ' dtuv not integer multiple of dtbt.'
@@ -268,62 +282,62 @@ c
         dtbt = dtuv/ntbt
         write(stdout,*) ' dtbt now set to set to:',dtbt
       endif
-c
-c------------------------------------------------------------------
-c     list code options chosen by user for this model run
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!     list code options chosen by user for this model run
+!------------------------------------------------------------------
+!
       call docmnt (stdout, .false., .false., .false., .false.)
-c
-c------------------------------------------------------------------
-c     set up model grids in x, y, & z
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!     set up model grids in x, y, & z
+!------------------------------------------------------------------
+!
       call grids
 #ifdef de_checkbd
-c
-c------------------------------------------------------------------
-c scale the checkerboard filter weighting factor (zw from grids)
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+! scale the checkerboard filter weighting factor (zw from grids)
+!------------------------------------------------------------------
+!
       dchkbd = dchkbd*grav*dtbt*zw(KM)
-c
+!
 #endif
-c
-c==================================================================
-c     end introductory section
-c==================================================================
-c
-c------------------------------------------------------------------
-c     set up initial pointers to timestep storage.  nc is current 
-c     timestep, np is next and nm is previous timestep.  nm0, nc0
-c     and np0 are the corresponding pointers for the free surface
-c     model.
-c------------------------------------------------------------------
-c
+!
+!==================================================================
+!     end introductory section
+!==================================================================
+!
+!------------------------------------------------------------------
+!     set up initial pointers to timestep storage.  nc is current
+!     timestep, np is next and nm is previous timestep.  nm0, nc0
+!     and np0 are the corresponding pointers for the free surface
+!     model.
+!------------------------------------------------------------------
+!
       nm = 1
       nc = 2
       np = 3
       nm0 = 1
       nc0 = 2
       np0 = 3
-c
-c------------------------------------------------------------------
-c     is this a start from initial conditions or a restart?
-c     in either case, set the number of vertical levels on the "t" 
-c     grid
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!     is this a start from initial conditions or a restart?
+!     in either case, set the number of vertical levels on the "t"
+!     grid
+!------------------------------------------------------------------
+!
       if (init) then
         call ocn1st
       else
         call archrd
       endif
-c
-c------------------------------------------------------------------
-c     compute number of vertical levels on the "u" grid
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!     compute number of vertical levels on the "u" grid
+!------------------------------------------------------------------
+!
       do 900 i=1,imt
         kmu(i,jmt) = 0
 900   continue
@@ -339,11 +353,11 @@ c
         kmu(imt,j) = 0
 #endif
 1100  continue
-c
-c------------------------------------------------------------------
-c     compute area and volume of ocean ("t,s" grid boxes)
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!     compute area and volume of ocean ("t,s" grid boxes)
+!------------------------------------------------------------------
+!
       area   = c0
       volume = c0
       ocnp   = 0
@@ -356,12 +370,12 @@ c
         endif
 300   continue
       write (stdout,301) area, volume
-c
-c------------------------------------------------------------------
-c       print map of "kmt" levels. 
-c------------------------------------------------------------------
-c
-c
+!
+!------------------------------------------------------------------
+!       print map of "kmt" levels.
+!------------------------------------------------------------------
+!
+!
       write (stdout,401)
       do 410 ibk=1,imt,40
         isp  = ibk
@@ -374,11 +388,11 @@ c
  400    continue
  410  continue
       write(stdout,*)
-c
-c------------------------------------------------------------------
-c     compute depths and reciprocal depths
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!     compute depths and reciprocal depths
+!------------------------------------------------------------------
+!
       do 1400 j=1,jmt
       do 1390 i=1,imt
         h(i,j)  = c0
@@ -389,26 +403,26 @@ c
         endif
 1390  continue
 1400  continue
-c
-c------------------------------------------------------------------
-c     initialize various things
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!     initialize various things
+!------------------------------------------------------------------
+!
       do 2600 j=1,jmt
       do 2590 i=1,imt
         zu(i,j)  = c0
         zv(i,j)  = c0
 2590  continue
 2600  continue
-c
-c     initialize the coriolis factor
-c
+!
+!     initialize the coriolis factor
+!
       do 2660 j=1,jmt
         fcor(j) = c2*omega*sine(j)
 2660  continue
-c
-c     initialize the diffusion factors
-c
+!
+!     initialize the diffusion factors
+!
       do 2670 j=2,jmtm1
         bbt(j) = ah*dxr*cstr(j)*dy
         cct(j) = ah*dyr*dx*csu(j  )
@@ -419,35 +433,35 @@ c
         ggu(j) = am*(c1-tng(j)*tng(j))/(radius*radius)
         hhu(j) = am*c2*sine(j)/(radius*csu(j)*csu(j))
 2670  continue
-c
-c------------------------------------------------------------------
-c     do all consistency checks now
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!     do all consistency checks now
+!------------------------------------------------------------------
+!
       call checks
-c
-c------------------------------------------------------------------
-c     start the time step loop
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!     start the time step loop
+!------------------------------------------------------------------
+!
       do 3400 loop=1,9999999
         first= loop .eq. 1
-c
-c------------------------------------------------------------------
-c       update timestep, set time dependent logical switches
-c       to determine program flow for timestep itt, itt-1 and itt-2.
-c       note: timestep itt and time refer to the time of the new
-c       fields being calculated!
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!       update timestep, set time dependent logical switches
+!       to determine program flow for timestep itt, itt-1 and itt-2.
+!       note: timestep itt and time refer to the time of the new
+!       fields being calculated!
+!------------------------------------------------------------------
+!
         call tmngr (dtts)
-        call step 
-c
-c-----------------------------------------------------------------
-c      print time step information, print diagnostics and archive 
-c      as required
-c-----------------------------------------------------------------
-c
+        call step
+!
+!-----------------------------------------------------------------
+!      print time step information, print diagnostics and archive
+!      as required
+!-----------------------------------------------------------------
+!
         call dtime(utime)
         utime(3)=utime(1)+utime(2)+utime(3)
         if (prntsi) then
@@ -458,36 +472,36 @@ c
         if (diagts) call pdiag
         if (snapts) call snap
         if (archts) call archwr
-c
-c------------------------------------------------------------------
-c       end timestepping loop
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!       end timestepping loop
+!------------------------------------------------------------------
+!
       if (last) go to 3401
 3400  continue
 3401  continue
-c
-c------------------------------------------------------------------
-c     documentation info at end of run
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!     documentation info at end of run
+!------------------------------------------------------------------
+!
       call docmnt (stdout, .true., .true., .true., .true.)
-c
-c------------------------------------------------------------------
-c     save restart dataset at end of run if restrt is true
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!     save restart dataset at end of run if restrt is true
+!------------------------------------------------------------------
+!
       if (restrt) call archwr
-c
-c------------------------------------------------------------------
-c     close all units  (stderr is not closed because it is set equal
-c     to stdout in pconst.h).
-c------------------------------------------------------------------
-c
-      write (stdout,9603) 
+!
+!------------------------------------------------------------------
+!     close all units  (stderr is not closed because it is set equal
+!     to stdout in pconst.h).
+!------------------------------------------------------------------
+!
+      write (stdout,9603)
       close (unit=stdout,status='keep')
       stop
-c
+!
  301  format (//,'  Regional & Global ocean statistics:'
      &,/,'  the total ocean surface area (t grid) =',1pe15.8,'cm**2'
      &,/,'  the total ocean volume (t grid)       =',1pe15.8,'cm**3')
@@ -502,45 +516,45 @@ c
       end
 
 
-      subroutine step 
-c
-c==================================================================
-c
-c     step is called once per timestep. it includes all the main 
-c     loops over ic and jc and calls to the main routines.
-c
-c==================================================================
-c
-c
+      subroutine step
+!
+!==================================================================
+!
+!     step is called once per timestep. it includes all the main
+!     loops over ic and jc and calls to the main routines.
+!
+!==================================================================
+!
+!
 #include "param.h"
-c
+!
 #include "scalar.h"
 #include "switch.h"
 #include "ctmngr.h"
 #include "timelv.h"
 #include "slabs.h"
 #include "frees.h"
-c
+!
 #include "cdiag.h"
-c
-c------------------------------------------------------------------
-c    update pointers for new value of itt.  
-c    nnp, nnc and nnm are not changed during a timestep
-c    np, nc, nm may be modified during a forward or euler backward 
-c    timestep.
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!    update pointers for new value of itt.
+!    nnp, nnc and nnm are not changed during a timestep
+!    np, nc, nm may be modified during a forward or euler backward
+!    timestep.
+!------------------------------------------------------------------
+!
       nnc = np
       nnm = nc
       nnp = nm
       np  = nnp
       nc  = nnc
       nm  = nnm
-c
-c------------------------------------------------------------------
-c       adjust various quantities for normal/mixing timesteps
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!       adjust various quantities for normal/mixing timesteps
+!------------------------------------------------------------------
+!
       mxpas2 = .false.
       eots   = .true.
       if (mixts) then
@@ -552,48 +566,48 @@ c
         c2dtts = c2*dtts
         c2dtuv = c2*dtuv
       endif
-c
-c------------------------------------------------------------------
-c       return here for second pass of euler backward timestep
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!       return here for second pass of euler backward timestep
+!------------------------------------------------------------------
+!
  100  continue
 #ifdef presetp
-c
-c-----------------------------------------------------------------
-c  
-c     precalculate the baroclinic part of the pressure field 
-c     for use by subroutine clinic
-c
-c-----------------------------------------------------------------
-c  
+!
+!-----------------------------------------------------------------
+!
+!     precalculate the baroclinic part of the pressure field
+!     for use by subroutine clinic
+!
+!-----------------------------------------------------------------
+!
       do 150 jc=1,jmt
       do 150 ic=1,imt
         call setp (ic,jc)
- 150  continue 
+ 150  continue
 #endif
-c
-c-----------------------------------------------------------------
-c      main baroclinic timestep loop over grid cells, from south 
-c      to north and from west to east
-c      1. set vertical boundary conditions (surface & bottom)
-c      2. calculate internal mode velocities
-c      3. calculate tracers
-c-----------------------------------------------------------------
-c
+!
+!-----------------------------------------------------------------
+!      main baroclinic timestep loop over grid cells, from south
+!      to north and from west to east
+!      1. set vertical boundary conditions (surface & bottom)
+!      2. calculate internal mode velocities
+!      3. calculate tracers
+!-----------------------------------------------------------------
+!
       do 200 jc=2,jmtm1
       do 200 ic=2,imtm1
         call setvbc (ic,jc)
         call clinic (ic,jc)
         call tracer (ic,jc)
  200  continue
-c
-c-----------------------------------------------------------------
-c      run free surface model (except during the second part
-c      of a baroclinic euler backwards timestep).
-c      first initialise pointers 
-c-----------------------------------------------------------------
-c
+!
+!-----------------------------------------------------------------
+!      run free surface model (except during the second part
+!      of a baroclinic euler backwards timestep).
+!      first initialise pointers
+!-----------------------------------------------------------------
+!
       if(.not.mxpas2)then
         ntbtp0 = 0
         c2dtbt = dtbt
@@ -622,28 +636,28 @@ c
             nm0 = nnm0
           endif
 #endif
-c
-c-----------------------------------------------------------------
-c      On the first barotropic timestep or if "free_eb" is set
-c      use euler backward. this requires two passes.
-c-----------------------------------------------------------------
-c
+!
+!-----------------------------------------------------------------
+!      On the first barotropic timestep or if "free_eb" is set
+!      use euler backward. this requires two passes.
+!-----------------------------------------------------------------
+!
           do 500 itbtp=ntbtp0,1
-c
-c-----------------------------------------------------------------
-c      main free surface model loop to carry out a
-c      partial timestep for each model point
-c-----------------------------------------------------------------
-c
+!
+!-----------------------------------------------------------------
+!      main free surface model loop to carry out a
+!      partial timestep for each model point
+!-----------------------------------------------------------------
+!
           do 300 jc=2,jmtm1
           do 300 ic=2,imtm1
             call frees(ic,jc)
  300      continue
-c
-c-----------------------------------------------------------------
-c  set boundary conditions for the free surface model
-c-----------------------------------------------------------------
-c
+!
+!-----------------------------------------------------------------
+!  set boundary conditions for the free surface model
+!-----------------------------------------------------------------
+!
           do 400 jc=2,jmtm1
 #ifdef cyclic
             h0(  1,jc,np0) = h0(imtm1,jc,np0)
@@ -661,11 +675,11 @@ c
             v0(imu,jc,np0) = c0
 #endif
 400       continue
-c
-c-----------------------------------------------------------------
-c     reset pointers at end of first pass of the free surface model
-c------------------------------------------------------------------
-c
+!
+!-----------------------------------------------------------------
+!     reset pointers at end of first pass of the free surface model
+!------------------------------------------------------------------
+!
 #ifdef free_eb
           if(itbtp.eq.0)then
             nc0 = nnp0
@@ -690,21 +704,21 @@ c
  500      continue
  600    continue
       endif
-c
-c-----------------------------------------------------------------
-c  end of free surface model
-c  now add barotropic velocities to baroclinic velocities
-c-----------------------------------------------------------------
-c
+!
+!-----------------------------------------------------------------
+!  end of free surface model
+!  now add barotropic velocities to baroclinic velocities
+!-----------------------------------------------------------------
+!
       do 700 jc=2,jmtm1
       do 700 ic=2,imtm1
         call addv(ic,jc)
  700  continue
-c
-c-----------------------------------------------------------------
-c  set boundary conditions for the baroclinic model
-c-----------------------------------------------------------------
-c
+!
+!-----------------------------------------------------------------
+!  set boundary conditions for the baroclinic model
+!-----------------------------------------------------------------
+!
       do 800 jc=2,jmtm1
       do 800 k =1,km
 #ifdef cyclic
@@ -727,12 +741,12 @@ c
           t(k,imt,jc,n,np) = t(k,  imt,jc,n,nm)
 #endif
  800  continue
-c
-c-----------------------------------------------------------------
-c     if this is the end of the first pass of an euler backward
-c     timestep then set the pointers for the second pass.
-c-----------------------------------------------------------------
-c
+!
+!-----------------------------------------------------------------
+!     if this is the end of the first pass of an euler backward
+!     timestep then set the pointers for the second pass.
+!-----------------------------------------------------------------
+!
       if (mixts.and.eb)then
         eots   = .true.
         nc = nnp
@@ -741,11 +755,11 @@ c
         mxpas2 = .true.
         go to 100
       endif
-c
-c-----------------------------------------------------------------
-c  collect timestep statistics
-c-----------------------------------------------------------------
-c
+!
+!-----------------------------------------------------------------
+!  collect timestep statistics
+!-----------------------------------------------------------------
+!
       if(prntsi.and.eots) then
         ektot = c0
         do 900 n=1,nt
@@ -764,12 +778,12 @@ c
         tvar(n)  = tvar(n)/volume
  920    continue
       endif
-c
-c------------------------------------------------------------------
-c       if this is the end of either a forward or euler backward
-c       timestep then reset the pointers
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!       if this is the end of either a forward or euler backward
+!       timestep then reset the pointers
+!------------------------------------------------------------------
+!
       if(mxpas2)then
         nc = nnc
         nm = nnp
@@ -777,24 +791,24 @@ c
       if(mixts)then
         nm = nnm
       endif
-c
+!
       return
       end
- 
+
 
       subroutine clinic(ic,jc)
-c
-c==================================================================
-c
-c     clinic computes internal mode velocities at time level t+1
-c     for a vertical column of k cells with i and j values equal to
-c     ic and jc.
-c
-c==================================================================
-c
-c
+!
+!==================================================================
+!
+!     clinic computes internal mode velocities at time level t+1
+!     for a vertical column of k cells with i and j values equal to
+!     ic and jc.
+!
+!==================================================================
+!
+!
 #include "param.h"
-c
+!
 #include "scalar.h"
 #include "switch.h"
 #include "coord.h"
@@ -803,20 +817,20 @@ c
 #include "timelv.h"
 #include "slabs.h"
 #include "frees.h"
-c
+!
 #include "chmix.h"
 #include "cvbc.h"
 #include "cvmix.h"
-c
+!
       kmc=kmu(ic,jc)
       if(kmc.eq.0)return
       jp = jc+1
       jm = jc-1
       ip = ic+1
       im = ic-1
-c
-c  find max of all the neighbouring points.
-c
+!
+!  find max of all the neighbouring points.
+!
 #ifdef oldadv
       kmd  = max(kmu(ip,jc),kmu(im,jc),kmu(ic,jp),kmu(ic,jm),kmc)
 #else
@@ -826,60 +840,60 @@ c
 #endif
       boxa = dx*csu(jc)*dy
       boxar = c1/boxa
-c
-c=============================================================
-c  calculate horizontal and vertical advective fluxes
-c=============================================================
-c
+!
+!=============================================================
+!  calculate horizontal and vertical advective fluxes
+!=============================================================
+!
       dxp5 = p5*dx
       dyp5 = p5*dy
       do 100 k=1,kmd
 #ifdef oldadv
-c
-c  original horizontall advection scheme
-c
+!
+!  original horizontall advection scheme
+!
       fvn(k) = (v(k,ic,jc,nc)+v(k,ic,jp,nc))*p5*dx*cst(jp)*dz(k)
       fvs(k) = (v(k,ic,jc,nc)+v(k,ic,jm,nc))*p5*dx*cst(jc)*dz(k)
       fue(k) = (u(k,ic,jc,nc)+u(k,ip,jc,nc))*p5*dy*dz(k)
       fuw(k) = (u(k,ic,jc,nc)+u(k,im,jc,nc))*p5*dy*dz(k)
 #else
-c
-c  new horizontal advection scheme
-c
+!
+!  new horizontal advection scheme
+!
       fvjc   = csu(jc)*
      &         (v(k,im,jc,nc)+2.0*v(k,ic,jc,nc)+v(k,ip,jc,nc))
       fuic   = (u(k,ic,jp,nc)+2.0*u(k,ic,jc,nc)+u(k,ic,jm,nc))
-c
+!
       fvn(k) = dz(k)*dx*p125*( fvjc + csu(jp)*
      &         (v(k,im,jp,nc)+2.0*v(k,ic,jp,nc)+v(k,ip,jp,nc)))
       fvs(k) = dz(k)*dx*p125*( fvjc + csu(jm)*
      &         (v(k,im,jm,nc)+2.0*v(k,ic,jm,nc)+v(k,ip,jm,nc)))
-c
+!
       fue(k) = dz(k)*dy*p125*( fuic +
      &         (u(k,ip,jp,nc)+2.0*u(k,ip,jc,nc)+u(k,ip,jm,nc)))
       fuw(k) = dz(k)*dy*p125*( fuic +
      &         (u(k,im,jp,nc)+2.0*u(k,im,jc,nc)+u(k,im,jm,nc)))
 #endif
-c
-c  new vertical boundary conditions on w at u points
-c
+!
+!  new vertical boundary conditions on w at u points
+!
       fw(k-1)  = (fuw(k)-fue(k)+fvs(k)-fvn(k))
  100  continue
-c
-c=============================================================
-c    integrate up from the bottom level
-c=============================================================
-c
+!
+!=============================================================
+!    integrate up from the bottom level
+!=============================================================
+!
       fw(kmd)=c0
       do 210 k=kmd,1,-1
       fw(k-1)=fw(k-1)+fw(k)
  210  continue
 #ifdef presetp
-c
-c-----------------------------------------------------------------
-c         compute hydrostatic pressure gradient (baroclinic part)
-c-----------------------------------------------------------------
-c
+!
+!-----------------------------------------------------------------
+!         compute hydrostatic pressure gradient (baroclinic part)
+!-----------------------------------------------------------------
+!
       fxa = dx2r*csur(jc)
       fxb = dy2r
       do 300 k=1,kmc
@@ -889,35 +903,35 @@ c
         dpdy(k) = (temp1+temp2)*fxb
  300  continue
 #else
-c
-c-----------------------------------------------------------------
-c     compute density on surrounding 't' points
-c-----------------------------------------------------------------
-c
-      call state (t(1,ic,jc,1,nc), t(1,ic,jc,2,nc), rhoo, 
+!
+!-----------------------------------------------------------------
+!     compute density on surrounding 't' points
+!-----------------------------------------------------------------
+!
+      call state (t(1,ic,jc,1,nc), t(1,ic,jc,2,nc), rhoo,
      &            kmt(ic,jc) ,0)
-      call state (t(1,ip,jc,1,nc), t(1,ip,jc,2,nc), rhpo, 
+      call state (t(1,ip,jc,1,nc), t(1,ip,jc,2,nc), rhpo,
      &            kmt(ip,jc) ,0)
-      call state (t(1,ip,jp,1,nc), t(1,ip,jp,2,nc), rhpp, 
+      call state (t(1,ip,jp,1,nc), t(1,ip,jp,2,nc), rhpp,
      &            kmt(ip,jp) ,0)
-      call state (t(1,ic,jp,1,nc), t(1,ic,jp,2,nc), rhop, 
+      call state (t(1,ic,jp,1,nc), t(1,ic,jp,2,nc), rhop,
      &            kmt(ic,jp) ,0)
-c
-c-----------------------------------------------------------------
-c         compute hydrostatic pressure gradient (baroclinic part)
-c-----------------------------------------------------------------
-c
-c    1. compute it at the first level
-c
+!
+!-----------------------------------------------------------------
+!         compute hydrostatic pressure gradient (baroclinic part)
+!-----------------------------------------------------------------
+!
+!    1. compute it at the first level
+!
       fxa = grav*dzw(0)*dx2r*csur(jc)
       fxb = grav*dzw(0)*dy2r
       temp1  = rhpp(1) - rhoo(1)
       temp2  = rhop(1) - rhpo(1)
       dpdx(1) = (temp1-temp2)*fxa
       dpdy(1) = (temp1+temp2)*fxb
-c
-c    2. compute the change in pressure gradient between levels
-c
+!
+!    2. compute the change in pressure gradient between levels
+!
       fxa = grav*dx4r*csur(jc)
       fxb = grav*dy4r
       do 300 k=2,kmc
@@ -926,23 +940,23 @@ c
         dpdx(k) = (temp1-temp2)*fxa*dzw(k-1)
         dpdy(k) = (temp1+temp2)*fxb*dzw(k-1)
  300  continue
-c
-c=============================================================
-c         integrate downward from the first level
-c=============================================================
-c
+!
+!=============================================================
+!         integrate downward from the first level
+!=============================================================
+!
       do 400 k=2,kmc
         dpdx(k) = dpdx(k-1) + dpdx(k)
         dpdy(k) = dpdy(k-1) + dpdy(k)
  400  continue
 #endif
-c
-c-----------------------------------------------------------------
-c         calculate quantities for the computation of
-c         vertical diffusion and advection of momentum
-c         - positive for upwards flux of momentum
-c-----------------------------------------------------------------
-c
+!
+!-----------------------------------------------------------------
+!         calculate quantities for the computation of
+!         vertical diffusion and advection of momentum
+!         - positive for upwards flux of momentum
+!-----------------------------------------------------------------
+!
       do 500 k=1,kmc-1
         vmf(k,1) = fkpm*(u(k+1,ic,jc,nm) - u(k  ,ic,jc,nm))
      &                     *dzwr(k)*dx*csu(jc)*dy
@@ -951,17 +965,17 @@ c
         fwb1(k) = fw(k)*(u(k,ic,jc,nc) + u(k+1,ic,jc,nc))*p5
         fwb2(k) = fw(k)*(v(k,ic,jc,nc) + v(k+1,ic,jc,nc))*p5
  500  continue
-c
-c-----------------------------------------------------------------
-c     set k=0 vertical diffusion to reflect surface wind stress
-c     set level "kmc" for bottom drag condition.
-c     set k=kmc elements of vertical advection array to zero
-c     vertical momentum transfer.  Set k=0 to represent advection
-c     loss to region above the free surface.
-c     smf is the surface stress acting on the ocean
-c     bmf is the bottom stress acting on the ocean floor
-c-----------------------------------------------------------------
-c
+!
+!-----------------------------------------------------------------
+!     set k=0 vertical diffusion to reflect surface wind stress
+!     set level "kmc" for bottom drag condition.
+!     set k=kmc elements of vertical advection array to zero
+!     vertical momentum transfer.  Set k=0 to represent advection
+!     loss to region above the free surface.
+!     smf is the surface stress acting on the ocean
+!     bmf is the bottom stress acting on the ocean floor
+!-----------------------------------------------------------------
+!
       vmf(0,1)  = -smf(1)*boxa
       vmf(0,2)  = -smf(2)*boxa
       vmf(kmc,1)= -bmf(1)*boxa
@@ -970,110 +984,110 @@ c
       fwb2(0)   = fw(0)*v(1,ic,jc,nc)
       fwb1(kmc) = c0
       fwb2(kmc) = c0
-c
-c------------------------------------------------------------------
-c       set up index lcor for the coriolis term:
-c       use tau timestep for explicit trtmnt ... or
-c       use tau-1 timestep for implicit treatment with remainder of
-c       term to be added later
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!       set up index lcor for the coriolis term:
+!       use tau timestep for explicit trtmnt ... or
+!       use tau-1 timestep for implicit treatment with remainder of
+!       term to be added later
+!------------------------------------------------------------------
+!
           if (acor .eq. c0) then
             lcor = nc
           else
             lcor = nm
           endif
-c
-c------------------------------------------------------------------
-c       initialise vertical mean forcing array elements:
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!       initialise vertical mean forcing array elements:
+!------------------------------------------------------------------
+!
       zu(ic,jc) = c0
       zv(ic,jc) = c0
-c
-c=============================================================
-c    main calculation to timestep baroclinic velocity
-c=============================================================
-c
+!
+!=============================================================
+!    main calculation to timestep baroclinic velocity
+!=============================================================
+!
       do 600 k=1,kmc
-c
-c u-momentum equation.  separate coriolis term and the rest.
-c
+!
+! u-momentum equation.  separate coriolis term and the rest.
+!
       ucor  = fcor(jc)*v(k,ic,jc,lcor)
       urest = -dpdx(k)
-c  u-advection
+!  u-advection
      & +(fuw(k)*(u(k,im,jc,nc) + u(k,ic,jc,nc))*p5
      & - fue(k)*(u(k,ip,jc,nc) + u(k,ic,jc,nc))*p5
-c  v-advection
+!  v-advection
      & + fvs(k)*(u(k,ic,jm,nc) + u(k,ic,jc,nc))*p5
      & - fvn(k)*(u(k,ic,jp,nc) + u(k,ic,jc,nc))*p5
-c  w-advection
+!  w-advection
      & + fwb1(k  ) - fwb1(k-1)
-c  x diffusion  
+!  x diffusion
      & +(bbu(jc)*(u(k,ip,jc,nm)-u(k,ic,jc,nm))
      & + bbu(jc)*(u(k,im,jc,nm)-u(k,ic,jc,nm))
-c  y diffusion
+!  y diffusion
      & + ccu(jc)*(u(k,ic,jp,nm)-u(k,ic,jc,nm))
      & + ddu(jc)*(u(k,ic,jm,nm)-u(k,ic,jc,nm)) )
      & *dz(k)
-c  z diffusion  
+!  z diffusion
      &  + vmf(k  ,1) - vmf(k-1,1) )*boxar*dzr(k)
-c
-c v-momentum equation.  separate coriolis term and the rest
-c
+!
+! v-momentum equation.  separate coriolis term and the rest
+!
       vcor  = -fcor(jc)*u(k,ic,jc,lcor)
       vrest = -dpdy(k)
-c  u-advection
+!  u-advection
      & +(fuw(k)*(v(k,im,jc,nc) + v(k,ic,jc,nc))*p5
      & - fue(k)*(v(k,ip,jc,nc) + v(k,ic,jc,nc))*p5
-c  v-advection
+!  v-advection
      & + fvs(k)*(v(k,ic,jm,nc) + v(k,ic,jc,nc))*p5
      & - fvn(k)*(v(k,ic,jp,nc) + v(k,ic,jc,nc))*p5
-c  w-advection
+!  w-advection
      & + fwb2(k  ) - fwb2(k-1)
-c  x diffusion  
+!  x diffusion
      & +(bbu(jc)*(v(k,ip,jc,nm)-v(k,ic,jc,nm))
      & + bbu(jc)*(v(k,im,jc,nm)-v(k,ic,jc,nm))
-c  y diffusion
+!  y diffusion
      & + ccu(jc)*(v(k,ic,jp,nm)-v(k,ic,jc,nm))
      & + ddu(jc)*(v(k,ic,jm,nm)-v(k,ic,jc,nm)) )
      & *dz(k)
-c  z diffusion
+!  z diffusion
      & + vmf(k  ,2) - vmf(k-1,2) )*boxar*dzr(k)
-c
-c***************************************************************
-c  the corrections to the advection and diffusion terms that
-c  allow for the curvature of the grid near the poles have been
-c  left out of this version of the model
-c***************************************************************
-c
-c-----------------------------------------------------------------
-c     calculate vertically averaged forcing (without coriolis)
-c     and total force at each level (with coriolis)
-c-----------------------------------------------------------------
-c
+!
+!***************************************************************
+!  the corrections to the advection and diffusion terms that
+!  allow for the curvature of the grid near the poles have been
+!  left out of this version of the model
+!***************************************************************
+!
+!-----------------------------------------------------------------
+!     calculate vertically averaged forcing (without coriolis)
+!     and total force at each level (with coriolis)
+!-----------------------------------------------------------------
+!
       fx = dz(k)
       zu(ic,jc) = zu(ic,jc) + urest*fx
       zv(ic,jc) = zv(ic,jc) + vrest*fx
       u(k,ic,jc,np) = ucor + urest
       v(k,ic,jc,np) = vcor + vrest
  600  continue
-c
-c-----------------------------------------------------------------
-c     calculate vertical mean force 
-c-----------------------------------------------------------------
-c
+!
+!-----------------------------------------------------------------
+!     calculate vertical mean force
+!-----------------------------------------------------------------
+!
       zu(ic,jc) = zu(ic,jc)*hr(ic,jc)
       zv(ic,jc) = zv(ic,jc)*hr(ic,jc)
-c
-c-----------------------------------------------------------------
-c     timestep baroclinic terms
-c-----------------------------------------------------------------
-c
+!
+!-----------------------------------------------------------------
+!     timestep baroclinic terms
+!-----------------------------------------------------------------
+!
       if(acor.eq.c0)then
         do 700 k=1,kmc
-          u(k,ic,jc,np) = u(k,ic,jc,nm) + c2dtuv*u(k,ic,jc,np) 
-          v(k,ic,jc,np) = v(k,ic,jc,nm) + c2dtuv*v(k,ic,jc,np) 
+          u(k,ic,jc,np) = u(k,ic,jc,nm) + c2dtuv*u(k,ic,jc,np)
+          v(k,ic,jc,np) = v(k,ic,jc,nm) + c2dtuv*v(k,ic,jc,np)
  700    continue
       else
         fx    = c2dtuv*acor*c2*omega*sine(jc)
@@ -1081,15 +1095,15 @@ c
         do 750 k=1,kmc
           t1 = (u(k,ic,jc,np)+fx*v(k,ic,jc,np))*detmr
           t2 = (v(k,ic,jc,np)-fx*u(k,ic,jc,np))*detmr
-          u(k,ic,jc,np) = u(k,ic,jc,nm) + c2dtuv*t1 
+          u(k,ic,jc,np) = u(k,ic,jc,nm) + c2dtuv*t1
           v(k,ic,jc,np) = v(k,ic,jc,nm) + c2dtuv*t2
  750    continue
       endif
-c
-c-----------------------------------------------------------------
-c     remove vertical mean velocity
-c-----------------------------------------------------------------
-c
+!
+!-----------------------------------------------------------------
+!     remove vertical mean velocity
+!-----------------------------------------------------------------
+!
       sumu = c0
       sumv = c0
       zwr = c1/zw(kmc)
@@ -1105,32 +1119,32 @@ c
  900  continue
       return
       end
- 
+
 
       subroutine tracer(ic,jc)
-c
-c=============================================================
-c
-c     tracer computes tracer quantities for time level t+1
-c
-c=============================================================
-c
+!
+!=============================================================
+!
+!     tracer computes tracer quantities for time level t+1
+!
+!=============================================================
+!
 #include "param.h"
-c
+!
 #include "scalar.h"
 #include "grdvar.h"
 #include "levind.h"
 #include "timelv.h"
 #include "slabs.h"
-c
+!
 #include "chmix.h"
 #include "cvbc.h"
 #include "cvmix.h"
-c
-c=============================================================
-c    outer loops over i and j indices
-c=============================================================
-c
+!
+!=============================================================
+!    outer loops over i and j indices
+!=============================================================
+!
       kmc= kmt(ic,jc)
       if(kmc.eq.0)return
       jp = jc+1
@@ -1139,11 +1153,11 @@ c
       im = ic-1
       boxa = dx*cst(jc)*dy
       boxar = c1/boxa
-c
-c=============================================================
-c    set up masks, equal to 0 on sub-seabottom points.
-c=============================================================
-c
+!
+!=============================================================
+!    set up masks, equal to 0 on sub-seabottom points.
+!=============================================================
+!
       do 110 k=1,kmc
       maskop(k)=0
       if(k.le.kmt(ic,jp))maskop(k)=1
@@ -1153,12 +1167,12 @@ c
       if(k.le.kmt(ip,jc))maskpo(k)=1
       maskmo(k)=0
       if(k.le.kmt(im,jc))maskmo(k)=1
- 110  continue 
-c
-c=============================================================
-c  calculate horizontal and vertical advective fluxes
-c=============================================================
-c
+ 110  continue
+!
+!=============================================================
+!  calculate horizontal and vertical advective fluxes
+!=============================================================
+!
       dxp5 = p5*dx
       dyp5 = p5*dy
       do 160 k=1,kmc
@@ -1169,76 +1183,76 @@ c
       fw(k-1)  = (fuw(k)-fue(k)+fvs(k)-fvn(k))
  160  continue
 
-c
-c=============================================================
-c    integrate up from the lowest layer 
-c    fw is positive upwards
-c=============================================================
-c
+!
+!=============================================================
+!    integrate up from the lowest layer
+!    fw is positive upwards
+!=============================================================
+!
       fw(kmc)=c0
       do 180 k=kmc-1,0,-1
       fw(k)=fw(k)+fw(k+1)
  180  continue
-c
-c=============================================================
-c    main calculation loop to timestep tracers
-c=============================================================
-c
+!
+!=============================================================
+!    main calculation loop to timestep tracers
+!=============================================================
+!
       do 900 m=1,nt
-c
-c=============================================================
-c  calculate vertical fluxes - positive upwards
-c=============================================================
-c
+!
+!=============================================================
+!  calculate vertical fluxes - positive upwards
+!=============================================================
+!
       do 930 k=1,kmc-1
         vtf(k) = fkph*(t(k+1,ic,jc,m,nm)-t(k  ,ic,jc,m,nm))
      &                 *dzwr(k)*boxa
         fwb1(k) = fw(k)*(t(k,ic,jc,m,nc)+t(k+1,ic,jc,m,nc))*p5
  930  continue
-c
-c=============================================================
-c  surface and bottom advective and diffusive boundary conditions
-c  stf is downwards flux into the ocean
-c=============================================================
-c
+!
+!=============================================================
+!  surface and bottom advective and diffusive boundary conditions
+!  stf is downwards flux into the ocean
+!=============================================================
+!
       vtf(0)   = -stf(m)*boxa
       vtf(kmc) = c0
       fwb1(0)  = fw(0)*t(1,ic,jc,m,nc)
       fwb1(kmc)= c0
-c
-c=============================================================
-c  main timestepping calculation
-c=============================================================
-c
-c
+!
+!=============================================================
+!  main timestepping calculation
+!=============================================================
+!
+!
       do 960 k=1,kmc
       t(k,ic,jc,m,np) = t(k,ic,jc,m,nm)
      &                + c2dtts*boxar*dzr(k)*(
-c  u-advection
+!  u-advection
      &   fuw(k)*(t(k,im,jc,m,nc) + t(k,ic,jc,m,nc))*p5
      & - fue(k)*(t(k,ip,jc,m,nc) + t(k,ic,jc,m,nc))*p5
-c  v-advection
+!  v-advection
      & + fvs(k)*(t(k,ic,jm,m,nc) + t(k,ic,jc,m,nc))*p5
      & - fvn(k)*(t(k,ic,jp,m,nc) + t(k,ic,jc,m,nc))*p5
-c  w-advection
+!  w-advection
      & + fwb1(k  ) - fwb1(k-1)
-c  x diffusion
+!  x diffusion
      & +(bbt(jc)*(t(k,ip,jc,m,nm)-t(k,ic,jc,m,nm))*maskpo(k)
      & + bbt(jc)*(t(k,im,jc,m,nm)-t(k,ic,jc,m,nm))*maskmo(k)
-c  y diffusion
+!  y diffusion
      & + cct(jc)*(t(k,ic,jp,m,nm)-t(k,ic,jc,m,nm))*maskop(k)
      & + ddt(jc)*(t(k,ic,jm,m,nm)-t(k,ic,jc,m,nm))*maskom(k))
      & * dz(k)
-c  z diffusion  
+!  z diffusion
      & + vtf(k  ) - vtf(k-1)
      &   )
  960  continue
  900  continue
-c
-c=============================================================
-c   convectively adjust water column if gravitaionally unstable.
-c=============================================================
-c
+!
+!=============================================================
+!   convectively adjust water column if gravitaionally unstable.
+!=============================================================
+!
       if(kmc.gt.1.and.ncon.gt.0)then
         do 1070 n=1,ncon
         do 1070 ks=1,2
@@ -1253,54 +1267,54 @@ c
         endif
  1070   continue
       endif
-c
+!
       return
       end
- 
+
 
       subroutine state (t, s, rho, kk, ind)
-c
-c=============================================================
-c
-c     state computes one column of normalized densities from the
-c     surface to level kk by using a 3rd order polynomial fit to
-c     the equation of state.
-c
-c     note.. for precision purposes, there is a depth dependent
-c     constant subtracted from the density returned by this
-c     routine.
-c     so.. this routine should be used only for calculating  
-c     horizontal gradients of density or vertical stability
-c     with adjacent levels referred to the same reference level.
-c
-c     inputs:
-c
-c     t = the input column of temperatures (degrees C)
-c     s = the input column of salinities (units: (ppt-35)/1000)
-c     ind = 0 for normal density calculations
-c         = 1 for comparing levels 1 to 2, 3 to 4, etc.
-c         = 2 for comparing levels 2 to 3, 4 to 5, etc.
-c           (if ind = 1 or 2, the coefficients for the lower
-c            of the 2 levels are used)
-c     kk = bottom level to be calculated
-c
-c     note: model salinities are equal to (S-35.0)/1000.0 where
-c     S is the standard oceanographic salinity.  This convention,
-c     which dates from the early Bryan and Cox model, increases 
-c     the precision by about 5 binary bits.  This can be 
-c     significant in density gradient calculations on 32-bit
-c     computers.  The convention is also the one used by the
-c     mom/gfdl program used to generate the include file  
-c     'dncoef.h'.
-c
-c     output:
-c
-c     rho = density with depth level dependent offset 
-c           (units: g/cc minus constant)
-c
-c=============================================================
-c
-c
+!
+!=============================================================
+!
+!     state computes one column of normalized densities from the
+!     surface to level kk by using a 3rd order polynomial fit to
+!     the equation of state.
+!
+!     note.. for precision purposes, there is a depth dependent
+!     constant subtracted from the density returned by this
+!     routine.
+!     so.. this routine should be used only for calculating
+!     horizontal gradients of density or vertical stability
+!     with adjacent levels referred to the same reference level.
+!
+!     inputs:
+!
+!     t = the input column of temperatures (degrees C)
+!     s = the input column of salinities (units: (ppt-35)/1000)
+!     ind = 0 for normal density calculations
+!         = 1 for comparing levels 1 to 2, 3 to 4, etc.
+!         = 2 for comparing levels 2 to 3, 4 to 5, etc.
+!           (if ind = 1 or 2, the coefficients for the lower
+!            of the 2 levels are used)
+!     kk = bottom level to be calculated
+!
+!     note: model salinities are equal to (S-35.0)/1000.0 where
+!     S is the standard oceanographic salinity.  This convention,
+!     which dates from the early Bryan and Cox model, increases
+!     the precision by about 5 binary bits.  This can be
+!     significant in density gradient calculations on 32-bit
+!     computers.  The convention is also the one used by the
+!     mom/gfdl program used to generate the include file
+!     'dncoef.h'.
+!
+!     output:
+!
+!     rho = density with depth level dependent offset
+!           (units: g/cc minus constant)
+!
+!=============================================================
+!
+!
 #include "param.h"
       dimension t(km),  s(km),  rho(km)
       dimension to(km), so(km), c(km,9),
@@ -1309,9 +1323,9 @@ c
       save in,to,so,c,to1,so1,co1,to2,so2,co2
 #include "dncoef.h"
       data in/1/
-c
-c  on first entry set up coefficients for stability calculations
-c
+!
+!  on first entry set up coefficients for stability calculations
+!
       if(in.eq.1)then
         in=-1
         do 100 k=1,km-1,2
@@ -1333,19 +1347,19 @@ c
         co2(k+1,l)= c(k+1,l)
  200    continue
       endif
-c
+!
       do 210 k=1,km
         rho(k)=1e30
  210  continue
-c
-c  test for errors
-c
+!
+!  test for errors
+!
       if(ind.lt.0.or.ind.gt.2.or.kk.lt.0.or.kk.gt.km)then
         write (stderr,99)ind,kk
         stop '1 state'
-c
-c  normal entry
-c
+!
+!  normal entry
+!
       elseif(ind.eq.0)then
         do 400 k=1,kk
         tq=t(k)-to(k)
@@ -1355,9 +1369,9 @@ c
      &           (c(k,2) + (c(k,5) + c(k,9)*sq)*sq)*sq
 
  400    continue
-c
-c  compare 1 with 2, 3 with 4, etc.  density w.r.t bottom level
-c
+!
+!  compare 1 with 2, 3 with 4, etc.  density w.r.t bottom level
+!
       elseif(ind.eq.1.and.kk.gt.1)then
         do 500 k1=0,kk-2,2
         do 500 k2=1,2
@@ -1368,9 +1382,9 @@ c
      &         + (co1(k,3) +  co1(k,8)*sq + co1(k,6)*tq)*tq)*tq
      &         + (co1(k,2) + (co1(k,5)    + co1(k,9)*sq)*sq)*sq
  500    continue
-c
-c  compare 2 with 3, 4 with 5 etc
-c
+!
+!  compare 2 with 3, 4 with 5 etc
+!
       elseif(ind.eq.2.and.kk.gt.2)then
         do 600 k1=1,kk-2,2
         do 600 k2=1,2
@@ -1382,7 +1396,7 @@ c
      &         + (co2(k,2) + (co2(k,5)    + co2(k,9)*sq)*sq)*sq
  600    continue
       endif
-c
+!
       return
    99 format(/,' Routine state. Variables "ind" or "kk" out',
      &       ' of range',/,' ind =',i10,' kk =',i10)
@@ -1391,26 +1405,26 @@ c
 
 
       subroutine frees(ic,jc)
-c
-c====================================================================
-c
-c  Based on the routine in "Killworth, P.D., Stainforth, D.,
-c  Webb, D.J. and Paterson, S.M. (1989).  A free surface
-c  Bryan-Cox-Semtner model.  Institute of Oceanographic
-c  Sciences, Report No. 270.  Wormley, Godlaming, U.K.. 184pp."
-c
-c  Later modified to use a leapfrog and time smoothing scheme,
-c  suggested by Semtner, to prevent aliasing instabilities
-c  near the equator
-c
-c=====================================================================
-c
-c---------------------------------------------------------------------
-c  define global data
-c---------------------------------------------------------------------
-c
+!
+!====================================================================
+!
+!  Based on the routine in "Killworth, P.D., Stainforth, D.,
+!  Webb, D.J. and Paterson, S.M. (1989).  A free surface
+!  Bryan-Cox-Semtner model.  Institute of Oceanographic
+!  Sciences, Report No. 270.  Wormley, Godlaming, U.K.. 184pp."
+!
+!  Later modified to use a leapfrog and time smoothing scheme,
+!  suggested by Semtner, to prevent aliasing instabilities
+!  near the equator
+!
+!=====================================================================
+!
+!---------------------------------------------------------------------
+!  define global data
+!---------------------------------------------------------------------
+!
 #include "param.h"
-c
+!
 #include "chmix.h"
 #include "ctmngr.h"
 #include "frees.h"
@@ -1419,28 +1433,28 @@ c
 #include "scalar.h"
 #include "switch.h"
 #include "timelv.h"
-c
-c
-c---------------------------------------------------------------------
-c  set indices
-c---------------------------------------------------------------------
-c
+!
+!
+!---------------------------------------------------------------------
+!  set indices
+!---------------------------------------------------------------------
+!
       ip=ic+1
       im=ic-1
       jp=jc+1
       jm=jc-1
-c
-c---------------------------------------------------------------------
-c  timestep height field.
-c---------------------------------------------------------------------
-c
+!
+!---------------------------------------------------------------------
+!  timestep height field.
+!---------------------------------------------------------------------
+!
       if(kmt(ic,jc).ne.0)then
         boxar = dxr*dyr*cstr(jc)
 #ifdef de_checkbd
-c
-c Calculate masks for the del-cross and del-plus operators
-c on selected time steps for free-surface calculation
-c
+!
+! Calculate masks for the del-cross and del-plus operators
+! on selected time steps for free-surface calculation
+!
        lchkbd = itbt.eq.2
        if (lchkbd) then
          m_N  = min(1,kmt(ic,jp))
@@ -1451,28 +1465,28 @@ c
          m_SE = min(1,kmu(ic,jm))
          m_SW = min(1,kmu(im,jm))
          m_NW = min(1,kmu(im,jc))
-c
-c Calculate the del-plus operator (x2 for inclusion within existing terms
-c of the dhdt expression)
-c
+!
+! Calculate the del-plus operator (x2 for inclusion within existing terms
+! of the dhdt expression)
+!
          delplus = c2*(m_E*(h0(ip,jc,nm0) - h0(ic,jc,nm0))
      &                -m_W*(h0(ic,jc,nm0) - h0(im,jc,nm0))
      &                +m_N*(h0(ic,jp,nm0) - h0(ic,jc,nm0))
      &                -m_S*(h0(ic,jc,nm0) - h0(ic,jm,nm0)))
-c
-c Calculate the del-cross operator (x2 for inclusion within existing terms
-c of the dhdt expression)
-c
+!
+! Calculate the del-cross operator (x2 for inclusion within existing terms
+! of the dhdt expression)
+!
          delcross = ( m_NE*(h0(ip,jp,nm0) - h0(ic,jc,nm0))
      &               -m_SW*(h0(ic,jc,nm0) - h0(im,jm,nm0))
      &               +m_NW*(h0(im,jp,nm0) - h0(ic,jc,nm0))
      &               -m_SE*(h0(ic,jc,nm0) - h0(ip,jm,nm0)))
        endif
-c
-c Need a constant of the form: 
-c        WGHT = alpha*grav*Hmax*dtbt/(dphi*dlambda*radius*radius*cos(phi)) 
-c    i.e.WGHT = alpha*grav*Hmax*dtbt*boxar = dchkbd*boxar
-c
+!
+! Need a constant of the form:
+!        WGHT = alpha*grav*Hmax*dtbt/(dphi*dlambda*radius*radius*cos(phi))
+!    i.e.WGHT = alpha*grav*Hmax*dtbt*boxar = dchkbd*boxar
+!
 # endif
         dhdt  = (dy*(u0(im,jm,nc0)*h(im,jm)+u0(im,jc,nc0)*h(im,jc)
      &              -u0(ic,jm,nc0)*h(ic,jm)-u0(ic,jc,nc0)*h(ic,jc))
@@ -1484,15 +1498,15 @@ c
         dhdt=dhdt+dchkbd*(delplus-delcross)*0.5*boxar
        endif
 # endif
-c
+!
         h0(ic,jc,np0) = h0(ic,jc,nm0) + c2dtbt*dhdt
 #ifndef free_eb
-c
-c---------------------------------------------------------------------
-c  Calculate time averages (except for first pass of first timestep
-c                           when itbtp equals zero)
-c---------------------------------------------------------------------
-c
+!
+!---------------------------------------------------------------------
+!  Calculate time averages (except for first pass of first timestep
+!                           when itbtp equals zero)
+!---------------------------------------------------------------------
+!
         if(itbtp.ne.0)then
           freeav(1,ic,jc) = freeav(1,ic,jc) + h0(ic,jc,np0)
           if(itbt.eq.ntbt2)then
@@ -1502,18 +1516,18 @@ c
         endif
 #endif
       endif
-c
-c---------------------------------------------------------------------
-c  timestep velocity fields using semi-implicit scheme
-c  for the coriolis term.
-c---------------------------------------------------------------------
-c
+!
+!---------------------------------------------------------------------
+!  timestep velocity fields using semi-implicit scheme
+!  for the coriolis term.
+!---------------------------------------------------------------------
+!
       if(kmu(ic,jc).ne.0)then
-c
-c---------------------------------------------------------------------
-c    compute pressure gradients
-c---------------------------------------------------------------------
-c
+!
+!---------------------------------------------------------------------
+!    compute pressure gradients
+!---------------------------------------------------------------------
+!
         fxa = grav*dx2r*csur(jc)
         fxb = grav*dy2r
         temp1 = h0(ip,jp,nc0) - h0(ic,jc,nc0)
@@ -1521,11 +1535,11 @@ c
         dpdx  = (temp1-temp2)*fxa
         dpdy  = (temp1+temp2)*fxb
 #ifdef free_eb
-c
-c---------------------------------------------------------------------
-c  euler backward scheme treats coriolis term implicitly
-c---------------------------------------------------------------------
-c
+!
+!---------------------------------------------------------------------
+!  euler backward scheme treats coriolis term implicitly
+!---------------------------------------------------------------------
+!
         fac1=fcor(jc)*c2dtbt*p5
         fac2=c1/(c1+fac1*fac1)
         ustar = u0(ic,jc,nm0) + c2dtbt*(zu(ic,jc) - dpdx)
@@ -1535,22 +1549,22 @@ c
         u0(ic,jc,np0) = (ustar + fac1*vstar)*fac2
         v0(ic,jc,np0) = (vstar - fac1*ustar)*fac2
 #else
-c
-c---------------------------------------------------------------------
-c  leapfrog scheme (explicit matsuno/euler-backward
-c                   on first mixing timestep)
-c---------------------------------------------------------------------
-c
+!
+!---------------------------------------------------------------------
+!  leapfrog scheme (explicit matsuno/euler-backward
+!                   on first mixing timestep)
+!---------------------------------------------------------------------
+!
         u0(ic,jc,np0) = u0(ic,jc,nm0) + c2dtbt*(zu(ic,jc) - dpdx
      &                        + fcor(jc)*v0(ic,jc,nc0) )
         v0(ic,jc,np0) = v0(ic,jc,nm0) + c2dtbt*(zv(ic,jc) - dpdy
      &                        - fcor(jc)*u0(ic,jc,nc0) )
-c
-c---------------------------------------------------------------------
-c  Calculate time averages (except for first pass of matsuno/
-c                           euler-backward when itbtp equals zero)
-c---------------------------------------------------------------------
-c
+!
+!---------------------------------------------------------------------
+!  Calculate time averages (except for first pass of matsuno/
+!                           euler-backward when itbtp equals zero)
+!---------------------------------------------------------------------
+!
         if(itbtp.ne.0)then
           freeav(2,ic,jc) = freeav(2,ic,jc) + u0(ic,jc,np0)
           freeav(3,ic,jc) = freeav(3,ic,jc) + v0(ic,jc,np0)
@@ -1568,34 +1582,34 @@ c
 
 #ifdef presetp
       subroutine setp (ic, jc)
-c
-c==================================================================
-c
-c     precalculate the baroclinic part of the pressure field 
-c     for use by subroutine clinic
-c
-c     p(1,...) statement moved within loop 100 to overcome bug
-c     with Silicon Graphics at level 3 optimisation
-c
-c==================================================================
-c
+!
+!==================================================================
+!
+!     precalculate the baroclinic part of the pressure field
+!     for use by subroutine clinic
+!
+!     p(1,...) statement moved within loop 100 to overcome bug
+!     with Silicon Graphics at level 3 optimisation
+!
+!==================================================================
+!
 #include "param.h"
 #include "grdvar.h"
 #include "scalar.h"
 #include "slabs.h"
 #include "timelv.h"
 #include "levind.h"
-c
+!
       kmc = kmt(ic,jc)
-      if(kmc.gt.0)then        
-        call state (t(1,ic,jc,1,nc), t(1,ic,jc,2,nc),  
+      if(kmc.gt.0)then
+        call state (t(1,ic,jc,1,nc), t(1,ic,jc,2,nc),
      &              temp, kmc ,0)
         fxa = p5*grav
         do 100 k=1,kmc
           if(k.eq.1)then
             p(1,ic,jc) = temp(1)*grav*dzw(0)
           else
-            p(k,ic,jc) = p(k-1,ic,jc) 
+            p(k,ic,jc) = p(k-1,ic,jc)
      &                       + dzw(k-1)*fxa*(temp(k)+temp(k-1))
           endif
  100    continue
@@ -1607,13 +1621,13 @@ c
 
 
       subroutine setvbc (ic, jc)
-c
-c==================================================================
-c
-c     compute vertical boundary conditions for clinic & tracer
-c
-c==================================================================
-c
+!
+!==================================================================
+!
+!     compute vertical boundary conditions for clinic & tracer
+!
+!==================================================================
+!
 #include "param.h"
 #include "cvbc.h"
 #include "grdvar.h"
@@ -1621,32 +1635,32 @@ c
 #include "slabs.h"
 #include "timelv.h"
 #include "levind.h"
-c
-c-----------------------------------------------------------------
-c     get test case surface temperatures, salinities and wind 
-c     stresses (they vary with latitude).  test assumes nt=2,
-c     (potential temperature and salinity)
-c------------------------------------------------------------------
-c
+!
+!-----------------------------------------------------------------
+!     get test case surface temperatures, salinities and wind
+!     stresses (they vary with latitude).  test assumes nt=2,
+!     (potential temperature and salinity)
+!------------------------------------------------------------------
+!
       call bcest(stf,smf, ic, jc)
-c  convert salinity to model units.
+!  convert salinity to model units.
       stf(2) = (stf(2)-35.0)*0.001
-c
-c------------------------------------------------------------------
-c     set no flux condition for tracer at  bottom.
-c     relax to "bcest" values with 50 day timescale at top
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!     set no flux condition for tracer at  bottom.
+!     relax to "bcest" values with 50 day timescale at top
+!------------------------------------------------------------------
+!
       gamma = secday/50.0
       do 100 m=1,nt
         stf(m) = gamma*(stf(m)-t(1,ic,jc,m,nm))*dz(1)
         btf(m) = c0
 100   continue
-c
-c------------------------------------------------------------------
-c     set bottom stresses.  bmf is stress acting on the ocean floor
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!     set bottom stresses.  bmf is stress acting on the ocean floor
+!------------------------------------------------------------------
+!
       kz = kmu(ic,jc)
       if (kz .ne. 0) then
         uvmag    = sqrt(u(kz,ic,jc,nm)**2 +v(kz,ic,jc,nm)**2)
@@ -1656,18 +1670,18 @@ c
         bmf(1) = c0
         bmf(2) = c0
       endif
-c
+!
       return
       end
 
 
       subroutine bcest (stf, smf, i, j)
-c
-c==================================================================
-c     this routine linearly interpolates global, zonal mean values 
-c     of ocean model surface boundary conditions (SST, salinity, 
-c     WSX, WSY) having 4.5 deg spacing, to the requested latitdude.
-c==================================================================
+!
+!==================================================================
+!     this routine linearly interpolates global, zonal mean values
+!     of ocean model surface boundary conditions (SST, salinity,
+!     WSX, WSY) having 4.5 deg spacing, to the requested latitdude.
+!==================================================================
 #include "param.h"
       parameter (nolat = 40, nolatp = nolat+1)
 #include "coord.h"
@@ -1675,36 +1689,36 @@ c==================================================================
       dimension wsxobs(nolatp), wsyobs(nolatp)
       dimension olatt(nolat), olatv(nolatp)
       dimension stf(nt), smf(2)
-c
-c     units of boundary condition values are:
-c       degrees C, parts per thousand, dynes per square centimeter
-c     olatt  = latitude points for observed data
-c     olatv  = latitude points for observed data
-c     dolat  = latitude spacing for observed data
-c
-c     "observed" temperature and salinity data are based on global,
-c     annual mean zonally averaged values from the Levitus Atlas
-c     (1982).
-c     "observed" windstress data are based on global, annual mean,
-c     zonally averaged values from Hellerman and Rosenstein (1981).
-c     some smoothing was done.
-c
-c     units:  temperature - degrees Centigrade
-c             salinity    - standard oceanographic salinity units
-c             wind stress - dynes per sq cm
-c     The salinity is transformed into model units in routine
-c     'setvbc'.
-c
-c     references:
-c       Hellerman, S, and M. Rosenstein, normal monthly wind stress
-c         over the world ocean with error estimates, Journal of
-c         Physical Oceanography, 13, 1093-1104,1983.
-c       Levitus, S., Climatological atlas of the world ocean, NOAA
-c         Prof. Paper 13, US Gov't printing Office, Washington, DC, 
-c         1982.
-c
+!
+!     units of boundary condition values are:
+!       degrees C, parts per thousand, dynes per square centimeter
+!     olatt  = latitude points for observed data
+!     olatv  = latitude points for observed data
+!     dolat  = latitude spacing for observed data
+!
+!     "observed" temperature and salinity data are based on global,
+!     annual mean zonally averaged values from the Levitus Atlas
+!     (1982).
+!     "observed" windstress data are based on global, annual mean,
+!     zonally averaged values from Hellerman and Rosenstein (1981).
+!     some smoothing was done.
+!
+!     units:  temperature - degrees Centigrade
+!             salinity    - standard oceanographic salinity units
+!             wind stress - dynes per sq cm
+!     The salinity is transformed into model units in routine
+!     'setvbc'.
+!
+!     references:
+!       Hellerman, S, and M. Rosenstein, normal monthly wind stress
+!         over the world ocean with error estimates, Journal of
+!         Physical Oceanography, 13, 1093-1104,1983.
+!       Levitus, S., Climatological atlas of the world ocean, NOAA
+!         Prof. Paper 13, US Gov't printing Office, Washington, DC,
+!         1982.
+!
       save in,dolat,rdolat,olatt,olatv,sstobs,salobs,wsxobs,wsyobs
-c
+!
       data sstobs / -1.75, -1.75, -1.50, -1.50, -1.28,
      &              -0.55,  0.90,  2.92,  5.45,  8.62,
      &              12.27, 15.49, 18.30, 20.67, 22.64,
@@ -1713,7 +1727,7 @@ c
      &              24.03, 22.07, 19.73, 17.02, 12.77,
      &               8.93,  7.25,  6.22,  4.67,  4.57,
      &               3.03, -0.01, -1.05, -1.75, -1.75/
-c
+!
       data salobs / 34.30, 34.30, 34.30, 34.13, 33.98,
      &              33.97, 33.97, 33.98, 34.03, 34.24,
      &              34.61, 35.02, 35.37, 35.61, 35.72,
@@ -1722,7 +1736,7 @@ c
      &              35.67, 35.56, 35.49, 35.23, 34.28,
      &              33.57, 33.57, 33.60, 33.80, 34.04,
      &              34.05, 32.65, 32.30, 32.10, 32.00/
-c
+!
       data wsxobs /  0.00,
      &               0.00,  0.00, -0.02,  0.15,  0.31,
      &               0.50,  0.82,  1.08,  1.23,  1.16,
@@ -1732,7 +1746,7 @@ c
      &              -0.32,  0.09,  0.42,  0.56,  0.76,
      &               0.81,  0.65,  0.29,  0.06, -0.10,
      &              -0.05, -0.03,  0.05,  0.10,  0.01/
-c
+!
       data wsyobs /  .000,
      &               .000,  .009,  .032,  .005, -.023,
      &              -.075, -.155, -.202, -.230, -.179,
@@ -1742,14 +1756,14 @@ c
      &              -.202, -.189, -.179, -.183, -.009,
      &               .023,  .053, -.048, -.185, -.225,
      &              -.097, -.050, -.023, -.006,  .000/
-c
+!
       data in/1/
-c
-c----------------------------------------------------------------
-c     set latitudes of sst and salinity observations
-c     and set latitudes of windstress observations
-c----------------------------------------------------------------
-c
+!
+!----------------------------------------------------------------
+!     set latitudes of sst and salinity observations
+!     and set latitudes of windstress observations
+!----------------------------------------------------------------
+!
       if(in.eq.1) then
         in = -1
         dolat = 180.0/nolat
@@ -1760,14 +1774,14 @@ c
 100     continue
         olatv(nolatp) = -90.0 + (nolat)*dolat
       endif
-c
-c----------------------------------------------------------------
-c   use linear interpolation to produce the estimated surface 
-c   boundary condition values for temperature and salinity at t,s 
-c   row j
-c----------------------------------------------------------------
-c
-c
+!
+!----------------------------------------------------------------
+!   use linear interpolation to produce the estimated surface
+!   boundary condition values for temperature and salinity at t,s
+!   row j
+!----------------------------------------------------------------
+!
+!
       ylatt = yt(j)
       if (ylatt .le. olatt(1)) then
         nn = 1
@@ -1787,15 +1801,15 @@ c
 201   continue
       stf(1) = (sstobs(nn)*(dolat - d) + sstobs(nn+1)*d)*rdolat
       stf(2) = (salobs(nn)*(dolat - d) + salobs(nn+1)*d)*rdolat
-c
-c----------------------------------------------------------------
-c   use linear interpolation to produce the estimated surface 
-c   boundary condition values for wind stress components at 
-c   u,v row j
-c----------------------------------------------------------------
-c
+!
+!----------------------------------------------------------------
+!   use linear interpolation to produce the estimated surface
+!   boundary condition values for wind stress components at
+!   u,v row j
+!----------------------------------------------------------------
+!
       ylatv = yu(j)
-c
+!
       if (ylatv .le. olatv(1)) then
         nn = 1
         d = c0
@@ -1814,77 +1828,77 @@ c
 301   continue
       smf(1) = (wsxobs(nn)*(dolat - d) + wsxobs(nn+1)*d) *rdolat
       smf(2) = (wsyobs(nn)*(dolat - d) + wsyobs(nn+1)*d) *rdolat
-c
+!
       return
       end
 
 
       subroutine addv( ic, jc)
-c
-c==================================================================
-c
-c  add barotropic to baroclinic velocities
-c
-c==================================================================
-c
+!
+!==================================================================
+!
+!  add barotropic to baroclinic velocities
+!
+!==================================================================
+!
 #include "param.h"
-c
+!
 #include "frees.h"
 #include "levind.h"
 #include "timelv.h"
 #include "slabs.h"
-c
+!
       ubar=u0(ic,jc,np0)
       vbar=v0(ic,jc,np0)
       do 100 k=1,kmu(ic,jc)
         u(k,ic,jc,np) = u(k,ic,jc,np) + ubar
         v(k,ic,jc,np) = v(k,ic,jc,np) + vbar
  100  continue
-c
+!
       return
       end
 
 
       subroutine diag( ic, jc)
-c
-c=============================================================
-c  collect timestep statistics and (if diagts is set) statistics
-c  for diagnostic timestep.
-c  note 1. this routine sums arrays, it may not vectorise well
-c       2. diagnostic timestep option not implemented yet
-c=============================================================
-c
-c-----------------------------------------------------------------
-c         accumulate kinetic energy 
-c-----------------------------------------------------------------
-c
-c
+!
+!=============================================================
+!  collect timestep statistics and (if diagts is set) statistics
+!  for diagnostic timestep.
+!  note 1. this routine sums arrays, it may not vectorise well
+!       2. diagnostic timestep option not implemented yet
+!=============================================================
+!
+!-----------------------------------------------------------------
+!         accumulate kinetic energy
+!-----------------------------------------------------------------
+!
+!
 #include "param.h"
-c
+!
 #include "scalar.h"
 #include "switch.h"
 #include "grdvar.h"
 #include "levind.h"
 #include "timelv.h"
 #include "slabs.h"
-c
+!
 #include "cdiag.h"
-c
+!
       ku = kmu(ic,jc)
       kt = kmt(ic,jc)
       if(ku.ne.0)then
         boxa = dx*csu(jc)*dy
-        do 100 k=1,ku 
+        do 100 k=1,ku
         boxv  = boxa*dz(k)
         ektot = ektot + (u(k,ic,jc,nc)**2 + v(k,ic,jc,nc)**2)
      &                  *p5*boxv
  100    continue
       endif
-c
-c-----------------------------------------------------------------
-c         accumulate tracer change statistics 
-c-----------------------------------------------------------------
-c
+!
+!-----------------------------------------------------------------
+!         accumulate tracer change statistics
+!-----------------------------------------------------------------
+!
       if(kt.ne.0)then
         boxa = cst(jc)*dy*dx/c2dtts
         do 500 m=1,nt
@@ -1902,76 +1916,76 @@ c
       end
 
       subroutine grids
-c==================================================================
-c
-c     calculate all grid related items
-c
-c==================================================================
-c
+!==================================================================
+!
+!     calculate all grid related items
+!
+!==================================================================
+!
 #include "param.h"
 #include "scalar.h"
 #include "coord.h"
 #include "grdvar.h"
-c
-c------------------------------------------------------------------
-c     set latitudes & longitudes of "t" & "u,v" grid points (in degrees)
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!     set latitudes & longitudes of "t" & "u,v" grid points (in degrees)
+!------------------------------------------------------------------
+!
       do 100 i=1,imt
         xt(i) = stlon + (i-p5)*dxdeg
         xu(i) = stlon + i*dxdeg
 100   continue
-c
+!
       do 200 j=1,jmt
         yt(j) = stlat + (j-p5)*dydeg
         yu(j) = stlat + j*dydeg
 200   continue
-c
-c     convert to centimeters
-c
+!
+!     convert to centimeters
+!
       dy = dydeg*radius/radian
       dx = dxdeg*radius/radian
-c
-c------------------------------------------------------------------
-c     compute auxiliary arrays
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!     compute auxiliary arrays
+!------------------------------------------------------------------
+!
       do 500 k=1,km
         dzr(k)  = c1/dz(k)
         c2dz(k) = c2*dz(k)
         dz2r(k) = c1/c2dz(k)
 500   continue
-c
+!
       dzw(0) = p5*dz(1)
       zw(1)  = dz(1)
       do 600 k=2,km
         dzw(k-1) = p5*(dz(k-1)+dz(k))
         zw(k)    = zw(k-1)+dz(k)
 600   continue
-c
+!
       dzw(km)   = p5*dz(km)
       dzwr(km)  = c1/dzw(km)
       dzw2r(km) = p5/dzw(km)
       zt(1)     = dzw(0)
-c
+!
       do 700 k=1,km
         dzwr(k-1)  = c1/dzw(k-1)
         dzw2r(k-1) = p5/dzw(k-1)
         zt(k+1)  = zt(k) + dzw(k)
 700   continue
-c
+!
       dxr = c1/dx
       dx2r = p5/dx
       dx4r = p25/dx
-c
+!
       dyr = c1/dy
       dy2r = p5/dy
       dy4r = p25/dy
-c
+!
       phi(1)   = yu(1)/radian
       phit(1)  = phi(1) - p5*dydeg/radian
       sumdy    = phi(1)
-c
+!
       do 900 j=1,jmt
         if (j .ne. jmt) sumdy = sumdy + dydeg/radian
         if (j .ne. jmt) phi(j+1) = sumdy
@@ -1984,12 +1998,12 @@ c
         tng(j)  = sine(j)/csu(j)
         tanra(j)= tng(j)/radius
 900   continue
-c
-c------------------------------------------------------------------
-c     print grid related arrays
-c------------------------------------------------------------------
-c
-c
+!
+!------------------------------------------------------------------
+!     print grid related arrays
+!------------------------------------------------------------------
+!
+!
       write (stdout,9101)
       write (stdout,9001) dz
       write (stdout,9102)
@@ -2006,9 +2020,9 @@ c
       write (stdout,9001) xt
       write (stdout,9108)
       write (stdout,9001) xu
-c
+!
       return
-c
+!
 9001  format (1x,10g13.5)
 9101  format (/,' "t" grid box thickness (cm): "dz(k) k=1..km"')
 9102  format (/,' "w" grid box thickness (cm): ',
@@ -2024,13 +2038,13 @@ c
 
 
       subroutine ocn1st
-c
-c==================================================================
-c
-c  initialize quantites when model first started
-c
-c==================================================================
-c
+!
+!==================================================================
+!
+!  initialize quantites when model first started
+!
+!==================================================================
+!
 #include "param.h"
 #include "coord.h"
 #include "ctmngr.h"
@@ -2042,24 +2056,24 @@ c
 #include "scalar.h"
 #include "slabs.h"
 #include "switch.h"
-c
-c------------------------------------------------------------------
-c     generate topography over "t" points
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!     generate topography over "t" points
+!------------------------------------------------------------------
+!
 #ifdef simple_world
       call topog
 #else
       call read_kmt
 #endif
-c
-c------------------------------------------------------------------
-c     initialize t,s,u,v.
-c          velocities set to zero
-c          temperature an salinity set to 0.0 and 35.0 at sea
-c                                      to -2.0 and 45.0 over land.
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!     initialize t,s,u,v.
+!          velocities set to zero
+!          temperature an salinity set to 0.0 and 35.0 at sea
+!                                      to -2.0 and 45.0 over land.
+!------------------------------------------------------------------
+!
       sconst=0.0349
       do 200 n=1,3
       do 200 j=1,jmt
@@ -2075,11 +2089,11 @@ c
           t(k,i,j,2,n)= sconst-0.035
       endif
 200   continue
-c
-c------------------------------------------------------------------
-c     initialize free surface model
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!     initialize free surface model
+!------------------------------------------------------------------
+!
       do 300 n=1,3
       do 300 j=1,jmt
       do 300 i=1,imt
@@ -2087,45 +2101,45 @@ c
         u0(i,j,n) = c0
         v0(i,j,n) = c0
 300   continue
-c
-c------------------------------------------------------------------
-c     initialize controls
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!     initialize controls
+!------------------------------------------------------------------
+!
       itt   = 0
       totsec = c0
       totday = c0
       years  = c0
-c
+!
       return
       end
 
       subroutine read_kmt
-c
-c------------------------------------------------------------------
-c     read array 'kmt' from file 'ocean.kmt'.  This is written as:
-c     write(56,15)'kmt     ',imt,jmt 
-c     do j=1,jmt
-c     write(56,16)(kmt(i,j),i=1,imt)
-c     continue
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!     read array 'kmt' from file 'ocean.kmt'.  This is written as:
+!     write(56,15)'kmt     ',imt,jmt
+!     do j=1,jmt
+!     write(56,16)(kmt(i,j),i=1,imt)
+!     continue
+!------------------------------------------------------------------
+!
 #include "param.h"
 #include "coord.h"
 #include "iounit.h"
 #include "levind.h"
 #include "switch.h"
       character*8 string
-c
-c  if initial timestep read in kmt field
-c
+!
+!  if initial timestep read in kmt field
+!
        open(iokmt,file=fnkmt,status='old',iostat = iostat)
        if(iostat.ne.0)then
          write(stdout,11)fnkmt,iostat
          stop
        endif
        read(iokmt,15)string,imt1,jmt1
-c
+!
        if(imt1.ne.IMT.or.jmt1.ne.JMT.or.string.ne.'kmt     ')then
          if(string.ne.'kmt     ')then
            write(stdout,12)fnkmt,string
@@ -2138,7 +2152,7 @@ c
          read(iokmt,16)(kmt(i,j),i=1,IMT)
  20    continue
        close(iokmt)
-c
+!
   11  format(1x,'Error opening file "',a,'".',/,'  iostat = ',i4,
      &      '    Program stopping')
   12  format(1x,'Error opening file "',a,'".',/,'  File type faulty',
@@ -2152,27 +2166,27 @@ c
       end
 
       subroutine topog
-c
-c------------------------------------------------------------------
-c     construct an "idealized" world ... piece by piece
-c     note: this topography will map into arbitrary model 
-c     resolution
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!     construct an "idealized" world ... piece by piece
+!     note: this topography will map into arbitrary model
+!     resolution
+!------------------------------------------------------------------
+!
 #include "param.h"
 #include "coord.h"
 #include "grdvar.h"
 #include "levind.h"
-c
-c     define the model topography on the "t" grid using "kmt"
-c     set maximum level everywhere except on boundary
-c
+!
+!     define the model topography on the "t" grid using "kmt"
+!     set maximum level everywhere except on boundary
+!
       do 100 j=2,jmtm1
         do 90 i=2,imtm1
           kmt(i,j) = km
 90      continue
 100   continue
-c
+!
       do 200 j=1,jmt
         kmt(imt,j) = 0
         kmt(1,j) = 0
@@ -2181,25 +2195,25 @@ c
         kmt(i,jmt) = 0
         kmt(i,1) = 0
 300   continue
-c
-c     antarctica
-c
+!
+!     antarctica
+!
       call setkmt (-90.0, 0.0, c360, -80.0, 0.0, c360, 0)
       call setkmt (-80.0, c360-25.0, c360, -70.0, c360, c360, 0)
       call setkmt (-80.0, 0.0, c360, -70.0, 0.0, 170.0, 0)
       call setkmt (-80.0, c360-135.0, c360-60.0, -68.0, c360-75.0,
      &              c360-60.0, 0)
       call setkmt (-70.0, 0.0, 155.0, -67.0, 50.0, 145.0, 0)
-c
-c     australia
-c
+!
+!     australia
+!
       call setkmt (-35.0, 116.0, 120.0, -31.0, 114.0, 130.0, 0)
       call setkmt (-38.0, 140.0, 151.0, -31.0, 130.0, 151.0, 0)
       call setkmt (-31.0, 115.0, 153.0, -20.0, 113.0, 149.0, 0)
       call setkmt (-20.0, 113.0, 149.0, -11.0, 131.0, 143.0, 0)
-c
-c     south america
-c
+!
+!     south america
+!
       call setkmt (-50.0, c360-74.0, c360-68.0, -40.0, c360-73.0,
      &              c360-62.0, 0)
       call setkmt (-40.0, c360-73.0, c360-62.0, -20.0, c360-70.0,
@@ -2210,16 +2224,16 @@ c
      &             c360-50.0, 0)
       call setkmt (0.0, c360-80.0, c360-50.0, 11.0, c360-75.0,
      &             c360-60.0, 0)
-c
-c     central america
-c
+!
+!     central america
+!
       call setkmt (6.0, c360-78.0, c360-75.0, 20.0, c360-105.0,
      &             c360-97.0, 0)
       call setkmt (20.0, c360-105.0, c360-97.0, 30.0, c360-115.0,
      &             c360-94.0, 0)
-c
-c     north america
-c
+!
+!     north america
+!
       call setkmt (25.0, c360-82.0, c360-80.0, 30.0, c360-85.0,
      &             c360-81.0, 0)
       call setkmt (30.0, c360-115.0, c360-80.0, 40.0, c360-124.0,
@@ -2236,49 +2250,49 @@ c
      &             c360-157.0, 0)
       call setkmt (70.0, c360-130.0, c360-70.0, 75.0, c360-120.0,
      &             c360-80.0, 0)
-c
-c     greenland
-c
+!
+!     greenland
+!
       call setkmt (60.0, c360-45.0, c360-45.0, 75.0, c360-58.0,
      &             c360-19.0, 0)
-c
-c     africa
-c
+!
+!     africa
+!
       call setkmt (-35.0, 19.0, 28.0, 6.0, 8.0, 50.0, 0)
       call setkmt (6.0, 0.0, 50.0, 18.0, 0.0, 56.0, 0)
       call setkmt (18.0, 0.0, 56.0, 26.0, 0.0, 59.0, 0)
       call setkmt (6.0, c360-10.0, c360, 18.0, c360-18.0, c360, 0)
       call setkmt (18.0, c360-18.0, c360, 26.0, c360-15.0, c360, 0)
-c
-c     northern africa &  europe & asia
-c
+!
+!     northern africa &  europe & asia
+!
       call setkmt (26.0, c360-15.0, c360, 40.0, c360-7.0, c360, 0)
       call setkmt (40.0, c360-7.0, c360, 50.0, c360, c360, 0)
-c
+!
       call setkmt (26.0, 0.0, 126.0, 40.0, 0.0, 122.0, 0)
       call setkmt (40.0, 0.0, 130.0, 50.0, 0.0, 140.0, 0)
       call setkmt (50.0, 0.0, 140.0, 60.0, 8.0, 140.0, 0)
       call setkmt (60.0, 8.0, 163.0, 65.0, 13.0, 180.0, 0)
       call setkmt (65.0, 13.0, 188.0, 70.0, 20.0, 180.0, 0)
       call setkmt (70.0, 70.0, 180.0, 75.0, 90.0, 100.0, 0)
-c
-c     add an "idealized" ridge in the atlantic & pacific
-c
+!
+!     add an "idealized" ridge in the atlantic & pacific
+!
       level = indp (3500.e2, zw, km)
-c
+!
       call setkmt (-20.0, c360-20.0, c360-10.0, 30.0, c360-45.0,
      &              c360-35.0, level)
       call setkmt (30.0, c360-45.0, c360-35.0, 60.0, c360-20.0,
      &              c360-30.0, level)
-c
+!
       call setkmt (-60.0,c360-100.0, c360-130.0, 40.0, c360-160.0,
      &              180.0, level)
       level = indp (2000.e2, zw, km)
       call setkmt (-50.0, c360-120.0, c360-120.0, 30.0, 190.0, 190.0,
      &             level)
-c
-c     set cyclic boundary conditions
-c
+!
+!     set cyclic boundary conditions
+!
       do 400 j=1,jmt
         kmt(1,j)   = kmt(imtm1,j)
         kmt(imt,j) = kmt(2,j)
@@ -2288,49 +2302,49 @@ c
 
 
       function indp(c, ca, ia)
-c
-c
-c==================================================================
-c
-c     indp = index of nearest data point
-c
-c     inputs:
-c
-c     c      = arbitrary data point...same units as ca
-c     ca     = array of data points
-c              (must be monotonically increasing)
-c     ia     = dimension of ca
-c
-c     output:
-c
-c     indp =  index of nearest data point to "c"
-c             if "c" is outside the domain of "ca" then i
-c             ndp is set to 1 or ia depending on  whether
-c             c(1) or c(ia) is closest
-c
-c        note: if "ca" is dimensioned ca(0:ia) in the calling
-c              program, then the returned index should be reduced
-c              by one to account for the zero base.
-c
-c     example:
-c
-c     let model depths be defined by the following:
-c     parameter (km=5)
-c     dimension z(km)
-c     data z /5.0, 10.0, 50.0, 100.0, 250.0/
-c
-c     k1 = indp (12.5, z, km)
-c     k2 = indp (0.0, z, km)
-c
-c     k1 would be set to 2, & k2 would be set to 1 so that
-c     z(k1) would be the nearest data point to 12.5 and z(k2) would
-c     be the nearest data point to 0.0
-c
-c==================================================================
-c
-c
+!
+!
+!==================================================================
+!
+!     indp = index of nearest data point
+!
+!     inputs:
+!
+!     c      = arbitrary data point...same units as ca
+!     ca     = array of data points
+!              (must be monotonically increasing)
+!     ia     = dimension of ca
+!
+!     output:
+!
+!     indp =  index of nearest data point to "c"
+!             if "c" is outside the domain of "ca" then i
+!             ndp is set to 1 or ia depending on  whether
+!             c(1) or c(ia) is closest
+!
+!        note: if "ca" is dimensioned ca(0:ia) in the calling
+!              program, then the returned index should be reduced
+!              by one to account for the zero base.
+!
+!     example:
+!
+!     let model depths be defined by the following:
+!     parameter (km=5)
+!     dimension z(km)
+!     data z /5.0, 10.0, 50.0, 100.0, 250.0/
+!
+!     k1 = indp (12.5, z, km)
+!     k2 = indp (0.0, z, km)
+!
+!     k1 would be set to 2, & k2 would be set to 1 so that
+!     z(k1) would be the nearest data point to 12.5 and z(k2) would
+!     be the nearest data point to 0.0
+!
+!==================================================================
+!
+!
       dimension ca(ia)
-c
+!
       if (c .lt. ca(1) .or. c .gt. ca(ia)) then
         if (c .lt. ca(1))  indp = 1
         if (c .gt. ca(ia)) indp = ia
@@ -2351,41 +2365,41 @@ c
 
       subroutine setkmt (alat1, slon1, elon1,
      &                   alat2, slon2, elon2, num)
-c
-c------------------------------------------------------------------
-c     set the topography mask "kmt(i,j)" = "num" within the area of 
-c     the parallelogram bounded by vertices:
-c     (alat1,slon1), (alat1,elon1), (alat2,slon1), & (alat2,elon2)
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!     set the topography mask "kmt(i,j)" = "num" within the area of
+!     the parallelogram bounded by vertices:
+!     (alat1,slon1), (alat1,elon1), (alat2,slon1), & (alat2,elon2)
+!------------------------------------------------------------------
+!
 #include "param.h"
 #include "coord.h"
 #include "levind.h"
-c
-c     convert the four vertices into model indices
-c     (js,is1), (js,ie1), (je,is2), (je,ie2)
-c
+!
+!     convert the four vertices into model indices
+!     (js,is1), (js,ie1), (je,is2), (je,ie2)
+!
       j1 = indp (alat1, yt, jmt)
       j2 = indp (alat2, yt, jmt)
       js = min (j1,j2)
       je = max (j1,j2)
-c
+!
       i1  = indp (slon1, xt, imt)
       i2  = indp (elon1, xt, imt)
       is1 = min (i1,i2)
       ie1 = max (i1,i2)
-c
+!
       i1  = indp (slon2, xt, imt)
       i2  = indp (elon2, xt, imt)
       is2 = min (i1,i2)
       ie2 = max (i1,i2)
-c
+!
       is = is1
       ie = ie1
-c
-c     fill in the area bounded by (js,is1), (js,ie1), 
-c                                 (je,is2), (je,ie2)
-c
+!
+!     fill in the area bounded by (js,is1), (js,ie1),
+!                                 (je,is2), (je,ie2)
+!
       if (js .eq. je) then
         rdj = c1
       else
@@ -2403,42 +2417,42 @@ c
 
 
       function theta0 (ydeg, depth)
-c
-c==================================================================
-c     this subroutine returns estimates of global mean potential
-c     temperature for model initialization as a function of depth.
-c     it is used to produce a reference thermal stratification for 
-c     the upper 2000m of the MOM's test case.  below 2000m, the
-c     potential temperature returned is 2.0 degrees C.  surface
-c     values are set slightly above 18.4 degrees C at the reference
-c     latitude "reflat".
-c     the estimates are produced from a 7th order ploynomial fit to
-c     the annual mean world ocean potential temperature observations
-c     of Levitus (1982).
-c
-c     input [units]:
-c       a latitdue (ydeg): [degrees]
-c       a zt value (depth): [centimeters]
-c     output [units]:
-c       potential temperature estimate (est): [degrees centigrade]
-c
-c     variables:
-c       coeft     = coefficients for the polynomial fit of potential
-c                   temperature vs. depth
-c       reflat    = reference latitude at which observed surface
-c                   temperatures approximately equal coeft(1)
-c       factor    = the ratio of the cosine of the latitude 
-c                   requested ("ydeg") to the reference latitude 
-c                   ("reflat")used to scale the upper 2000 meters
-c                   of the vertical temperature profile
-c       tmin,tmax = the minumum and maximum potential temperatures
-c                   allowed at the time of model initialization
-c
-c     reference:
-c       Levitus, S., Climatological atlas of the world ocean, NOAA
-c     Prof. Paper 13, US Gov't printing Office, Washington, DC,
-c     1982.
-c
+!
+!==================================================================
+!     this subroutine returns estimates of global mean potential
+!     temperature for model initialization as a function of depth.
+!     it is used to produce a reference thermal stratification for
+!     the upper 2000m of the MOM's test case.  below 2000m, the
+!     potential temperature returned is 2.0 degrees C.  surface
+!     values are set slightly above 18.4 degrees C at the reference
+!     latitude "reflat".
+!     the estimates are produced from a 7th order ploynomial fit to
+!     the annual mean world ocean potential temperature observations
+!     of Levitus (1982).
+!
+!     input [units]:
+!       a latitdue (ydeg): [degrees]
+!       a zt value (depth): [centimeters]
+!     output [units]:
+!       potential temperature estimate (est): [degrees centigrade]
+!
+!     variables:
+!       coeft     = coefficients for the polynomial fit of potential
+!                   temperature vs. depth
+!       reflat    = reference latitude at which observed surface
+!                   temperatures approximately equal coeft(1)
+!       factor    = the ratio of the cosine of the latitude
+!                   requested ("ydeg") to the reference latitude
+!                   ("reflat")used to scale the upper 2000 meters
+!                   of the vertical temperature profile
+!       tmin,tmax = the minumum and maximum potential temperatures
+!                   allowed at the time of model initialization
+!
+!     reference:
+!       Levitus, S., Climatological atlas of the world ocean, NOAA
+!     Prof. Paper 13, US Gov't printing Office, Washington, DC,
+!     1982.
+!
       parameter (ndeg=7)
       dimension coeft(ndeg+1)
       save coeft, tmin, tmax, reflat, c0,c1,c2,pi,refcos
@@ -2447,9 +2461,9 @@ c
      &           , 0.136974583E-17,-0.935923382E-22/
       data tmin, tmax, reflat /2.0, 25.0, 34.0/
       data in/1/
-c
-c==================================================================
-c
+!
+!==================================================================
+!
       if(in.eq.1)then
       in=-1
       c0 = 0.0
@@ -2458,11 +2472,11 @@ c
       pi = atan(1.0) * 4.0
       refcos = abs(cos(pi*reflat/180.))
       endif
-c
+!
       coslat = abs(cos(pi*ydeg/180.))
       factor = coslat/refcos
       z = depth * 0.01
-c
+!
       if (z .gt. 2000.) then
         est = c2
       else
@@ -2474,107 +2488,107 @@ c
 100     continue
         est = est * factor
       endif
-c
+!
       if (est .gt. tmax) est = tmax
       if (est .lt. tmin) est = tmin
-c
+!
       theta0 = est
       return
       end
 
 
       subroutine tmngr (dt)
-c
-c
-c==================================================================
-c
-c                      t-i-m-e      m-a-n-a-g-e-r
-c
-c     inputs:
-c
-c     itt    = current model time step (from ctmngr.h).
-c     dtts   = length of time step in seconds.
-c     dgnstc = number of days between printing diagnostics
-c     nmix   = number of timesteps between mixint timesteps
-c     tsi    = number of days between printing timestep information
-c     days   = day at which to end run.
-c
-c     outputs:
-c
-c     itt    = itt (on input)  + 1
-c     totday = total number of days elapsed 
-c              (0.5 = noon on first day).
-c     years is number of years elapsed (365.5 days = 1 year)
-c     diagts = true if time to print diagnostics
-c     mixts  = true if a mixing timestep
-c     prntsi = true if time to print timestep information
-c     last   = true if last timestep of run
-c
-c==================================================================
-c
+!
+!
+!==================================================================
+!
+!                      t-i-m-e      m-a-n-a-g-e-r
+!
+!     inputs:
+!
+!     itt    = current model time step (from ctmngr.h).
+!     dtts   = length of time step in seconds.
+!     dgnstc = number of days between printing diagnostics
+!     nmix   = number of timesteps between mixint timesteps
+!     tsi    = number of days between printing timestep information
+!     days   = day at which to end run.
+!
+!     outputs:
+!
+!     itt    = itt (on input)  + 1
+!     totday = total number of days elapsed
+!              (0.5 = noon on first day).
+!     years is number of years elapsed (365.5 days = 1 year)
+!     diagts = true if time to print diagnostics
+!     mixts  = true if a mixing timestep
+!     prntsi = true if time to print timestep information
+!     last   = true if last timestep of run
+!
+!==================================================================
+!
 #include "pconst.h"
 #include "ctmngr.h"
 #include "switch.h"
 #include "timelv.h"
       logical tmnset
-c
-c------------------------------------------------------------------
-c     increment time step counters
-c     and create a time stamp
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!     increment time step counters
+!     and create a time stamp
+!------------------------------------------------------------------
+!
       itt = itt + 1
       totsec = totsec + dt
       totday = totsec*secday
       years  = totday/365.25
       write(stamp,11)totday,years
   11  format('totday =',f8.2,',years =',f8.3)
-c
-c------------------------------------------------------------------
-c
-c     set time dependent logical switches.
-c     1. set last if it is the last timestep
-c     2. set diagts if time to do diagnostics 
-c     3. set mixts if time mixing to be done
-c     4. set prntsi if time to print timestep info
-c     5. set snapts if time to archive model
-c
-c------------------------------------------------------------------
-c
-      last   = (totday .ge. days) 
+!
+!------------------------------------------------------------------
+!
+!     set time dependent logical switches.
+!     1. set last if it is the last timestep
+!     2. set diagts if time to do diagnostics
+!     3. set mixts if time mixing to be done
+!     4. set prntsi if time to print timestep info
+!     5. set snapts if time to archive model
+!
+!------------------------------------------------------------------
+!
+      last   = (totday .ge. days)
       diagts = tmnset (dgnstc, totday, dt)
-      mixts  = (mod(itt,nmix) .eq. 1) 
+      mixts  = (mod(itt,nmix) .eq. 1)
       prntsi = tmnset (tsi, totday, dt)
       snapts = tmnset (snapd, totday, dt)
       archts = tmnset (archd, totday, dt) .and. .not. last
-c
+!
       return
       end
 
 
       function tmnset (days, totday, dt)
-c
-c==================================================================
-c     tmnset = true if current time is within 1/2 time step of
-c              desired interval
-c     days   = desired time interval 
-c     totday = accumulated time in days from start of run
-c     dt     = time step in seconds
-c==================================================================
-c
+!
+!==================================================================
+!     tmnset = true if current time is within 1/2 time step of
+!              desired interval
+!     days   = desired time interval
+!     totday = accumulated time in days from start of run
+!     dt     = time step in seconds
+!==================================================================
+!
 #include "pconst.h"
       logical tmnset
-c
-c  return false if interval days is zero
-c
+!
+!  return false if interval days is zero
+!
       if(days.eq.c0)then
         tmnset = .false.
         return
       endif
-c
-c  else return true if the elapsed time 'totday' is within half
-c  a timestep 'dt' of an integer multiple of the interval 'days'
-c
+!
+!  else return true if the elapsed time 'totday' is within half
+!  a timestep 'dt' of an integer multiple of the interval 'days'
+!
       close  = p5*dt
       i      = nint (totday/days)
       remain = (totday - i*days)*c60*c1440
@@ -2590,15 +2604,15 @@ c
 
 
       subroutine snap
-c
-c==================================================================
-c     write snapshot file
-c     not currently implemented except for hdf option
-c==================================================================
-c
+!
+!==================================================================
+!     write snapshot file
+!     not currently implemented except for hdf option
+!==================================================================
+!
 #include "iounit.h"
 #include "pconst.h"
-c
+!
       if(ftsnap.eq.'asc ')then
         write(stdout,*) 'Snapshot write: file type "',
      &                  ftsnap,'" not supported'
@@ -2614,14 +2628,14 @@ c
       end
 
       subroutine archrd
-c
-c==================================================================
-c     read archive file
-c==================================================================
-c
+!
+!==================================================================
+!     read archive file
+!==================================================================
+!
 #include "iounit.h"
 #include "pconst.h"
-c
+!
       if(ftrest.eq.'rst'.or.ftrest.eq.'ufm')then
         call archrd_std
 #ifdef ncsa_hdf
@@ -2637,14 +2651,14 @@ c
 
 
       subroutine archwr
-c
-c==================================================================
-c     write archive file
-c==================================================================
-c
+!
+!==================================================================
+!     write archive file
+!==================================================================
+!
 #include "iounit.h"
 #include "pconst.h"
-c
+!
       if(ftarch.eq.'rst'.or.ftarch.eq.'ufm')then
         call archwr_std
 #ifdef ncsa_hdf
@@ -2660,11 +2674,11 @@ c
 
 
       subroutine pdiag
-c
-c==================================================================
-c     write diagnostics
-c==================================================================
-c
+!
+!==================================================================
+!     write diagnostics
+!==================================================================
+!
 #include "param.h"
 #include "coord.h"
 #include "ctmngr.h"
@@ -2673,33 +2687,33 @@ c
 #include "slabs.h"
       dimension ptemp(imt,km)
       character*12 trname(nt)
-c
-c==================================================================
-c based on MOM common "cprnts.h" - only used by this routine
-c
+!
+!==================================================================
+! based on MOM common "cprnts.h" - only used by this routine
+!
       parameter (nlatpr=10)
-c
+!
       dimension prlat(nlatpr), prslon(nlatpr), prelon(nlatpr)
      &,         prsdpt(nlatpr), predpt(nlatpr)
       real      slatxy, elatxy, slonxy, elonxy
-c
-c     default starting & ending coordinates for matrix prints during
-c     diagnostic time steps (lats & lons in degrees, depths in cm)
-c     see "cprnts.h"
-c
+!
+!     default starting & ending coordinates for matrix prints during
+!     diagnostic time steps (lats & lons in degrees, depths in cm)
+!     see "cprnts.h"
+!
       data prlat /-60.0, 0.0, 27.0, 55.0, 6*100.0/
       data prslon /180.0, 180.0, 180.0, 180.0, 6*0.0/
       data prelon /250.0, 250.0, 250.0, 250.0, 6*0.0/
       data prsdpt /nlatpr*0.0/
       data predpt /nlatpr*6000.e2/
       data slatxy, elatxy, slonxy, elonxy /-90.0, 90.0, 3.0, 357.0/
-c==================================================================
+!==================================================================
       data trname/'temperature ','salinity    '/
-c
-c------------------------------------------------------------------
-c       print the solution at specified latitudes
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!       print the solution at specified latitudes
+!------------------------------------------------------------------
+!
       do 700 jlat=1,nlatpr
       jj = indp (prlat(jlat), yt, jmt)
       if (prlat(jlat) .le. yt(jmt)) then
@@ -2719,7 +2733,7 @@ c
      &,    jj, yt(jj), xt(is), xt(ie), fx*zt(ks), fx*zt(ke), scl
         call matrix (ptemp(1,1), imt, is, ie, ks, ke, scl)
 680     continue
-c
+!
         do 720 k=1,km
         do 720 i=1,imt
  720    ptemp(i,k) = u(k,i,jj,nc)
@@ -2727,7 +2741,7 @@ c
         write (stdout,9100) 'u velocity', itt
      &,   jj, yt(jj), xt(is), xt(ie), fx*zt(ks), fx*zt(ke), scl
         call matrix (ptemp(1,1), imt, is, ie, ks, ke, scl)
-c
+!
         do 730 k=1,km
         do 730 i=1,imt
  730    ptemp(i,k) = v(k,i,jj,nc)
@@ -2737,11 +2751,11 @@ c
         call matrix (ptemp(1,1), imt, is, ie, ks, ke, scl)
       endif
 700   continue
-c
-c-------------------------------------------------------------------
-c       print the free surface model solution
-c-------------------------------------------------------------------
-c
+!
+!-------------------------------------------------------------------
+!       print the free surface model solution
+!-------------------------------------------------------------------
+!
       scl = c100
       is = indp (slonxy, xt, imt)
       ie = indp (elonxy, xt, imt)
@@ -2750,18 +2764,18 @@ c
       write (stdout,8000) ' surface height (m)'
      &, itt, xt(is), xt(ie), yt(js), yt(je), scl
       call matrix (h0(1,1,np0), imt, is, ie, -js, -je, scl)
-c
+!
       scl = c1
       write (stdout,8000) ' u velocity (cm/s)'
      &, itt, xt(is), xt(ie), yt(js), yt(je), scl
       call matrix (u0(1,1,np0), imt, is, ie, -js, -je, scl)
-c
+!
       write (stdout,8000) ' v velocity (cm/s)'
      &, itt, xt(is), xt(ie), yt(js), yt(je), scl
       call matrix (v0(1,1,np0), imt, is, ie, -js, -je, scl)
-c
+!
       return
-c
+!
 8000  format(1x,a27,1x,'ts=',i7
      &,', lon:',f6.2,' ==> ',f6.2,',   lat:',f6.2,' ==> ',f6.2
      &,', scaling=',1pg10.3)
@@ -2772,82 +2786,82 @@ c
       end
 
             subroutine docmnt (nunit, wrdoc, wrc0, wrc1, wrc2)
-c
-c=======================================================================
-c
-c     This code arranges data to be written out as a form of
-c     documentation summarizing the model characteristics that
-c     uniquely define this run.
-c     In order to reap the full benefits of this feature, the user will
-c     need to review this routine when configuring a model run or adding
-c     new options to the code.
-c     We envision this feature as being beneficial to those setting up
-c     new model runs, comparing different model runs, and for analysis
-c     purposes (much of the information used in setting up mapping
-c     procedures and other analysis products are contained in the
-c     data written by this routine).
-c
-c     Five namelist writes are available.  Which ones are written
-c     is determined from the 4 logical variables passed into the
-c     subroutine (wrdoc, wrc0, wrc1, & wrc2).  The unit to which
-c     they are written is set by "nunit".
-c
-c     If "wrdoc" is true, then the "ndocs" & "docums" namelists
-c     are written...
-c       The 1st, "ndocs" simply contains one variable (ndoc); the
-c     dimension of "docum(ndoc)" found in the 2nd namelist write.
-c       The 2nd, "docums" consists of a series of 60 character-long
-c     lines of information the user should use to list the variables
-c     in the subsequent namelist writes, and to describe the model
-c     run in general.
-c
-c     If "wrc0" is true, then the "cntrl0" namelist is written...
-c       Namelist "cntrl0" contains the 2 variables needed to restart
-c     the model (itt, years).
-c
-c       The "cntrl1" and "cntrl2" namelists contain information
-c     describing the model's configuration and specifications.
-c
-c     If "wrc1" is true, then the "cntrl1" namelist is written...
-c       "cntrl1" contains variables (non-dimensioned) that will be
-c     common to most, if not all, incarnations of the model code.
-c
-c     If "wrc2" is true, then the "cntrl2" namelist is written...
-c       "cntrl2" is intended to contain the larger (dimensioned)
-c     data that will help identify the model specifics to users
-c     and analysis programs alike.
-c
-c=======================================================================
-c  This routine is based on the corresponding mom routine but
-c  contains only a few of the standard features
-c=======================================================================
-c
+!
+!=======================================================================
+!
+!     This code arranges data to be written out as a form of
+!     documentation summarizing the model characteristics that
+!     uniquely define this run.
+!     In order to reap the full benefits of this feature, the user will
+!     need to review this routine when configuring a model run or adding
+!     new options to the code.
+!     We envision this feature as being beneficial to those setting up
+!     new model runs, comparing different model runs, and for analysis
+!     purposes (much of the information used in setting up mapping
+!     procedures and other analysis products are contained in the
+!     data written by this routine).
+!
+!     Five namelist writes are available.  Which ones are written
+!     is determined from the 4 logical variables passed into the
+!     subroutine (wrdoc, wrc0, wrc1, & wrc2).  The unit to which
+!     they are written is set by "nunit".
+!
+!     If "wrdoc" is true, then the "ndocs" & "docums" namelists
+!     are written...
+!       The 1st, "ndocs" simply contains one variable (ndoc); the
+!     dimension of "docum(ndoc)" found in the 2nd namelist write.
+!       The 2nd, "docums" consists of a series of 60 character-long
+!     lines of information the user should use to list the variables
+!     in the subsequent namelist writes, and to describe the model
+!     run in general.
+!
+!     If "wrc0" is true, then the "cntrl0" namelist is written...
+!       Namelist "cntrl0" contains the 2 variables needed to restart
+!     the model (itt, years).
+!
+!       The "cntrl1" and "cntrl2" namelists contain information
+!     describing the model's configuration and specifications.
+!
+!     If "wrc1" is true, then the "cntrl1" namelist is written...
+!       "cntrl1" contains variables (non-dimensioned) that will be
+!     common to most, if not all, incarnations of the model code.
+!
+!     If "wrc2" is true, then the "cntrl2" namelist is written...
+!       "cntrl2" is intended to contain the larger (dimensioned)
+!     data that will help identify the model specifics to users
+!     and analysis programs alike.
+!
+!=======================================================================
+!  This routine is based on the corresponding mom routine but
+!  contains only a few of the standard features
+!=======================================================================
+!
 #include "param.h"
 #include "switch.h"
 #include "versno.h"
       parameter (ndocum = 16, ifdmax = 50)
-c
+!
       character*60 expnam
       character*12 cifdef(ifdmax), blnk12
       logical wrdoc, wrc0, wrc1, wrc2
       data    blnk12 /'            '/
       namelist /conrl0/ itt,years
       namelist /cntrl1/ expnam
-c
+!
       expnam = model(1)(1:60)
-c
-c-----------------------------------------------------------------------
-c     list options that are in effect on first timestep
-c-----------------------------------------------------------------------
-c
+!
+!-----------------------------------------------------------------------
+!     list options that are in effect on first timestep
+!-----------------------------------------------------------------------
+!
       if (first) then
-c
+!
         do 200 n=1,ifdmax
           cifdef(n) = blnk12
  200    continue
         nifdef = 0
         cifdef(1) = '0 ifdefs set'
-c
+!
 #ifdef cyclic
         nifdef = nifdef + 1
         cifdef(nifdef) = 'cyclic      '
@@ -2897,27 +2911,27 @@ c
 
 
       subroutine checks
-c
-c==================================================================
-c     do consistency checks
-c==================================================================
-c
+!
+!==================================================================
+!     do consistency checks
+!==================================================================
+!
 #include "param.h"
 #include "scalar.h"
 #include "switch.h"
 #include "iounit.h"
-c
-c   check timesteps
-c
+!
+!   check timesteps
+!
       if( dtuv.ne.dtts)then
         write (stdout,9000)
      $  '==> Warning: use of unequal time steps implies the transient '
      $, '             response is unimportant and multiple equilibria '
      $, '             do not exist.                                   '
       endif
-c
-c   check archive and restart file formats
-c
+!
+!   check archive and restart file formats
+!
       if(ftrest.ne.'rst'.and.ftrest.ne.'ufm'.and.
      &   ftrest.ne.'hdf '.and.init)then
         print *,' ftrest has invalid value'
@@ -2958,14 +2972,14 @@ c
 
 
       subroutine restio
-c
-c==================================================================
-c     read and write restart file
-c     NOTE - this version only saves and restores the current
-c     timestep.  The model must therefore be restarted with
-c     a forward or euler backward timestep.
-c==================================================================
-c
+!
+!==================================================================
+!     read and write restart file
+!     NOTE - this version only saves and restores the current
+!     timestep.  The model must therefore be restarted with
+!     a forward or euler backward timestep.
+!==================================================================
+!
 #include "param.h"
 #include "ctmngr.h"
 #include "frees.h"
@@ -2974,7 +2988,7 @@ c
 #include "slabs.h"
 #include "switch.h"
 #include "timelv.h"
-      dimension t1(km,imt,jmt,nt), t2(km,imt,jmt,nt), 
+      dimension t1(km,imt,jmt,nt), t2(km,imt,jmt,nt),
      &          t3(km,imt,jmt,nt)
       dimension u1(km,imt,jmt),  u2(km,imt,jmt), u3(km,imt,jmt)
       dimension v1(km,imt,jmt),  v2(km,imt,jmt), v3(km,imt,jmt)
@@ -2982,7 +2996,7 @@ c
       dimension u01(imt,jmt),    u02(imt,jmt),   u03(imt,jmt)
       dimension v01(imt,jmt),    v02(imt,jmt),   v03(imt,jmt)
       character*80 file
-c
+!
       equivalence (t1(1,1,1,1),t(1,1,1,1,1))
       equivalence (t2(1,1,1,1),t(1,1,1,1,2))
       equivalence (t3(1,1,1,1),t(1,1,1,1,3))
@@ -2992,7 +3006,7 @@ c
       equivalence (v1(1,1,1),v(1,1,1,1))
       equivalence (v2(1,1,1),v(1,1,1,2))
       equivalence (v3(1,1,1),v(1,1,1,3))
-c
+!
       equivalence (h01(1,1),h0(1,1,1))
       equivalence (h02(1,1),h0(1,1,2))
       equivalence (h03(1,1),h0(1,1,3))
@@ -3002,22 +3016,22 @@ c
       equivalence (v01(1,1),v0(1,1,1))
       equivalence (v02(1,1),v0(1,1,2))
       equivalence (v03(1,1),v0(1,1,3))
-c
-c------------------------------------------------------------------
-c     read restart data set from archive for timesteps itt 
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!     read restart data set from archive for timesteps itt
+!------------------------------------------------------------------
+!
       entry archrd_std
-c  check np equals 3
+!  check np equals 3
       if(np.ne.3)goto 900
-c
-c------------------------------------------------------------------
-c     initialize t,s,u,v.
-c          velocities set to zero
-c          temperature and salinity set to land values
-c          -2.0 and 45.0 ppt
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!     initialize t,s,u,v.
+!          velocities set to zero
+!          temperature and salinity set to land values
+!          -2.0 and 45.0 ppt
+!------------------------------------------------------------------
+!
       do 200 n=1,3
       do 200 j=1,jmt
       do 200 i=1,imt
@@ -3027,11 +3041,11 @@ c
         t(k,i,j,1,n)= -2.0
         t(k,i,j,2,n)= 0.01
 200   continue
-c
-c------------------------------------------------------------------
-c     initialize free surface model
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!     initialize free surface model
+!------------------------------------------------------------------
+!
       do 300 n=1,3
       do 300 j=1,jmt
       do 300 i=1,imt
@@ -3039,13 +3053,13 @@ c
         u0(i,j,n) = c0
         v0(i,j,n) = c0
 300   continue
-c
-c------------------------------------------------------------------
-c  read archived data.  Use file fnrest if defined.
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!  read archived data.  Use file fnrest if defined.
+!------------------------------------------------------------------
+!
       if(fnrest(1:1).ne.' ')then
-      open(iorest, file=fnrest, form='UNFORMATTED', 
+      open(iorest, file=fnrest, form='UNFORMATTED',
      &       access='SEQUENTIAL')
       else
         open(iorest, form='UNFORMATTED', access='SEQUENTIAL',err=920)
@@ -3069,9 +3083,9 @@ c
  230    read(iorest,err=920)((u(k,i,j,3),k=1,km),i=2,imtm1)
         do 240 j=1,JMT
  240    read(iorest,err=920)((v(k,i,j,3),k=1,km),i=2,imtm1)
-c
-c  set cyclic boundary conditions
-c
+!
+!  set cyclic boundary conditions
+!
         do 260 j=1,jmt
           kmt(1,j)   = kmt(imtm1,j)
           kmt(imt,j) = kmt(2,j)
@@ -3112,16 +3126,16 @@ c
       write (stdout,21) iorest, itt
       if(mod(itt,nmix).ne.0)goto 900
       return
-c
-c  error
-c
+!
+!  error
+!
  900  write(stdout,22) np, nc, nm
       stop
  910  write(stdout,23) itt, nmix
       stop
  920  write(stdout,24)
       stop
-c
+!
   21  format(1x,/,' Routine restio',/,
      &       ' Restart file read from unit ',i2,'.  timestep =',i7)
   22  format(' Routine restio - error.',/,
@@ -3134,22 +3148,22 @@ c
   24  format(' Routine restio',/,
      &       ' error while reading restart dataset,',/,
      &       ' Programme stopping ...')
-c
-c------------------------------------------------------------------
-c     write restart data set to archive.
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!     write restart data set to archive.
+!------------------------------------------------------------------
+!
       entry archwr_std
-c
-c------------------------------------------------------------------
-c  create archive file name
-c------------------------------------------------------------------
-c
+!
+!------------------------------------------------------------------
+!  create archive file name
+!------------------------------------------------------------------
+!
       write (file,'(i10.10)')nint(totday)
       file = 'd'//file(7:10)//'.'//ftarch
       open(iorest, file=file, form='UNFORMATTED',
      &       access='SEQUENTIAL',err=950)
-c
+!
       write (stdout,31) itt, file, iorest
       if(ftarch.eq.'rst')then
         write(iorest) itt, totsec, totday, years, kmt
@@ -3212,14 +3226,14 @@ c
       endif
       close(iorest, status = 'KEEP')
       return
-c
-c error
-c
+!
+! error
+!
  950  write(stdout,32)
       stop
-c
+!
   31  format('  Writing restart file for itt = ',i7,/,
-     &       '  filename = ',a,'  unit = ',i2) 
+     &       '  filename = ',a,'  unit = ',i2)
   32  format(' Routine restio',/,
      &       ' error while writing restart dataset',/,
      &       ' Programme stopping ...')
@@ -3227,37 +3241,37 @@ c
 
 
       subroutine matrix (array, irdim, istrt, im, jstrt, jm, scale)
-c
-c==================================================================
-c
-c     matrix is a general two-dimensional array printing routine,
-c     where:
-c     array = the array to be printed
-c     irdim = the 1st dimension of array
-c     istrt = the 1st element of the 1st dimension to be printed
-c     im    = the last element of the 1st dimension to be printed
-c     jstrt = the 1st element of the 2nd dimension to be printed
-c     jm    = the last element of the 2nd dimension to be printed
-c             the 2nd dimension is printed in reverse order if both
-c             jstrt & jm are negative
-c     scale = a scaling factor by which array is divided before
-c             printing.  (if this is zero, no scaling is done.)
-c             if scale=0, 10 columns are printed across in e format
-c             if scale>0, 20 columns are printed across in f format
-c
-c==================================================================
-c
+!
+!==================================================================
+!
+!     matrix is a general two-dimensional array printing routine,
+!     where:
+!     array = the array to be printed
+!     irdim = the 1st dimension of array
+!     istrt = the 1st element of the 1st dimension to be printed
+!     im    = the last element of the 1st dimension to be printed
+!     jstrt = the 1st element of the 2nd dimension to be printed
+!     jm    = the last element of the 2nd dimension to be printed
+!             the 2nd dimension is printed in reverse order if both
+!             jstrt & jm are negative
+!     scale = a scaling factor by which array is divided before
+!             printing.  (if this is zero, no scaling is done.)
+!             if scale=0, 10 columns are printed across in e format
+!             if scale>0, 20 columns are printed across in f format
+!
+!==================================================================
+!
 #include "param.h"
-c
+!
       dimension array(irdim,1000)
-c
+!
       if (jstrt*jm .lt. 0) then
         write (stderr,999)  jstrt, jm
         stop '=>matrix'
       endif
-c
-c     allow for inversion of 2nd dimension
-c
+!
+!     allow for inversion of 2nd dimension
+!
       if (jm .lt. 0) then
         js   = -jm
         je   = -jstrt
@@ -3267,7 +3281,7 @@ c
         je   = jm
         jinc = 1
       endif
-c
+!
       if (scale .eq. c0) then
         do 100 is=istrt,im,10
           ie = min(is + 9,im)
@@ -3277,7 +3291,7 @@ c
 90        continue
           write (stdout,'(//)')
 100     continue
-c
+!
       else
         scaler = c1/scale
         do 200 is=istrt,im,20
@@ -3289,13 +3303,13 @@ c
           write (stdout,'(//)')
 200     continue
       endif
-c
+!
       return
-c
+!
 999   format (1x,'jstrt=',i5,' jm=',i5,' in matrix')
 9001  format(10i13)
 9002  format(1x,i2,10(1pe13.5))
 9003  format(3x,20i6)
 9004  format(1x,i3,1x,20f6.2)
-c
+!
       end

@@ -1,16 +1,38 @@
 #
-# %Z% SCCS module: %M%  version: %I%
-#      Creation date: %G%
+#======================================================================
+#
+#    File:  makefile.sgi
+#    Copyright 1992-1997, 2020  David J. Webb
+#
+#    This file is part of the Moma ocean model code.
+#    Released under licence GPL-3.0-or-later
+#
+#    Moma is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    Moma is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with Moma.  If not, see <https://www.gnu.org/licenses/>.
+#
+#======================================================================
+#
+#
 #
 #     Moma make file for SGI
 #
-#  If HDF is used, environment variable HDF_ROOT needs to  
+#  If HDF is used, environment variable HDF_ROOT needs to
 #  point to the HDF root directory
 #
 
 DOPTNS= -Dcyclic -Dsimple_world -Dde_checkbd -Dncsa_hdf -DREAL_8
- 
-FC =	f77   
+
+FC =	f77
 INCLUDE= -I$(HDF_ROOT)/include/SGI
 LDR = f77
 HDFLIBS = $(HDF_ROOT)/lib/SGI/libnetcdf.a $(HDF_ROOT)/lib/SGI/libdf.a
@@ -27,18 +49,18 @@ HDFLIBS = $(HDF_ROOT)/lib/SGI/libnetcdf.a $(HDF_ROOT)/lib/SGI/libdf.a
 .F.o:   $(HFILES)
 #	$(FC) $(DOPTNS) -c $(INCLUDE)  $*.F
 # Changes needed for new compiler
-	cc -P -oldcpp $(DOPTNS) $(INCLUDE) $*.F 
+	cc -P -oldcpp $(DOPTNS) $(INCLUDE) $*.F
 	mv $*.i $*.f
 	$(FC) $(DOPTNS) -c -col120 -r8 $(INCLUDE) $*.f
-	
-moma : moma.o hdf.o	
+
+moma : moma.o hdf.o
 	$(LDR) moma.o hdf.o -o moma $(HDFLIBS)
 
-clean :	
+clean :
 	rm -f *% *.l *.f
 
-cleaner : 
-	rm -f *.o *.f *.l *% 
+cleaner :
+	rm -f *.o *.f *.l *%
 
-cleanest : 
+cleanest :
 	rm -f *.o *.f *.l *% moma

@@ -1,25 +1,46 @@
-#ifdef hcomments 
-c
-c @(#) SCCS module: hdf.h  version: 1.17
-c     Creation date: 09 Aug 1996
-c
-c-----------------------------------------------------------------------
-c    Include file for hdf routines
-c-----------------------------------------------------------------------
-c
+#ifdef hcomments
+!
+!======================================================================
+!
+!    File:  hdf.h
+!    Copyright 1992-1997, 2020  David J. Webb
+!
+!    This file is part of the Moma ocean model code.
+!    Released under licence GPL-3.0-or-later
+!
+!    Moma is free software: you can redistribute it and/or modify
+!    it under the terms of the GNU General Public License as published by
+!    the Free Software Foundation, either version 3 of the License, or
+!    (at your option) any later version.
+!
+!    Moma is distributed in the hope that it will be useful,
+!    but WITHOUT ANY WARRANTY; without even the implied warranty of
+!    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+!    GNU General Public License for more details.
+!
+!    You should have received a copy of the GNU General Public License
+!    along with Moma.  If not, see <https://www.gnu.org/licenses/>.
+!
+!======================================================================
+!
+!
+!-----------------------------------------------------------------------
+!    Include file for hdf routines
+!-----------------------------------------------------------------------
+!
 #endif
 
-c define maximum number of items to be found in one HDF file
+! define maximum number of items to be found in one HDF file
 #define MAXDATASETS	20
 
-c define the label lengths for these values
+! define the label lengths for these values
 #define MAXLABELS	15
 #define MAXLABLEN	30
 #define MAXFORMATLEN    20
 #define MAXUNITLEN	12
 
-#define MAXDIMS	         5		
-#define MAXFIDS	       	15 	
+#define MAXDIMS	         5
+#define MAXFIDS	       	15
 
 #define MODEL_1		1
 #define MODEL_2		2
@@ -52,31 +73,31 @@ c define the label lengths for these values
 #define VERSION_ATTR    'VERSION'
 #define ROTATION_ATTR   'ROTATION'
 
-c
-c  define hdf word lengths
-c
+!
+!  define hdf word lengths
+!
 # define INTEGER_HDF    DFNT_INT32
 # ifdef REAL_8
 #  define REAL_HDF      DFNT_FLOAT64
 # else
 #  define REAL_HDF      DFNT_FLOAT32
 # endif
-c
-c  define hdf functions
-c
+!
+!  define hdf functions
+!
       integer*4  sfcreate, sfstart, sfsdtstr, sfwdata,
      &           sfsdmname, sfsdmstr,sfdimid, sfrdata,
-     &           sfendacc, sfsfill, sfsdscale, sfend, 
+     &           sfendacc, sfsfill, sfsdscale, sfend,
      &           sfsattr, sfn2index, sfselect
       external   sfcreate, sfstart, sfsdtstr, sfwdata,
      &           sfsdmname, sfsdmstr,sfdimid, sfrdata,
-     &           sfendacc, sfsfill, sfsdscale, sfend, 
+     &           sfendacc, sfsfill, sfsdscale, sfend,
      &           sfsattr, sfn2index, sfselect
-c
+!
       parameter (NARCHV = 7, NUM2D = 3)
-c
-c  define common blocks used by moma hdf routines
-c
+!
+!  define common blocks used by moma hdf routines
+!
       integer*4 dims2,dims3
       character*MAXLABLEN     labels2, labels3
       character*MAXUNITLEN    units2, units3
@@ -85,10 +106,10 @@ c
       common/hdf2/rank2,dims2(MAXDIMS),labels2(MAXDIMS),
      &   units2(MAXDIMS),fmats2(MAXDIMS),lonlabel(2),latlabel(2)
       common/hdf3/rank3,dims3(MAXDIMS),labels3(MAXDIMS),
-     &   units3(MAXDIMS),fmats3(MAXDIMS) 
-c
+     &   units3(MAXDIMS),fmats3(MAXDIMS)
+!
       logical*4 vartgrd
-c
+!
       integer*4 itdims,itsize
       character hdffile*40,cfext*10,varname*25,varunit*12,
      &          varid*25,varcordsys*12
@@ -98,4 +119,4 @@ c
       common /hdfa/ hdffile,cfext(2),tlabel(MAXDIMS)
      &                ,varname(NARCHV),varunit(NARCHV)
      &                ,varid(NARCHV),varcordsys(NARCHV)
-      
+

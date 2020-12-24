@@ -1,32 +1,52 @@
-c====================== include file "scalar.h" ========================
 #ifdef hcomments
-c
-c     @(#) SCCS module: scalar.h, version 1.17
-c
-c     various scalar quantities:
-c
-c     dtts   = time step for density & tracers (in seconds)
-c     dtuv   = time step for baroclinic velocity (in seconds)
-c     dtbt   = time step for barotropic velocity (in seconds)
-c              used by free surface model
-c     c2dtts = 2*dtts
-c     c2dtuv = 2*dtuv
-c     c2dtbt = 2*dtbt
-c     area   = surface area of ocean (cm**2)
-c     volume = volume of ocean (cm**3)
-c     omega  = earth's rotation rate (radians/sec)
-c     radius = earth's radius (cm)
-c     grav   = earth's gravitational acceleration (cm/sec**2)
-c     cdbot  = bottom drag coefficient
-c
-c     ncon   = number of  passes through convective code in tracer
-c     ntbt   = number of free surface timesteps per baroclinic velocity
-c              time steps.
-c     ntbt2  = 2*ntbt
+!
+!======================================================================
+!
+!    File:  scalar.h
+!    Copyright 1992-1997, 2020  David J. Webb
+!
+!    This file is part of the Moma ocean model code.
+!    Released under licence GPL-3.0-or-later
+!
+!    Moma is free software: you can redistribute it and/or modify
+!    it under the terms of the GNU General Public License as published by
+!    the Free Software Foundation, either version 3 of the License, or
+!    (at your option) any later version.
+!
+!    Moma is distributed in the hope that it will be useful,
+!    but WITHOUT ANY WARRANTY; without even the implied warranty of
+!    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+!    GNU General Public License for more details.
+!
+!    You should have received a copy of the GNU General Public License
+!    along with Moma.  If not, see <https://www.gnu.org/licenses/>.
+!
+!======================================================================
+!
+!     various scalar quantities:
+!
+!     dtts   = time step for density & tracers (in seconds)
+!     dtuv   = time step for baroclinic velocity (in seconds)
+!     dtbt   = time step for barotropic velocity (in seconds)
+!              used by free surface model
+!     c2dtts = 2*dtts
+!     c2dtuv = 2*dtuv
+!     c2dtbt = 2*dtbt
+!     area   = surface area of ocean (cm**2)
+!     volume = volume of ocean (cm**3)
+!     omega  = earth's rotation rate (radians/sec)
+!     radius = earth's radius (cm)
+!     grav   = earth's gravitational acceleration (cm/sec**2)
+!     cdbot  = bottom drag coefficient
+!
+!     ncon   = number of  passes through convective code in tracer
+!     ntbt   = number of free surface timesteps per baroclinic velocity
+!              time steps.
+!     ntbt2  = 2*ntbt
 # ifdef de_checkbd
-c   dchkbd   = weighting factor for del-plus-del-cross filter.
+!   dchkbd   = weighting factor for del-plus-del-cross filter.
 # endif
-c
+!
 #endif
       common /scalar/ dtts, dtuv, dtbt, c2dtts, c2dtuv, c2dtbt
      &,               area, volume, omega, radius, grav, cdbot
@@ -35,12 +55,12 @@ c
 #endif
       common /scalri/ ncon, ntbt, ntbt2
 #ifdef hcomments
-c
-c     non dimensional quantities:
-c
-c     radian = degrees per radian
-c     pi     = something good to eat
-c
+!
+!     non dimensional quantities:
+!
+!     radian = degrees per radian
+!     pi     = something good to eat
+!
 #endif
       common /ndcon/ radian, pi
 
